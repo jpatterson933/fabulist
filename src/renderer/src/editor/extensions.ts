@@ -6,8 +6,15 @@ import {
   keymap,
   placeholder
 } from '@codemirror/view'
-import { EditorState, StateField, StateEffect, RangeSetBuilder } from '@codemirror/state'
+import { EditorState, StateField, StateEffect, RangeSetBuilder, Annotation } from '@codemirror/state'
 import type { SuggestSegment } from '@/lib/suggest'
+
+/**
+ * Marks transactions that replace the document from outside the editor
+ * (Claude's edits, restores, doc switches). Position-mapped thread ranges are
+ * meaningless across such replaces and must never be persisted as anchors.
+ */
+export const externalChange = Annotation.define<boolean>()
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { syntaxHighlighting, HighlightStyle } from '@codemirror/language'

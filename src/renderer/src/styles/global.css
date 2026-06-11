@@ -25,8 +25,9 @@
 
   --selection: oklch(0.885 0.045 55);
   --thread-bg: oklch(0.93 0.05 88 / 0.55);
-  --thread-bg-active: oklch(0.83 0.135 78);
+  --thread-bg-active: oklch(0.9 0.075 82);
   --thread-edge: oklch(0.78 0.09 78);
+  --thread-ghost: oklch(0.94 0.02 88 / 0.4);
 
   --ok: oklch(0.55 0.12 150);
   --bad: oklch(0.55 0.16 25);
@@ -534,18 +535,23 @@ input::placeholder {
   }
 }
 
-/* the selected thread's highlight must be unmissable next to its siblings */
+/* when a thread is selected, its siblings recede instead of it shouting —
+   contrast comes from context, not saturation */
+.has-active-thread .cm-thread:not(.cm-thread-active) {
+  background: var(--thread-ghost);
+  border-bottom-color: oklch(0.86 0.03 82);
+}
+
 .cm-thread-active {
   background: var(--thread-bg-active) !important;
-  border-bottom: 2.5px solid var(--accent) !important;
+  border-bottom: 2px solid var(--accent) !important;
   border-radius: 2px;
   animation: thread-flash 700ms var(--ease-out);
 }
 
 @keyframes thread-flash {
   0% {
-    background: var(--accent-wash);
-    box-shadow: 0 0 0 4px var(--accent-wash);
+    box-shadow: 0 0 0 5px var(--thread-bg-active);
   }
   100% {
     box-shadow: 0 0 0 0 transparent;

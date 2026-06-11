@@ -9,6 +9,7 @@ import {
   setThreadRanges,
   setSuggestion,
   currentThreadRanges,
+  externalChange,
   type ThreadRange
 } from '@/editor/extensions'
 
@@ -59,7 +60,10 @@ export default function Editor({ docId }: { docId: string }): React.JSX.Element 
           ...baseExtensions(),
           editable.of([]),
           EditorView.updateListener.of((update) => {
-            if (update.docChanged) {
+            const isExternal = update.transactions.some((tr) => tr.annotation(externalChange))
+            if (update.docChanged && !isExternal) {
+              // external replaces already updated the store and re-anchored
+              // threads by quote — mapped ranges across them are garbage
               useStore.getState().setContent(update.state.doc.toString())
               useStore.getState().persistAnchors(currentThreadRanges(update.state))
             }
@@ -117,7 +121,8 @@ export default function Editor({ docId }: { docId: string }): React.JSX.Element 
         changes: { from: 0, to: view.state.doc.length, insert: external.content },
         selection: {
           anchor: Math.min(prevSel.anchor, external.content.length)
-        }
+        },
+        annotations: externalChange.of(true)
       })
     }
   }, [external])
@@ -201,7 +206,10 @@ export default function Editor({ docId }: { docId: string }): React.JSX.Element 
   }
 
   return (
-    <div className="editor-host" ref={hostRef}>
+    <div
+      className={`editor-host ${activeThreadId ? 'has-active-thread' : ''}`}
+      ref={hostRef}
+    >
       {suggestion && (
         <div className="suggest-bar">
           <span className="suggest-bar-glyph" aria-hidden>
