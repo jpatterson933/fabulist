@@ -63,6 +63,7 @@ type Emitter = (event: AgentEvent) => void
 export class AgentManager {
   private active = new Map<string, ActiveRun>()
   private pendingPermissions = new Map<string, (approved: boolean) => void>()
+  private pendingRequests = new Map<string, PermissionRequest>()
   private wc: WebContents | null = null
   private modelsCache: ModelChoice[] | null = null
 
@@ -394,15 +395,30 @@ export class AgentManager {
 
   private askHuman(docId: string, request: PermissionRequest, signal: AbortSignal): Promise<boolean> {
     this.emit({ kind: 'permission-request', docId, request })
+    this.pendingRequests.set(request.requestId, request)
     return new Promise<boolean>((resolve) => {
       const done = (approved: boolean): void => {
         this.pendingPermissions.delete(request.requestId)
+        this.pendingRequests.delete(request.requestId)
         this.emit({ kind: 'permission-resolved', docId, requestId: request.requestId, approved })
         resolve(approved)
       }
       this.pendingPermissions.set(request.requestId, done)
       signal.addEventListener('abort', () => done(false), { once: true })
     })
+  }
+
+  /**
+   * Re-emit any unresolved permission requests for a document. Called when the
+   * renderer (re)attaches — a reload mid-approval must not strand the agent
+   * waiting on a request the UI no longer knows about.
+   */
+  resendPending(docId: string): void {
+    for (const request of this.pendingRequests.values()) {
+      if (request.docId === docId) {
+        this.emit({ kind: 'permission-request', docId, request })
+      }
+    }
   }
 }
 

@@ -29,6 +29,7 @@ export default function Editor({ docId }: { docId: string }): React.JSX.Element 
   const external = useStore((s) => s.external)
   const threads = useStore((s) => s.threads)
   const activeThreadId = useStore((s) => s.activeThreadId)
+  const draftComment = useStore((s) => s.draftComment)
   const scrollTo = useStore((s) => s.scrollTo)
   const permissions = useStore((s) => s.permissions)
   const content = useStore((s) => s.content)
@@ -88,7 +89,7 @@ export default function Editor({ docId }: { docId: string }): React.JSX.Element 
             mousedown: (event, view2) => {
               const el = (event.target as HTMLElement).closest?.('[data-thread]')
               const id = el?.getAttribute('data-thread')
-              if (id) useStore.getState().jumpToThread(id)
+              if (id && id !== '__draft') useStore.getState().jumpToThread(id)
               return false
             }
           })
@@ -100,6 +101,7 @@ export default function Editor({ docId }: { docId: string }): React.JSX.Element 
     return () => {
       view.destroy()
       viewRef.current = null
+      useStore.getState().setInlineSuggestion(null)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [docId])
@@ -120,19 +122,27 @@ export default function Editor({ docId }: { docId: string }): React.JSX.Element 
     }
   }, [external])
 
-  // push thread ranges into the editor whenever they change
-  const ranges = useMemo<ThreadRange[]>(
-    () =>
-      threads
-        .filter((t) => t.status === 'open')
-        .map((t) => ({
-          id: t.id,
-          from: t.anchor.from,
-          to: t.anchor.to,
-          active: t.id === activeThreadId
-        })),
-    [threads, activeThreadId]
-  )
+  // push thread ranges into the editor whenever they change;
+  // a draft being composed highlights immediately, like Google Docs
+  const ranges = useMemo<ThreadRange[]>(() => {
+    const out: ThreadRange[] = threads
+      .filter((t) => t.status === 'open')
+      .map((t) => ({
+        id: t.id,
+        from: t.anchor.from,
+        to: t.anchor.to,
+        active: t.id === activeThreadId
+      }))
+    if (draftComment) {
+      out.push({
+        id: '__draft',
+        from: draftComment.anchor.from,
+        to: draftComment.anchor.to,
+        active: true
+      })
+    }
+    return out
+  }, [threads, activeThreadId, draftComment])
 
   useEffect(() => {
     viewRef.current?.dispatch({ effects: setThreadRanges.of(ranges) })

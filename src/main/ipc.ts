@@ -115,6 +115,8 @@ export function registerIpc(win: BrowserWindow): void {
     watcher = null
     watchedId = id
     if (!id) return
+    // a renderer reload mid-approval must re-learn about pending requests
+    agentManager.resendPending(id)
     const dir = library.docPath(id)
     watcher = watch(dir, (_event, filename) => {
       if (!filename || watchedId !== id) return

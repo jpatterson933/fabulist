@@ -71,7 +71,6 @@ function DraftCard(): React.JSX.Element {
   if (!draft) return <></>
   return (
     <div className="thread-card is-draft">
-      <blockquote className="thread-quote">“{truncate(draft.anchor.text, 180)}”</blockquote>
       <textarea
         autoFocus
         rows={3}
@@ -109,11 +108,12 @@ function ThreadCard({ thread }: { thread: CommentThread }): React.JSX.Element {
   const [text, setText] = useState('')
   const isActive = thread.id === activeThreadId
 
+  // selecting a card lights up its highlight and scrolls the editor to it
   const jumpToText = (): void => {
     setActiveThread(thread.id)
-    const store = useStore.getState()
-    store.scrollTo = null
-    useStore.setState({ scrollTo: { threadId: thread.id, seq: ++jumpSeq.current + Date.now() } })
+    if (thread.status === 'open') {
+      useStore.setState({ scrollTo: { threadId: thread.id, seq: ++jumpSeq.current + Date.now() } })
+    }
   }
 
   const sendToClaude = (): void => {
@@ -130,11 +130,12 @@ function ThreadCard({ thread }: { thread: CommentThread }): React.JSX.Element {
     <div
       data-thread-card={thread.id}
       className={`thread-card ${isActive ? 'is-active' : ''} ${thread.status !== 'open' ? 'is-muted' : ''}`}
-      onClick={() => setActiveThread(thread.id)}
+      onClick={jumpToText}
+      title={thread.status === 'open' ? 'Jump to the highlighted text' : undefined}
     >
-      <blockquote className="thread-quote" onClick={jumpToText} title="Jump to text">
-        “{truncate(thread.anchor.text, 140)}”
-      </blockquote>
+      {thread.status === 'orphaned' && (
+        <blockquote className="thread-quote">“{truncate(thread.anchor.text, 140)}”</blockquote>
+      )}
 
       <div className="thread-messages">
         {thread.messages.map((m) => (

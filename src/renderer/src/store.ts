@@ -174,8 +174,11 @@ export const useStore = create<FabulistStore>((set, get) => ({
       draftComment: null,
       pendingQuote: null,
       activeThreadId: null,
+      permissions: [],
+      inlineSuggestionId: null,
       chats: { ...get().chats, [id]: chat ?? [] }
     })
+    // watching also re-emits any permission requests pending for this doc
     await window.fabulist.doc.watch(id)
   },
 
@@ -440,7 +443,7 @@ export const useStore = create<FabulistStore>((set, get) => ({
         })
         break
       case 'permission-request':
-        if (e.docId === activeId) {
+        if (e.docId === activeId && !get().permissions.some((p) => p.requestId === e.request.requestId)) {
           set({ permissions: [...get().permissions, e.request], tab: 'chat', sidebarOpen: true })
         }
         break

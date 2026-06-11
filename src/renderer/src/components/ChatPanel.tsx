@@ -1,11 +1,15 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ChatItem, PermissionRequest } from '@shared/types'
 import { useStore } from '@/store'
 import DiffView from '@/components/DiffView'
 
 export default function ChatPanel({ docId }: { docId: string }): React.JSX.Element {
   const chat = useStore((s) => s.chats[docId] ?? [])
-  const permissions = useStore((s) => s.permissions)
+  const allPermissions = useStore((s) => s.permissions)
+  const permissions = useMemo(
+    () => allPermissions.filter((p) => p.docId === docId),
+    [allPermissions, docId]
+  )
   const agent = useStore((s) => s.agent[docId])
   const pendingQuote = useStore((s) => s.pendingQuote)
   const setPendingQuote = useStore((s) => s.setPendingQuote)
