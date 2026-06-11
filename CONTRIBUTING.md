@@ -14,6 +14,7 @@ Requirements: Node 20+, `git`, and a logged-in [Claude Code](https://claude.com/
 ## Before you open a PR
 
 - `npm run typecheck` must pass (strict TS over main + renderer).
+- Add a line for any user-visible change under `[Unreleased]` in [CHANGELOG.md](CHANGELOG.md).
 - Verify behavior in the running app, not just the compiler. The dev harness helps:
   launch with `npm run dev -- -- --remote-debugging-port=9223`, then
   `node scripts/cdp.mjs screenshot /tmp/app.png` or `node scripts/cdp.mjs eval '<js>'`
