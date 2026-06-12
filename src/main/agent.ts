@@ -17,10 +17,14 @@ import {
 import { commitAll } from './git'
 import * as comments from './comments'
 
-const SYSTEM_APPEND = `
+const systemAppend = (autoApprove: boolean): string => `
 You are operating inside Fabulist, a writing studio. The current working directory is a
 single document project; the document itself is document.md. Follow the project CLAUDE.md.
-Every file edit you make is shown to the author as a diff for approval before it is applied,
+${
+  autoApprove
+    ? 'Your file edits are applied immediately without author review (every run is committed to history),'
+    : 'Every file edit you make is shown to the author as a diff for approval before it is applied,'
+}
 so make edits confidently but keep them minimal and well-scoped. Keep chat replies short —
 the document is the deliverable, not the conversation.`
 
@@ -175,7 +179,11 @@ export class AgentManager {
       abortController: abort,
       includePartialMessages: true,
       settingSources: ['project'],
-      systemPrompt: { type: 'preset', preset: 'claude_code', append: SYSTEM_APPEND },
+      systemPrompt: {
+        type: 'preset',
+        preset: 'claude_code',
+        append: systemAppend(Boolean(state.autoApprove))
+      },
       permissionMode: 'default',
       canUseTool: (tool, input, { signal }) =>
         this.gateTool(docId, cwd, tool, input as Record<string, unknown>, signal, () => editsApplied++),
@@ -341,6 +349,16 @@ export class AgentManager {
       return {
         behavior: 'deny',
         message: 'comments.json is managed by Fabulist. Reply in chat instead; the app records comment replies.'
+      }
+    }
+
+    // auto-approve mode: file edits apply immediately, no approval card.
+    // Read fresh each time so flipping the toggle mid-run takes effect.
+    if (fileTools.has(tool)) {
+      const { autoApprove } = await readState(docId).catch(() => ({ autoApprove: false }))
+      if (autoApprove) {
+        if (filePath) onEditApplied()
+        return { behavior: 'allow', updatedInput: input }
       }
     }
 

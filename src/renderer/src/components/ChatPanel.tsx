@@ -83,9 +83,30 @@ export default function ChatPanel({ docId }: { docId: string }): React.JSX.Eleme
             ↑
           </button>
         </div>
-        <ModelPicker disabled={busy} />
+        <div className="chat-options">
+          <ModelPicker disabled={busy} />
+          <AutoApproveToggle />
+        </div>
       </div>
     </div>
+  )
+}
+
+function AutoApproveToggle(): React.JSX.Element {
+  const autoApprove = useStore((s) => s.autoApprove)
+  const setAutoApprove = useStore((s) => s.setAutoApprove)
+  return (
+    <label
+      className="auto-approve"
+      title="Apply Claude's edits to this document immediately, without approval cards. Commands still ask. Every run is committed, so History can undo anything."
+    >
+      <input
+        type="checkbox"
+        checked={autoApprove}
+        onChange={(e) => setAutoApprove(e.target.checked)}
+      />
+      Auto-apply edits
+    </label>
   )
 }
 

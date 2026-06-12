@@ -46,6 +46,8 @@ interface FabulistStore {
   preview: { hash: string; content: string; subject: string } | null
   model: string
   models: ModelChoice[]
+  /** apply Claude's file edits without asking (per document) */
+  autoApprove: boolean
   font: string
   draftComment: DraftComment | null
   activeThreadId: string | null
@@ -88,6 +90,7 @@ interface FabulistStore {
   /** send a comment thread to Claude now, or queue it if the agent is busy */
   engageClaudeOnThread: (thread: CommentThread) => void
   setModel: (model: string) => void
+  setAutoApprove: (on: boolean) => void
   loadModels: () => Promise<void>
   setFont: (font: string) => void
   interrupt: () => void
@@ -138,6 +141,7 @@ export const useStore = create<FabulistStore>((set, get) => ({
   preview: null,
   model: '',
   models: FALLBACK_MODEL_CHOICES,
+  autoApprove: false,
   font: DEFAULT_FONT,
   draftComment: null,
   activeThreadId: null,
@@ -164,13 +168,14 @@ export const useStore = create<FabulistStore>((set, get) => ({
 
   openDoc: async (id) => {
     await get().closeDoc()
-    const [content, rawThreads, chat, commits, model, font] = await Promise.all([
+    const [content, rawThreads, chat, commits, model, font, autoApprove] = await Promise.all([
       window.fabulist.doc.read(id),
       window.fabulist.comments.list(id),
       window.fabulist.doc.chat(id),
       window.fabulist.history.log(id),
       window.fabulist.doc.getModel(id),
-      window.fabulist.doc.getFont(id)
+      window.fabulist.doc.getFont(id),
+      window.fabulist.doc.getAutoApprove(id)
     ])
     const threads = reanchor(rawThreads, content)
     set({
@@ -180,6 +185,7 @@ export const useStore = create<FabulistStore>((set, get) => ({
       threads,
       commits,
       model,
+      autoApprove,
       font: font || DEFAULT_FONT,
       preview: null,
       draftComment: null,
@@ -371,6 +377,13 @@ export const useStore = create<FabulistStore>((set, get) => ({
     if (!id) return
     set({ model })
     window.fabulist.doc.setModel(id, model).catch(() => {})
+  },
+
+  setAutoApprove: (on) => {
+    const id = get().activeId
+    if (!id) return
+    set({ autoApprove: on })
+    window.fabulist.doc.setAutoApprove(id, on).catch(() => {})
   },
 
   setFont: (font) => {

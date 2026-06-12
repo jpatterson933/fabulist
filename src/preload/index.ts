@@ -27,6 +27,9 @@ const api = {
     getModel: (id: string): Promise<string> => ipcRenderer.invoke('doc:getModel', id),
     setModel: (id: string, model: string): Promise<void> =>
       ipcRenderer.invoke('doc:setModel', id, model),
+    getAutoApprove: (id: string): Promise<boolean> => ipcRenderer.invoke('doc:getAutoApprove', id),
+    setAutoApprove: (id: string, on: boolean): Promise<void> =>
+      ipcRenderer.invoke('doc:setAutoApprove', id, on),
     getFont: (id: string): Promise<string> => ipcRenderer.invoke('doc:getFont', id),
     setFont: (id: string, font: string): Promise<void> =>
       ipcRenderer.invoke('doc:setFont', id, font),

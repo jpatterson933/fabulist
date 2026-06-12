@@ -6,6 +6,10 @@ All notable changes to Fabulist are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- **Auto-apply edits** toggle under the chat composer: when on, Claude's file edits apply
+  immediately with no approval cards, so it can revise non-stop. Commands (Bash) still
+  ask, every run is still committed, and the setting persists per document. Flipping it
+  mid-run takes effect on the next edit.
 - Per-document editor typeface: an **Aa** picker in the header (Newsreader, Literata,
   Fraunces, Plex Sans, Plex Mono — all bundled, offline), persisted per document.
 

@@ -147,6 +147,8 @@ interface DocState {
   model?: string
   /** editor font choice for this document */
   font?: string
+  /** when true, file edits apply without an approval card (Bash still asks) */
+  autoApprove?: boolean
 }
 
 async function statePath(id: string): Promise<string> {

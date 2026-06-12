@@ -935,11 +935,34 @@ input::placeholder {
   cursor: default;
 }
 
+.chat-options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
 .model-picker {
   display: flex;
   align-items: center;
   gap: 7px;
-  margin-top: 8px;
+}
+
+.auto-approve {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--ink-faint);
+  cursor: pointer;
+  user-select: none;
+}
+.auto-approve input {
+  accent-color: var(--ink-soft);
+  cursor: pointer;
 }
 
 .model-picker label {
