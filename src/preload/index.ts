@@ -35,6 +35,11 @@ const api = {
     getFont: (id: string): Promise<string> => ipcRenderer.invoke('doc:getFont', id),
     setFont: (id: string, font: string): Promise<void> =>
       ipcRenderer.invoke('doc:setFont', id, font),
+    attachFiles: (id: string): Promise<string[]> => ipcRenderer.invoke('doc:attachFiles', id),
+    attachText: (id: string, text: string): Promise<string> =>
+      ipcRenderer.invoke('doc:attachText', id, text),
+    removeAttachment: (id: string, rel: string): Promise<void> =>
+      ipcRenderer.invoke('doc:removeAttachment', id, rel),
     saveChat: (id: string, chat: ChatItem[]): Promise<void> =>
       ipcRenderer.invoke('doc:saveChat', id, chat),
     onExternalChange: (cb: (id: string, content: string) => void): (() => void) => {
@@ -71,8 +76,6 @@ const api = {
   },
   skills: {
     installFromDisk: (): Promise<SkillMeta[]> => ipcRenderer.invoke('skills:installFromDisk'),
-    installFromUrl: (url: string): Promise<SkillMeta[]> =>
-      ipcRenderer.invoke('skills:installFromUrl', url),
     list: (): Promise<SkillMeta[]> => ipcRenderer.invoke('skills:list'),
     listForDoc: (docId: string): Promise<DocSkill[]> =>
       ipcRenderer.invoke('skills:listForDoc', docId),

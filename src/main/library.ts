@@ -1,4 +1,4 @@
-import { app } from 'electron'
+import { app, dialog } from 'electron'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
@@ -136,6 +136,54 @@ export async function readDoc(id: string): Promise<string> {
 
 export async function writeDoc(id: string, content: string): Promise<void> {
   await fs.writeFile(path.join(docPath(id), DOC_FILE), content)
+}
+
+/**
+ * Pick files and copy them into the doc's attachments/ folder so Claude can
+ * read them from the project. Returns the doc-relative paths of what landed.
+ */
+export async function attachFiles(id: string): Promise<string[]> {
+  const { canceled, filePaths } = await dialog.showOpenDialog({
+    title: 'Attach files',
+    message: 'Copy files into this document’s project folder',
+    properties: ['openFile', 'multiSelections']
+  })
+  if (canceled || filePaths.length === 0) return []
+  const dir = path.join(docPath(id), 'attachments')
+  await fs.mkdir(dir, { recursive: true })
+  const attached: string[] = []
+  for (const src of filePaths) {
+    let name = path.basename(src)
+    let n = 1
+    while (await exists(path.join(dir, name))) {
+      const ext = path.extname(name)
+      name = `${path.basename(src, ext)}-${++n}${ext}`
+    }
+    await fs.copyFile(src, path.join(dir, name))
+    attached.push(path.posix.join('attachments', name))
+  }
+  return attached
+}
+
+/** Delete one attachment by its doc-relative path (must live under attachments/). */
+export async function removeAttachment(id: string, rel: string): Promise<void> {
+  const dir = path.join(docPath(id), 'attachments')
+  const target = path.resolve(docPath(id), rel)
+  if (path.dirname(target) !== dir) throw new Error('Not an attachment path')
+  await fs.rm(target, { force: true })
+}
+
+/** Save pasted text as attachments/pasted-N.txt; returns the doc-relative path. */
+export async function attachText(id: string, text: string): Promise<string> {
+  const dir = path.join(docPath(id), 'attachments')
+  await fs.mkdir(dir, { recursive: true })
+  let n = 0
+  let name: string
+  do {
+    name = `pasted-${++n}.txt`
+  } while (await exists(path.join(dir, name)))
+  await fs.writeFile(path.join(dir, name), text)
+  return path.posix.join('attachments', name)
 }
 
 // --- per-doc app state (session ids, chat transcript) under .fabulist/ ---

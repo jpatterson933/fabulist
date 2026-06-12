@@ -2,7 +2,6 @@ import { useStore } from '@/store'
 import ChatPanel from '@/components/ChatPanel'
 import CommentsPanel from '@/components/CommentsPanel'
 import HistoryPanel from '@/components/HistoryPanel'
-import SkillsPanel from '@/components/SkillsPanel'
 
 export default function Sidebar({ docId }: { docId: string }): React.JSX.Element {
   const tab = useStore((s) => s.tab)
@@ -21,15 +20,11 @@ export default function Sidebar({ docId }: { docId: string }): React.JSX.Element
         <button className={tab === 'history' ? 'is-active' : ''} onClick={() => setTab('history')}>
           History
         </button>
-        <button className={tab === 'skills' ? 'is-active' : ''} onClick={() => setTab('skills')}>
-          Skills
-        </button>
       </nav>
       <div className="sidebar-body">
         {tab === 'chat' && <ChatPanel docId={docId} />}
         {tab === 'comments' && <CommentsPanel />}
         {tab === 'history' && <HistoryPanel />}
-        {tab === 'skills' && <SkillsPanel docId={docId} />}
       </div>
     </aside>
   )

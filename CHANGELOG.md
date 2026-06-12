@@ -6,12 +6,20 @@ All notable changes to Fabulist are documented here. The format follows
 ## [Unreleased]
 
 ### Added
-- **Skills**: a new sidebar tab for installing Claude Code skills (SKILL.md instruction
-  packs) from a local file/folder or a skills.sh / archive URL, then toggling them on
-  per document. Local and stateless: the library is a plain folder at
-  `~/Documents/Fabulist/.skills/`, enabling symlinks a skill into the document's
-  `.claude/skills/` where the engine discovers it; nothing is fetched again after
-  install. Skill scripts still run through the Bash approval gate.
+- **Skills**: install Claude Code skills (SKILL.md instruction packs) from a local
+  folder or archive, then toggle them on per document — managed
+  from a **Skills modal** opened via the **+** button next to the model picker (or the
+  "Manage skills…" row in the `/` menu). Local and stateless: the library is a plain
+  folder at `~/Documents/Fabulist/.skills/`; the document's `.claude/skills/` folder is
+  the source of truth for what's enabled (symlinked in, dangling links swept, hand-added
+  skills listed too). Skill scripts still run through the Bash approval gate. Skill cards
+  expand on click to show the full description.
+- **`/` skill autocomplete** in the chat composer: typing `/` pops up the document's
+  enabled skills, filtered as you type; arrows + Enter/Tab insert the skill name.
+- **Attach files**: the **+** button copies files into the document's `attachments/`
+  folder, and pasting more than ~500 characters is saved as `attachments/pasted-N.txt`.
+  Either way the attachment shows as a removable chip above the composer (✕ deletes the
+  file too); on send, the file paths are appended to the prompt so Claude reads them.
 - **Auto-apply edits** toggle under the chat composer: when on, Claude's file edits apply
   immediately with no approval cards, so it can revise non-stop. Commands (Bash) still
   ask, every run is still committed, and the setting persists per document. Flipping it
@@ -20,6 +28,12 @@ All notable changes to Fabulist are documented here. The format follows
   Fraunces, Plex Sans, Plex Mono — all bundled, offline), persisted per document.
 
 ### Fixed
+- Scrolling up in the chat no longer fights you while Claude is responding: the chat
+  only auto-follows new output when you're already at (or near) the bottom, and snaps
+  back when you scroll down again or send a message.
+- Skill descriptions written as YAML block scalars (`description: >` / `|`) no longer
+  render as a bare `>` or `|` — multi-line frontmatter values are parsed properly, and
+  the skill "View" pane no longer shows the raw frontmatter fence.
 - External edits (Claude's, or any change on disk) no longer yank the editor: the
   update is applied as a minimal text change instead of a whole-document replace, so
   scroll position and cursor stay where you are while reading.

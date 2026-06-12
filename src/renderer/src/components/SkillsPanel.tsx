@@ -2,14 +2,13 @@ import { useCallback, useEffect, useState } from 'react'
 import type { DocSkill } from '@shared/types'
 
 /**
- * Skills panel — deliberately self-contained: all state is local and all IO
- * goes straight through window.fabulist.skills. Nothing here touches the
- * global store, so the feature can be removed by deleting this file and its
- * tab button.
+ * Skills manager — deliberately self-contained: all state is local and all IO
+ * goes straight through window.fabulist.skills. Rendered inside the "Manage
+ * skills" modal; nothing here touches the global store, so the feature can be
+ * removed by deleting this file and its launch points.
  */
 export default function SkillsPanel({ docId }: { docId: string }): React.JSX.Element {
   const [skills, setSkills] = useState<DocSkill[]>([])
-  const [url, setUrl] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -58,31 +57,6 @@ export default function SkillsPanel({ docId }: { docId: string }): React.JSX.Ele
         >
           Add from file…
         </button>
-        <div className="skills-url">
-          <input
-            type="text"
-            placeholder="skills.sh or archive URL"
-            value={url}
-            disabled={busy}
-            onChange={(e) => setUrl(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && url.trim()) {
-                void install(() => window.fabulist.skills.installFromUrl(url.trim())).then(() =>
-                  setUrl('')
-                )
-              }
-            }}
-          />
-          <button
-            className="btn-ghost btn-small"
-            disabled={busy || !url.trim()}
-            onClick={() =>
-              install(() => window.fabulist.skills.installFromUrl(url.trim())).then(() => setUrl(''))
-            }
-          >
-            Add
-          </button>
-        </div>
         {busy && <p className="skills-status">Installing…</p>}
         {error && <p className="skills-status skills-error">{error}</p>}
         {notice && <p className="skills-status">{notice}</p>}
@@ -92,7 +66,7 @@ export default function SkillsPanel({ docId }: { docId: string }): React.JSX.Ele
         <div className="skills-empty">
           <p>
             Skills are reusable instruction packs for Claude — a folder with a SKILL.md.
-            Install one from a file or URL, then switch it on per document.
+            Install one from a folder or .zip, then switch it on per document.
           </p>
         </div>
       ) : (
@@ -120,6 +94,9 @@ export default function SkillsPanel({ docId }: { docId: string }): React.JSX.Ele
   )
 }
 
+const stripFrontmatter = (src: string): string =>
+  src.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '').trim()
+
 function SkillRow(props: {
   name: string
   slug: string
@@ -128,17 +105,28 @@ function SkillRow(props: {
   onToggle: (on: boolean) => void
   onRemove: () => void
 }): React.JSX.Element {
+  const [expanded, setExpanded] = useState(false)
   const [body, setBody] = useState<string | null>(null)
 
   const review = async (): Promise<void> => {
     if (body !== null) return setBody(null)
-    setBody(await window.fabulist.skills.read(props.slug).catch(() => '(unreadable)'))
+    const raw = await window.fabulist.skills.read(props.slug).catch(() => '(unreadable)')
+    setBody(stripFrontmatter(raw))
   }
 
   return (
-    <li className="skill-row">
-      <div className="skill-row-main">
-        <label className="skill-row-toggle" title={`Enable "${props.name}" for this document`}>
+    <li className={`skill-row${expanded ? ' is-expanded' : ''}`}>
+      <div
+        className="skill-row-main"
+        role="button"
+        title={expanded ? undefined : props.description}
+        onClick={() => setExpanded((v) => !v)}
+      >
+        <label
+          className="skill-row-toggle"
+          title={`Enable "${props.name}" for this document`}
+          onClick={(e) => e.stopPropagation()}
+        >
           <input
             type="checkbox"
             checked={props.enabled}
@@ -146,17 +134,19 @@ function SkillRow(props: {
           />
           <span className="skill-row-name">{props.name}</span>
         </label>
-        <span className="skill-row-actions">
-          <button className="btn-ghost btn-small" onClick={review} title="Read the skill's instructions">
-            {body !== null ? 'Hide' : 'View'}
-          </button>
+        <span className="skill-row-actions" onClick={(e) => e.stopPropagation()}>
+          {expanded && (
+            <button className="btn-ghost btn-small" onClick={review} title="Read the skill's instructions">
+              {body !== null ? 'Hide' : 'View'}
+            </button>
+          )}
           <button className="btn-ghost btn-small" onClick={props.onRemove} title="Remove from library">
             ✕
           </button>
         </span>
       </div>
-      {props.description && <p className="skill-row-desc">{props.description}</p>}
-      {body !== null && <pre className="skill-row-body">{body}</pre>}
+      {expanded && props.description && <p className="skill-row-desc">{props.description}</p>}
+      {expanded && body !== null && <pre className="skill-row-body">{body}</pre>}
     </li>
   )
 }

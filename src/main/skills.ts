@@ -34,15 +34,33 @@ const exists = (p: string): Promise<boolean> =>
 
 // --- SKILL.md parsing ---
 
-/** Minimal frontmatter read: name + description between leading `---` fences. */
+/**
+ * Minimal frontmatter read: name + description between leading `---` fences.
+ * Handles YAML block scalars (`description: >` / `|`) and indented
+ * continuation lines — without this, multi-line descriptions render as a
+ * bare ">" or "|" in the UI.
+ */
 function parseSkillMd(src: string): { name: string; description: string } | null {
   const m = src.match(/^---\r?\n([\s\S]*?)\r?\n---/)
   if (!m) return null
-  const field = (key: string): string =>
-    m[1]
-      .match(new RegExp(`^${key}:\\s*(.+)$`, 'm'))?.[1]
-      .trim()
-      .replace(/^["']|["']$/g, '') ?? ''
+  const lines = m[1].split(/\r?\n/)
+  const field = (key: string): string => {
+    const i = lines.findIndex((l) => l.startsWith(`${key}:`))
+    if (i === -1) return ''
+    let value = lines[i].slice(key.length + 1).trim()
+    const isBlock = /^[>|][+-]?$/.test(value)
+    if (isBlock) value = ''
+    // gather indented continuation lines (block scalar body or wrapped flow scalar)
+    const parts: string[] = []
+    for (let j = i + 1; j < lines.length; j++) {
+      if (lines[j].trim() === '') continue
+      if (!/^\s/.test(lines[j])) break
+      parts.push(lines[j].trim())
+    }
+    if (isBlock || value === '') value = parts.join(' ')
+    else if (parts.length > 0 && !/^["']/.test(value)) value = [value, ...parts].join(' ')
+    return value.replace(/^["']|["']$/g, '')
+  }
   const name = field('name')
   const description = field('description')
   return name ? { name, description } : null
@@ -162,58 +180,6 @@ export async function installFromPath(p: string): Promise<SkillMeta[]> {
   }
 }
 
-/**
- * Install from a URL: a direct archive link, or a skills.sh-style page whose
- * HTML points at one. One fetch, then the skill is plain local files —
- * the URL is not recorded and never re-fetched.
- */
-export async function installFromUrl(url: string): Promise<SkillMeta[]> {
-  const fetched = await fetchOnce(url)
-  if (fetched.kind === 'html') {
-    const link = findArchiveLink(fetched.text, url)
-    if (!link) throw new Error('No skill archive found at that URL')
-    const inner = await fetchOnce(link)
-    if (inner.kind !== 'archive') throw new Error('Linked file is not a skill archive')
-    return installArchiveBytes(inner.bytes, link)
-  }
-  return installArchiveBytes(fetched.bytes, url)
-}
-
-type Fetched = { kind: 'archive'; bytes: Buffer } | { kind: 'html'; text: string }
-
-async function fetchOnce(url: string): Promise<Fetched> {
-  const u = new URL(url)
-  if (u.protocol !== 'https:') throw new Error('Only https URLs are supported')
-  const res = await fetch(u, { redirect: 'follow' })
-  if (!res.ok) throw new Error(`Fetch failed: ${res.status}`)
-  const len = Number(res.headers.get('content-length') ?? 0)
-  if (len > MAX_ARCHIVE_BYTES) throw new Error('Download larger than 50 MB')
-  const bytes = Buffer.from(await res.arrayBuffer())
-  if (bytes.length > MAX_ARCHIVE_BYTES) throw new Error('Download larger than 50 MB')
-  // sniff: zip = PK, gzip = 1f 8b — content-type headers lie too often
-  const isZip = bytes[0] === 0x50 && bytes[1] === 0x4b
-  const isGz = bytes[0] === 0x1f && bytes[1] === 0x8b
-  if (isZip || isGz) return { kind: 'archive', bytes }
-  return { kind: 'html', text: bytes.toString('utf8') }
-}
-
-/** Pull the first archive href out of a registry page (e.g. skills.sh). */
-function findArchiveLink(html: string, baseUrl: string): string | null {
-  const m = html.match(/href="([^"]+\.(?:zip|tgz|tar\.gz))"/i)
-  return m ? new URL(m[1], baseUrl).toString() : null
-}
-
-async function installArchiveBytes(bytes: Buffer, sourceUrl: string): Promise<SkillMeta[]> {
-  const ext = /\.zip$/i.test(new URL(sourceUrl).pathname) || (bytes[0] === 0x50 && bytes[1] === 0x4b) ? '.zip' : '.tar.gz'
-  const tmpFile = path.join(await fs.mkdtemp(path.join(os.tmpdir(), 'fabulist-dl-')), `skill${ext}`)
-  await fs.writeFile(tmpFile, bytes)
-  try {
-    return await installFromPath(tmpFile)
-  } finally {
-    await fs.rm(path.dirname(tmpFile), { recursive: true, force: true })
-  }
-}
-
 // --- library + per-doc enablement ---
 
 export async function list(): Promise<SkillMeta[]> {
@@ -230,13 +196,33 @@ export async function list(): Promise<SkillMeta[]> {
 const docSkillLink = (docId: string, slug: string): string =>
   path.join(docPath(docId), DOC_SKILLS_DIR, slug)
 
+/**
+ * The doc's .claude/skills/ directory is the source of truth for what's
+ * enabled: a skill is on iff it resolves there. Dangling symlinks (library
+ * skill deleted) are swept; skills present in the doc but absent from the
+ * library (dropped in by hand or synced from elsewhere) are still listed.
+ */
 export async function listForDoc(
   docId: string
 ): Promise<{ skill: SkillMeta; enabled: boolean }[]> {
+  const docDir = path.join(docPath(docId), DOC_SKILLS_DIR)
+  const enabledSlugs = new Set<string>()
+  const orphans: SkillMeta[] = []
+  for (const e of await fs.readdir(docDir, { withFileTypes: true }).catch(() => [])) {
+    const link = path.join(docDir, e.name)
+    const meta = await readMeta(link)
+    if (!meta) {
+      // dangling symlink or junk — sweep so the engine never trips on it
+      await fs.rm(link, { recursive: true, force: true }).catch(() => {})
+      continue
+    }
+    enabledSlugs.add(e.name)
+    if (!(await exists(path.join(SKILLS_ROOT, e.name)))) orphans.push(meta)
+  }
   const skills = await list()
-  return Promise.all(
-    skills.map(async (skill) => ({ skill, enabled: await exists(docSkillLink(docId, skill.slug)) }))
-  )
+  return [...skills, ...orphans]
+    .map((skill) => ({ skill, enabled: enabledSlugs.has(skill.slug) }))
+    .sort((a, b) => a.skill.name.localeCompare(b.skill.name))
 }
 
 export async function setEnabled(docId: string, slug: string, on: boolean): Promise<void> {

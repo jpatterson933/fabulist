@@ -14,7 +14,7 @@ import {
 } from '@shared/types'
 import { locateAnchor } from './lib/anchors'
 
-export type SidebarTab = 'chat' | 'comments' | 'history' | 'skills'
+export type SidebarTab = 'chat' | 'comments' | 'history'
 
 export interface DraftComment {
   anchor: CommentAnchor

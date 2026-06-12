@@ -21,6 +21,13 @@ export function registerIpc(win: BrowserWindow): void {
   ipcMain.handle('library:reveal', (_e, id: string) => {
     shell.showItemInFolder(path.join(library.docPath(id), DOC_FILE))
   })
+  ipcMain.handle('doc:attachFiles', (_e, id: string) => library.attachFiles(id))
+  ipcMain.handle('doc:attachText', (_e, id: string, text: string) =>
+    library.attachText(id, text)
+  )
+  ipcMain.handle('doc:removeAttachment', (_e, id: string, rel: string) =>
+    library.removeAttachment(id, rel)
+  )
 
   // --- document content; track our own writes so the watcher can skip echoes ---
   const lastWritten = new Map<string, string>()
@@ -62,7 +69,6 @@ export function registerIpc(win: BrowserWindow): void {
 
   // --- skills (self-contained; see src/main/skills.ts) ---
   ipcMain.handle('skills:installFromDisk', () => skills.installFromDisk())
-  ipcMain.handle('skills:installFromUrl', (_e, url: string) => skills.installFromUrl(url))
   ipcMain.handle('skills:list', () => skills.list())
   ipcMain.handle('skills:listForDoc', (_e, docId: string) => skills.listForDoc(docId))
   ipcMain.handle('skills:setEnabled', (_e, docId: string, slug: string, on: boolean) =>
