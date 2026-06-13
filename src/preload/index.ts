@@ -91,8 +91,12 @@ const api = {
     interrupt: (id: string): Promise<void> => ipcRenderer.invoke('agent:interrupt', id),
     busy: (id: string): Promise<boolean> => ipcRenderer.invoke('agent:busy', id),
     models: (): Promise<ModelChoice[]> => ipcRenderer.invoke('agent:models'),
-    respondPermission: (requestId: string, approved: boolean): void => {
-      ipcRenderer.send('agent:permission-response', requestId, approved)
+    respondPermission: (
+      requestId: string,
+      approved: boolean,
+      answers?: Record<string, string>
+    ): void => {
+      ipcRenderer.send('agent:permission-response', requestId, approved, answers)
     },
     onEvent: (cb: (event: AgentEvent) => void): (() => void) => {
       const listener = (_e: unknown, event: AgentEvent): void => cb(event)

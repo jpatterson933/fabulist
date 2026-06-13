@@ -96,7 +96,11 @@ interface FabulistStore {
   loadModels: () => Promise<void>
   setFont: (font: string) => void
   interrupt: () => void
-  respondPermission: (requestId: string, approved: boolean) => void
+  respondPermission: (
+    requestId: string,
+    approved: boolean,
+    answers?: Record<string, string>
+  ) => void
   setInlineSuggestion: (requestId: string | null) => void
   /** scroll the editor to where an applied edit landed (best-effort, by quote) */
   revealEdit: (edit: NonNullable<ChatItem['edit']>) => void
@@ -425,8 +429,8 @@ export const useStore = create<FabulistStore>((set, get) => ({
     if (id) window.fabulist.agent.interrupt(id)
   },
 
-  respondPermission: (requestId, approved) => {
-    window.fabulist.agent.respondPermission(requestId, approved)
+  respondPermission: (requestId, approved, answers) => {
+    window.fabulist.agent.respondPermission(requestId, approved, answers)
   },
 
   setInlineSuggestion: (requestId) => {
@@ -515,14 +519,17 @@ export const useStore = create<FabulistStore>((set, get) => ({
         })
         break
       case 'permission-request':
-        if (e.docId === activeId && !get().permissions.some((p) => p.requestId === e.request.requestId)) {
+        if (!get().permissions.some((p) => p.requestId === e.request.requestId)) {
           // document edits render inline in the editor — only pull the user to
           // the chat tab for requests that have nowhere else to appear
           const inline = e.request.filePath === 'document.md'
           set({
             permissions: [...get().permissions, e.request],
-            sidebarOpen: true,
-            ...(inline ? {} : { tab: 'chat' as const })
+            // never steal focus for a background document's request — its
+            // card renders when that document becomes active again
+            ...(e.docId === activeId
+              ? { sidebarOpen: true, ...(inline ? {} : { tab: 'chat' as const }) }
+              : {})
           })
         }
         break
@@ -574,10 +581,18 @@ export const useStore = create<FabulistStore>((set, get) => ({
 
   handleExternalChange: (id, content) => {
     if (get().activeId !== id) return
+    // the draft highlight must follow its text like threads do — stale offsets
+    // would paint random text after Claude's edits; if the text is gone, drop it
+    const draft = get().draftComment
+    const draftLoc = draft ? locateAnchor(content, draft.anchor) : null
     set({
       content,
       external: { seq: extSeq++, content },
-      threads: reanchor(get().threads, content)
+      threads: reanchor(get().threads, content),
+      draftComment:
+        draft && draftLoc
+          ? { anchor: { ...draft.anchor, from: draftLoc.from, to: draftLoc.to } }
+          : null
     })
   }
 }))

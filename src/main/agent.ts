@@ -66,7 +66,10 @@ type Emitter = (event: AgentEvent) => void
 
 export class AgentManager {
   private active = new Map<string, ActiveRun>()
-  private pendingPermissions = new Map<string, (approved: boolean) => void>()
+  private pendingPermissions = new Map<
+    string,
+    (approved: boolean, answers?: Record<string, string>) => void
+  >()
   private pendingRequests = new Map<string, PermissionRequest>()
   private wc: WebContents | null = null
   private modelsCache: ModelChoice[] | null = null
@@ -129,11 +132,11 @@ export class AgentManager {
     return this.active.has(docId)
   }
 
-  resolvePermission(requestId: string, approved: boolean): void {
+  resolvePermission(requestId: string, approved: boolean, answers?: Record<string, string>): void {
     const resolve = this.pendingPermissions.get(requestId)
     if (resolve) {
       this.pendingPermissions.delete(requestId)
-      resolve(approved)
+      resolve(approved, answers)
     }
   }
 
@@ -368,10 +371,20 @@ export class AgentManager {
     }
 
     const request = await this.buildRequest(docId, cwd, tool, input, filePath)
-    const approved = await this.askHuman(docId, request, signal)
+    const { approved, answers } = await this.askHuman(docId, request, signal)
     if (approved) {
-      if (filePath) onEditApplied()
-      return { behavior: 'allow', updatedInput: input }
+      if (filePath) {
+        onEditApplied()
+        // approved edits leave the same collapsed diff card in chat that
+        // auto-applied ones do — the record shouldn't depend on the mode
+        this.emit({ kind: 'edit-applied', docId, request })
+      }
+      // AskUserQuestion answers travel back to the engine inside the input
+      const updatedInput = answers ? { ...input, answers } : input
+      return { behavior: 'allow', updatedInput }
+    }
+    if (tool === 'AskUserQuestion') {
+      return { behavior: 'deny', message: 'The author skipped the question. Proceed with your best judgment.' }
     }
     return { behavior: 'deny', message: 'The author declined this change.' }
   }
@@ -392,6 +405,22 @@ export class AgentManager {
     }
     if (tool === 'Bash') {
       request.command = String(input.command ?? '')
+    } else if (tool === 'AskUserQuestion' && Array.isArray(input.questions)) {
+      const questions = input.questions as {
+        question?: string
+        header?: string
+        multiSelect?: boolean
+        options?: { label?: string; description?: string }[]
+      }[]
+      request.questions = questions.map((q) => ({
+        question: String(q.question ?? ''),
+        header: String(q.header ?? ''),
+        multiSelect: Boolean(q.multiSelect),
+        options: (q.options ?? []).map((o) => ({
+          label: String(o.label ?? ''),
+          description: o.description ? String(o.description) : undefined
+        }))
+      }))
     } else if (tool === 'Write' && filePath) {
       request.after = String(input.content ?? '')
       request.before = await fs
@@ -416,15 +445,32 @@ export class AgentManager {
     return request
   }
 
-  private askHuman(docId: string, request: PermissionRequest, signal: AbortSignal): Promise<boolean> {
+  private askHuman(
+    docId: string,
+    request: PermissionRequest,
+    signal: AbortSignal
+  ): Promise<{ approved: boolean; answers?: Record<string, string> }> {
     this.emit({ kind: 'permission-request', docId, request })
+    // the run is paused on the author, not working — say so, or a pending
+    // command approval reads as a frozen "Running:" spinner
+    this.emit({
+      kind: 'status',
+      docId,
+      status: 'working',
+      detail: request.questions ? 'Waiting for your answer' : 'Waiting for your approval'
+    })
     this.pendingRequests.set(request.requestId, request)
-    return new Promise<boolean>((resolve) => {
-      const done = (approved: boolean): void => {
+    return new Promise((resolve) => {
+      const done = (approved: boolean, answers?: Record<string, string>): void => {
         this.pendingPermissions.delete(request.requestId)
         this.pendingRequests.delete(request.requestId)
         this.emit({ kind: 'permission-resolved', docId, requestId: request.requestId, approved })
-        resolve(approved)
+        // drop the "Waiting for…" label once nothing is pending — long thinking
+        // stretches emit no status, so a stale label would sit there lying
+        if (this.pendingPermissions.size === 0) {
+          this.emit({ kind: 'status', docId, status: 'working' })
+        }
+        resolve({ approved, answers })
       }
       this.pendingPermissions.set(request.requestId, done)
       signal.addEventListener('abort', () => done(false), { once: true })
@@ -484,6 +530,10 @@ function describeTool(tool: string, input: Record<string, unknown>, cwd: string)
       return 'Updating plan'
     case 'Task':
       return `Delegating: ${String(input.description ?? '')}`
+    case 'AskUserQuestion': {
+      const qs = input.questions as { question?: string }[] | undefined
+      return `Asking: ${String(qs?.[0]?.question ?? '').slice(0, 80)}`
+    }
     default:
       return tool
   }

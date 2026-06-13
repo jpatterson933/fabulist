@@ -132,9 +132,12 @@ export function registerIpc(win: BrowserWindow): void {
   ipcMain.handle('agent:models', () => agentManager.listModels())
   // warm the cache so the picker is populated by the time a doc is open
   void agentManager.listModels()
-  ipcMain.on('agent:permission-response', (_e, requestId: string, approved: boolean) => {
-    agentManager.resolvePermission(requestId, approved)
-  })
+  ipcMain.on(
+    'agent:permission-response',
+    (_e, requestId: string, approved: boolean, answers?: Record<string, string>) => {
+      agentManager.resolvePermission(requestId, approved, answers)
+    }
+  )
 
   // --- watch the open doc folder for external changes (Claude's edits land here) ---
   let watcher: FSWatcher | null = null

@@ -60,6 +60,13 @@ export interface PermissionRequest {
   edits?: { old: string; new: string; all?: boolean }[]
   /** For Bash: the command */
   command?: string
+  /** For AskUserQuestion: choices to put to the author; answered, not approved */
+  questions?: {
+    question: string
+    header: string
+    multiSelect?: boolean
+    options: { label: string; description?: string }[]
+  }[]
   /** Human summary line */
   summary: string
 }

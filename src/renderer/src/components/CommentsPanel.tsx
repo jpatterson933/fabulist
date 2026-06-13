@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { CommentThread } from '@shared/types'
 import { useStore } from '@/store'
 import { relativeTime } from '@/components/Library'
+import { AttachChips, useAttachments } from '@/lib/useAttachments'
 
 export default function CommentsPanel(): React.JSX.Element {
   const threads = useStore((s) => s.threads)
@@ -9,9 +10,18 @@ export default function CommentsPanel(): React.JSX.Element {
   const scrollTo = useStore((s) => s.scrollTo)
   const listRef = useRef<HTMLDivElement>(null)
 
-  const open = threads.filter((t) => t.status === 'open')
-  const orphaned = threads.filter((t) => t.status === 'orphaned')
-  const resolved = threads.filter((t) => t.status === 'resolved')
+  // most recent activity first — a thread jumps up when a reply lands
+  const lastAt = (t: CommentThread): number => t.messages[t.messages.length - 1]?.at ?? 0
+  const byRecent = (a: CommentThread, b: CommentThread): number => lastAt(b) - lastAt(a)
+  const open = threads.filter((t) => t.status === 'open').sort(byRecent)
+  const orphaned = threads.filter((t) => t.status === 'orphaned').sort(byRecent)
+  const resolved = threads.filter((t) => t.status === 'resolved').sort(byRecent)
+
+  // a fresh draft renders at the top of the list — make sure it's on screen,
+  // or "Comment" looks like it did nothing when the list is scrolled down
+  useEffect(() => {
+    if (draft) listRef.current?.scrollTo({ top: 0 })
+  }, [draft])
 
   useEffect(() => {
     if (!scrollTo) return
@@ -66,24 +76,37 @@ function DraftCard(): React.JSX.Element {
   const draft = useStore((s) => s.draftComment)
   const submit = useStore((s) => s.submitDraftComment)
   const cancel = useStore((s) => s.cancelDraftComment)
+  const activeId = useStore((s) => s.activeId)
+  const attachments = useAttachments(activeId)
   const [text, setText] = useState('')
+
+  const post = (): void => {
+    if (!text.trim() && attachments.paths.length === 0) return
+    void submit(attachments.consume(text))
+  }
 
   if (!draft) return <></>
   return (
     <div className="thread-card is-draft">
+      <AttachChips attachments={attachments} />
       <textarea
         autoFocus
         rows={3}
         value={text}
         placeholder="Say something about this passage…"
         onChange={(e) => setText(e.target.value)}
+        onPaste={attachments.onPaste}
         onKeyDown={(e) => {
-          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) void submit(text)
+          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) post()
           if (e.key === 'Escape') cancel()
         }}
       />
       <div className="thread-actions">
-        <button className="btn-primary btn-small" disabled={!text.trim()} onClick={() => void submit(text)}>
+        <button
+          className="btn-primary btn-small"
+          disabled={!text.trim() && attachments.paths.length === 0}
+          onClick={post}
+        >
           Comment
         </button>
         <button className="btn-ghost btn-small" onClick={cancel}>
@@ -108,6 +131,8 @@ function ThreadCard({ thread }: { thread: CommentThread }): React.JSX.Element {
     useStore((s) => s.pendingCommentId === thread.id) && busy
   const queued = useStore((s) => s.queuedCommentSends.some((q) => q.commentId === thread.id))
 
+  const activeId = useStore((s) => s.activeId)
+  const attachments = useAttachments(activeId)
   const [text, setText] = useState('')
   const isActive = thread.id === activeThreadId
 
@@ -149,17 +174,19 @@ function ThreadCard({ thread }: { thread: CommentThread }): React.JSX.Element {
 
       {thread.status === 'open' && (
         <>
+          <AttachChips attachments={attachments} />
           <textarea
             rows={1}
             value={text}
             placeholder="Reply — Claude responds in the thread…"
             onChange={(e) => setText(e.target.value)}
             onClick={(e) => e.stopPropagation()}
+            onPaste={attachments.onPaste}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()
-                if (text.trim()) {
-                  void reply(thread.id, text)
+                if (text.trim() || attachments.paths.length > 0) {
+                  void reply(thread.id, attachments.consume(text))
                   setText('')
                 }
               }

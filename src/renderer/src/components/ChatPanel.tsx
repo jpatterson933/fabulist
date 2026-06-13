@@ -3,6 +3,7 @@ import type { ChatItem, DocSkill, PermissionRequest } from '@shared/types'
 import { useStore } from '@/store'
 import DiffView from '@/components/DiffView'
 import SkillsPanel from '@/components/SkillsPanel'
+import { AttachChips, useAttachments } from '@/lib/useAttachments'
 
 /** The `/name` token the caret is inside, if any — start/end are offsets into the text. */
 function slashTokenAt(text: string, caret: number): { start: number; query: string } | null {
@@ -23,7 +24,7 @@ export default function ChatPanel({ docId }: { docId: string }): React.JSX.Eleme
   const interrupt = useStore((s) => s.interrupt)
 
   const [input, setInput] = useState('')
-  const [attachments, setAttachments] = useState<string[]>([])
+  const attachments = useAttachments(docId)
   const [skills, setSkills] = useState<DocSkill[]>([])
   const [skillsOpen, setSkillsOpen] = useState(false)
   const [slash, setSlash] = useState<{ start: number; query: string } | null>(null)
@@ -45,23 +46,21 @@ export default function ChatPanel({ docId }: { docId: string }): React.JSX.Eleme
 
   useEffect(refreshSkills, [refreshSkills])
 
+  // a new approval card must never sit out of sight below the fold —
+  // jump to it even if the user had scrolled up to read
+  const prevPermCount = useRef(0)
   useEffect(() => {
+    if (permissions.length > prevPermCount.current) stickToBottom.current = true
+    prevPermCount.current = permissions.length
     const el = scrollRef.current
     if (el && stickToBottom.current) el.scrollTop = el.scrollHeight
   }, [chat, permissions])
 
   const send = (): void => {
-    if ((!input.trim() && attachments.length === 0) || busy) return
-    const prompt =
-      attachments.length === 0
-        ? input
-        : `${input.trim()}\n\nAttached files (read them from this project folder):\n${attachments
-            .map((p) => `- ${p}`)
-            .join('\n')}`
+    if ((!input.trim() && attachments.paths.length === 0) || busy) return
     stickToBottom.current = true // sending always jumps to the latest
-    askClaude(prompt)
+    askClaude(attachments.consume(input))
     setInput('')
-    setAttachments([])
     setSlash(null)
   }
 
@@ -104,32 +103,11 @@ export default function ChatPanel({ docId }: { docId: string }): React.JSX.Eleme
     })
   }
 
-  // pastes longer than this become an attachment chip, not inline text
-  const PASTE_ATTACH_THRESHOLD = 500
-
-  const onPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>): void => {
-    const text = e.clipboardData.getData('text/plain')
-    if (text.length <= PASTE_ATTACH_THRESHOLD) return
-    e.preventDefault()
-    void window.fabulist.doc
-      .attachText(docId, text)
-      .then((path) => setAttachments((cur) => [...cur, path]))
-      .catch(() => {
-        // fall back to a plain inline paste
-        document.execCommand('insertText', false, text)
-      })
-  }
-
   const attachFiles = async (): Promise<void> => {
     const paths = await window.fabulist.doc.attachFiles(docId).catch(() => [])
     if (paths.length === 0) return
-    setAttachments((cur) => [...cur, ...paths])
+    attachments.add(paths)
     inputRef.current?.focus()
-  }
-
-  const removeAttachment = (path: string): void => {
-    setAttachments((cur) => cur.filter((p) => p !== path))
-    void window.fabulist.doc.removeAttachment(docId, path).catch(() => {})
   }
 
   return (
@@ -154,9 +132,13 @@ export default function ChatPanel({ docId }: { docId: string }): React.JSX.Eleme
             </p>
           </div>
         )}
-        {chat.map((item) => (
-          <ChatBubble key={item.id} item={item} />
-        ))}
+        {groupConsecutiveEdits(chat).map((row) =>
+          Array.isArray(row) ? (
+            <EditGroupCard key={row[0].id} items={row} />
+          ) : (
+            <ChatBubble key={row.id} item={row} />
+          )
+        )}
         {permissions.map((p) => (
           <ApprovalCard key={p.requestId} request={p} />
         ))}
@@ -172,18 +154,7 @@ export default function ChatPanel({ docId }: { docId: string }): React.JSX.Eleme
       </div>
 
       <div className="chat-compose">
-        {attachments.length > 0 && (
-          <div className="attach-chips">
-            {attachments.map((p) => (
-              <span key={p} className="attach-chip" title={p}>
-                <span className="attach-chip-name">{p.replace(/^attachments\//, '')}</span>
-                <button onClick={() => removeAttachment(p)} title="Remove attachment">
-                  ✕
-                </button>
-              </span>
-            ))}
-          </div>
-        )}
+        <AttachChips attachments={attachments} />
         <div className="chat-inputrow">
           {slash !== null && (
             <div className="slash-menu" role="listbox">
@@ -227,7 +198,7 @@ export default function ChatPanel({ docId }: { docId: string }): React.JSX.Eleme
             }}
             onClick={(e) => syncSlash(input, e.currentTarget.selectionStart ?? input.length)}
             onBlur={() => setSlash(null)}
-            onPaste={onPaste}
+            onPaste={attachments.onPaste}
             onKeyDown={(e) => {
               if (slash !== null && menuLength > 0) {
                 if (e.key === 'ArrowDown') {
@@ -256,7 +227,7 @@ export default function ChatPanel({ docId }: { docId: string }): React.JSX.Eleme
           <button
             className="chat-send"
             onClick={send}
-            disabled={busy || (!input.trim() && attachments.length === 0)}
+            disabled={busy || (!input.trim() && attachments.paths.length === 0)}
             title="Send"
           >
             ↑
@@ -389,6 +360,37 @@ function ModelPicker({ disabled }: { disabled: boolean }): React.JSX.Element {
   )
 }
 
+/** Runs of back-to-back applied edits become one collapsible group; everything else passes through. */
+function groupConsecutiveEdits(chat: ChatItem[]): (ChatItem | ChatItem[])[] {
+  const out: (ChatItem | ChatItem[])[] = []
+  for (const item of chat) {
+    const last = out[out.length - 1]
+    if (item.edit && Array.isArray(last)) last.push(item)
+    else if (item.edit && last && !Array.isArray(last) && last.edit) out[out.length - 1] = [last, item]
+    else out.push(item)
+  }
+  return out
+}
+
+function EditGroupCard({ items }: { items: ChatItem[] }): React.JSX.Element {
+  const files = [...new Set(items.map((i) => i.edit!.filePath ?? 'files'))]
+  const label = files.length === 1 ? files[0] : `${files.length} files`
+  return (
+    <details className="applied-edit applied-edit-group">
+      <summary>
+        <span className="applied-edit-label">
+          ✦ Edited {label} — {items.length} edits
+        </span>
+      </summary>
+      <div className="applied-edit-group-items">
+        {items.map((item) => (
+          <AppliedEditCard key={item.id} item={item} />
+        ))}
+      </div>
+    </details>
+  )
+}
+
 function ChatBubble({ item }: { item: ChatItem }): React.JSX.Element {
   if (item.edit) return <AppliedEditCard item={item} />
   if (item.role === 'user') {
@@ -458,9 +460,82 @@ function AppliedEditCard({ item }: { item: ChatItem }): React.JSX.Element {
   )
 }
 
+function QuestionCard({ request }: { request: PermissionRequest }): React.JSX.Element {
+  const respond = useStore((s) => s.respondPermission)
+  const questions = request.questions!
+  const [picked, setPicked] = useState<Record<string, string[]>>({})
+
+  const submit = (sel: Record<string, string[]>): void => {
+    const answers = Object.fromEntries(
+      questions.map((q) => [q.question, (sel[q.question] ?? []).join(', ')])
+    )
+    respond(request.requestId, true, answers)
+  }
+
+  const toggle = (q: (typeof questions)[number], label: string): void => {
+    const next = { ...picked }
+    const cur = next[q.question] ?? []
+    if (q.multiSelect) {
+      next[q.question] = cur.includes(label) ? cur.filter((l) => l !== label) : [...cur, label]
+    } else {
+      next[q.question] = [label]
+      // a lone single-choice question answers on click — no extra Send step
+      if (questions.length === 1) return submit(next)
+    }
+    setPicked(next)
+  }
+
+  const complete = questions.every((q) => (picked[q.question] ?? []).length > 0)
+
+  return (
+    <div className="approval approval-question">
+      <div className="approval-head">
+        <span className="approval-kind">Claude is asking</span>
+        <span className="approval-tool">{request.tool}</span>
+      </div>
+      {questions.map((q) => (
+        <div key={q.question} className="question-block">
+          {q.header && <span className="question-chip">{q.header}</span>}
+          <p className="question-text">{q.question}</p>
+          <div className="question-options">
+            {q.options.map((o) => {
+              const on = (picked[q.question] ?? []).includes(o.label)
+              return (
+                <button
+                  key={o.label}
+                  className={`question-option${on ? ' is-picked' : ''}`}
+                  title={o.description}
+                  onClick={() => toggle(q, o.label)}
+                >
+                  <span className="question-option-label">{o.label}</span>
+                  {o.description && (
+                    <span className="question-option-desc">{o.description}</span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      ))}
+      <div className="approval-actions">
+        {(questions.length > 1 || questions.some((q) => q.multiSelect)) && (
+          <button className="btn-primary" disabled={!complete} onClick={() => submit(picked)}>
+            Send answers
+          </button>
+        )}
+        <button className="btn-ghost" onClick={() => respond(request.requestId, false)}>
+          Skip
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function ApprovalCard({ request }: { request: PermissionRequest }): React.JSX.Element {
   const respond = useStore((s) => s.respondPermission)
   const shownInline = useStore((s) => s.inlineSuggestionId === request.requestId)
+
+  if (request.questions) return <QuestionCard request={request} />
   const isDocEdit = request.filePath === 'document.md'
   const isWholeFile = request.tool === 'Write'
 

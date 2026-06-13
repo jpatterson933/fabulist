@@ -28,6 +28,23 @@ All notable changes to Fabulist are documented here. The format follows
   Fraunces, Plex Sans, Plex Mono — all bundled, offline), persisted per document.
 
 ### Fixed
+- Command (Bash) approval cards no longer vanish when the chat is full: the chat column
+  could flex-squash the card (its `overflow: hidden` allowed shrinking) down to a bare
+  border line, leaving the run waiting on an approval you couldn't see or click. Chat
+  items no longer shrink — the panel scrolls instead.
+- Clicking **Comment** on a highlight no longer appears to do nothing when the comments
+  list is scrolled down — the list jumps to the new draft card.
+- An abandoned comment draft no longer paints its highlight on random text while Claude
+  edits the document: the draft anchor is re-located by its quoted text on every external
+  change (like comment threads are), and is dropped if that text disappears.
+- The "Waiting for your approval" status no longer lingers after you've already
+  approved — it resets to "Claude is working" the moment the last pending request is
+  resolved (long thinking stretches emit no status updates of their own, so the stale
+  label used to sit there indefinitely).
+- A pending command (Bash) approval no longer looks like a frozen "Running:" spinner:
+  the chat jumps to the approval card when it appears (even if you had scrolled up),
+  the status line says **Waiting for your approval**, and approval requests are no
+  longer dropped if they arrive for a document that isn't frontmost.
 - Scrolling up in the chat no longer fights you while Claude is responding: the chat
   only auto-follows new output when you're already at (or near) the bottom, and snaps
   back when you scroll down again or send a message.
@@ -41,6 +58,18 @@ All notable changes to Fabulist are documented here. The format follows
 ### Changed
 - Auto-applied edits leave a collapsed diff card in chat ("Edited document.md") with a
   **Show in document** button — review what changed, and jump to it only when you choose.
+  Back-to-back edits are further grouped into one collapsed card
+  ("✦ Edited document.md — N edits"); expand it to review each diff individually.
+  Edits you approve by hand (auto-apply off) now leave the same collapsed diff card,
+  so every applied edit has a record in chat regardless of mode.
+- Pasting more than ~500 characters into a comment box (new comment or thread reply)
+  becomes a removable attachment chip, exactly like in the chat composer.
+- Comments are ordered by most recent activity — a thread moves to the top of its
+  section when a new reply lands.
+- Claude's **AskUserQuestion** tool renders as a real question card in chat (header
+  chip, question, clickable options with descriptions; multi-select supported) instead
+  of a bare Apply/Decline stub. A lone single-choice question answers on click; Skip
+  tells Claude to proceed with its best judgment.
 
 - Comments always engage Claude: submitting a comment or thread reply automatically sends
   the highlighted passage and thread to Claude, whose reply lands in the thread (queued if
