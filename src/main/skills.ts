@@ -6,6 +6,7 @@ import { promisify } from 'node:util'
 import { dialog } from 'electron'
 import type { SkillMeta } from '@shared/types'
 import { LIBRARY_ROOT, docPath } from './library'
+import { validateSkillSlug } from './pathGuards'
 
 /**
  * Skills: reusable Claude Code instruction packs (SKILL.md + supporting files).
@@ -194,7 +195,7 @@ export async function list(): Promise<SkillMeta[]> {
 }
 
 const docSkillLink = (docId: string, slug: string): string =>
-  path.join(docPath(docId), DOC_SKILLS_DIR, slug)
+  path.join(docPath(docId), DOC_SKILLS_DIR, validateSkillSlug(slug))
 
 /**
  * The doc's .claude/skills/ directory is the source of truth for what's
@@ -226,6 +227,7 @@ export async function listForDoc(
 }
 
 export async function setEnabled(docId: string, slug: string, on: boolean): Promise<void> {
+  validateSkillSlug(slug)
   const link = docSkillLink(docId, slug)
   if (!on) {
     await fs.rm(link, { recursive: true, force: true })
@@ -244,9 +246,7 @@ export async function setEnabled(docId: string, slug: string, on: boolean): Prom
 }
 
 export async function remove(slug: string): Promise<void> {
-  // resolve inside the library only — slug comes over ipc
-  const dir = path.join(SKILLS_ROOT, slug)
-  if (path.dirname(dir) !== SKILLS_ROOT) throw new Error('Bad skill name')
+  const dir = path.join(SKILLS_ROOT, validateSkillSlug(slug))
   await fs.rm(dir, { recursive: true, force: true })
   // sweep dangling doc links lazily: a dead symlink simply stops resolving,
   // and setEnabled(off) removes it; no doc bookkeeping kept here
@@ -254,7 +254,6 @@ export async function remove(slug: string): Promise<void> {
 
 /** Full SKILL.md body, for the pre-enable review step in the UI. */
 export async function readSkillFile(slug: string): Promise<string> {
-  const dir = path.join(SKILLS_ROOT, slug)
-  if (path.dirname(dir) !== SKILLS_ROOT) throw new Error('Bad skill name')
+  const dir = path.join(SKILLS_ROOT, validateSkillSlug(slug))
   return fs.readFile(path.join(dir, 'SKILL.md'), 'utf8')
 }

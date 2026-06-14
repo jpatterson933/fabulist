@@ -4,6 +4,7 @@ import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import type { DocMeta } from '@shared/types'
 import { initRepo, commitAll } from './git'
+import { validateDocId } from './pathGuards'
 
 export const LIBRARY_ROOT = path.join(app.getPath('documents'), 'Fabulist')
 const LEGACY_LIBRARY_ROOT = path.join(app.getPath('documents'), 'Lobstertale')
@@ -59,11 +60,7 @@ function slugify(title: string): string {
 }
 
 export function docPath(id: string): string {
-  // ids are folder names; refuse anything that could escape the library
-  if (id.includes('/') || id.includes('\\') || id.startsWith('.')) {
-    throw new Error(`Invalid document id: ${id}`)
-  }
-  return path.join(LIBRARY_ROOT, id)
+  return path.join(LIBRARY_ROOT, validateDocId(id))
 }
 
 async function readMeta(id: string): Promise<DocMeta | null> {
