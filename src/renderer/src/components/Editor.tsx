@@ -4,6 +4,7 @@ import { EditorState, Compartment } from '@codemirror/state'
 import { FONT_CHOICES } from '@shared/types'
 import { useStore } from '@/store'
 import { makeAnchor } from '@/lib/anchors'
+import { minimalReplace } from '@/lib/externalMerge'
 import { computeSuggestion } from '@/lib/suggest'
 import {
   baseExtensions,
@@ -33,6 +34,7 @@ export default function Editor({ docId }: { docId: string }): React.JSX.Element 
   const activeThreadId = useStore((s) => s.activeThreadId)
   const draftComment = useStore((s) => s.draftComment)
   const scrollTo = useStore((s) => s.scrollTo)
+  const revealPos = useStore((s) => s.revealPos)
   const permissions = useStore((s) => s.permissions)
   const content = useStore((s) => s.content)
   const respondPermission = useStore((s) => s.respondPermission)
@@ -116,13 +118,12 @@ export default function Editor({ docId }: { docId: string }): React.JSX.Element 
     const view = viewRef.current
     if (!view || !external || external.seq <= appliedSeq.current) return
     appliedSeq.current = external.seq
-    if (view.state.doc.toString() !== external.content) {
-      const prevSel = view.state.selection.main
+    // minimal span instead of a whole-doc replace: CodeMirror maps the scroll
+    // position and selection through the change, so the viewport stays put
+    const change = minimalReplace(view.state.doc.toString(), external.content)
+    if (change) {
       view.dispatch({
-        changes: { from: 0, to: view.state.doc.length, insert: external.content },
-        selection: {
-          anchor: Math.min(prevSel.anchor, external.content.length)
-        },
+        changes: change,
         annotations: externalChange.of(true)
       })
     }
@@ -189,6 +190,14 @@ export default function Editor({ docId }: { docId: string }): React.JSX.Element 
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [suggestion, respondPermission])
+
+  // scroll to an applied edit when the user asks ("Show in document")
+  useEffect(() => {
+    const view = viewRef.current
+    if (!view || !revealPos) return
+    const pos = Math.min(revealPos.pos, view.state.doc.length)
+    view.dispatch({ effects: EditorView.scrollIntoView(pos, { y: 'center' }) })
+  }, [revealPos])
 
   // scroll to a thread when asked
   useEffect(() => {

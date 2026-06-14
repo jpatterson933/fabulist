@@ -46,6 +46,8 @@ interface FabulistStore {
   preview: { hash: string; content: string; subject: string } | null
   model: string
   models: ModelChoice[]
+  /** apply Claude's file edits without asking (per document) */
+  autoApprove: boolean
   font: string
   draftComment: DraftComment | null
   activeThreadId: string | null
@@ -56,6 +58,8 @@ interface FabulistStore {
   /** comment prompts waiting for the agent to free up */
   queuedCommentSends: { commentId: string; prompt: string; quote: string }[]
   scrollTo: { threadId: string; seq: number } | null
+  /** opt-in scroll request to a document offset (e.g. "Show in document" on an edit card) */
+  revealPos: { pos: number; seq: number } | null
 
   loadDocs: () => Promise<void>
   createDoc: (title: string) => Promise<void>
@@ -88,11 +92,18 @@ interface FabulistStore {
   /** send a comment thread to Claude now, or queue it if the agent is busy */
   engageClaudeOnThread: (thread: CommentThread) => void
   setModel: (model: string) => void
+  setAutoApprove: (on: boolean) => void
   loadModels: () => Promise<void>
   setFont: (font: string) => void
   interrupt: () => void
-  respondPermission: (requestId: string, approved: boolean) => void
+  respondPermission: (
+    requestId: string,
+    approved: boolean,
+    answers?: Record<string, string>
+  ) => void
   setInlineSuggestion: (requestId: string | null) => void
+  /** scroll the editor to where an applied edit landed (best-effort, by quote) */
+  revealEdit: (edit: NonNullable<ChatItem['edit']>) => void
 
   loadHistory: () => Promise<void>
   openPreview: (commit: CommitInfo) => Promise<void>
@@ -138,6 +149,7 @@ export const useStore = create<FabulistStore>((set, get) => ({
   preview: null,
   model: '',
   models: FALLBACK_MODEL_CHOICES,
+  autoApprove: false,
   font: DEFAULT_FONT,
   draftComment: null,
   activeThreadId: null,
@@ -145,6 +157,7 @@ export const useStore = create<FabulistStore>((set, get) => ({
   pendingCommentId: null,
   queuedCommentSends: [],
   scrollTo: null,
+  revealPos: null,
 
   loadDocs: async () => {
     set({ docs: await window.fabulist.library.list() })
@@ -164,13 +177,14 @@ export const useStore = create<FabulistStore>((set, get) => ({
 
   openDoc: async (id) => {
     await get().closeDoc()
-    const [content, rawThreads, chat, commits, model, font] = await Promise.all([
+    const [content, rawThreads, chat, commits, model, font, autoApprove] = await Promise.all([
       window.fabulist.doc.read(id),
       window.fabulist.comments.list(id),
       window.fabulist.doc.chat(id),
       window.fabulist.history.log(id),
       window.fabulist.doc.getModel(id),
-      window.fabulist.doc.getFont(id)
+      window.fabulist.doc.getFont(id),
+      window.fabulist.doc.getAutoApprove(id)
     ])
     const threads = reanchor(rawThreads, content)
     set({
@@ -180,6 +194,7 @@ export const useStore = create<FabulistStore>((set, get) => ({
       threads,
       commits,
       model,
+      autoApprove,
       font: font || DEFAULT_FONT,
       preview: null,
       draftComment: null,
@@ -373,6 +388,22 @@ export const useStore = create<FabulistStore>((set, get) => ({
     window.fabulist.doc.setModel(id, model).catch(() => {})
   },
 
+  revealEdit: (edit) => {
+    // locate by the inserted text (fall back to the replaced text) in the
+    // current content — positions from the edit itself would be stale
+    const { content } = get()
+    const needle = [edit.after, edit.before].find((s) => s && content.includes(s))
+    if (needle === undefined) return
+    set({ revealPos: { pos: content.indexOf(needle), seq: extSeq++ } })
+  },
+
+  setAutoApprove: (on) => {
+    const id = get().activeId
+    if (!id) return
+    set({ autoApprove: on })
+    window.fabulist.doc.setAutoApprove(id, on).catch(() => {})
+  },
+
   setFont: (font) => {
     const id = get().activeId
     if (!id) return
@@ -398,8 +429,8 @@ export const useStore = create<FabulistStore>((set, get) => ({
     if (id) window.fabulist.agent.interrupt(id)
   },
 
-  respondPermission: (requestId, approved) => {
-    window.fabulist.agent.respondPermission(requestId, approved)
+  respondPermission: (requestId, approved, answers) => {
+    window.fabulist.agent.respondPermission(requestId, approved, answers)
   },
 
   setInlineSuggestion: (requestId) => {
@@ -488,16 +519,36 @@ export const useStore = create<FabulistStore>((set, get) => ({
         })
         break
       case 'permission-request':
-        if (e.docId === activeId && !get().permissions.some((p) => p.requestId === e.request.requestId)) {
+        if (!get().permissions.some((p) => p.requestId === e.request.requestId)) {
           // document edits render inline in the editor — only pull the user to
           // the chat tab for requests that have nowhere else to appear
           const inline = e.request.filePath === 'document.md'
           set({
             permissions: [...get().permissions, e.request],
-            sidebarOpen: true,
-            ...(inline ? {} : { tab: 'chat' as const })
+            // never steal focus for a background document's request — its
+            // card renders when that document becomes active again
+            ...(e.docId === activeId
+              ? { sidebarOpen: true, ...(inline ? {} : { tab: 'chat' as const }) }
+              : {})
           })
         }
+        break
+      case 'edit-applied':
+        updateChat(e.docId, (items) => [
+          ...items,
+          {
+            id: e.request.requestId,
+            role: 'assistant',
+            text: '',
+            at: Date.now(),
+            edit: {
+              tool: e.request.tool,
+              filePath: e.request.filePath,
+              before: e.request.before ?? '',
+              after: e.request.after ?? ''
+            }
+          }
+        ])
         break
       case 'permission-resolved':
         set({ permissions: get().permissions.filter((p) => p.requestId !== e.requestId) })
@@ -530,10 +581,18 @@ export const useStore = create<FabulistStore>((set, get) => ({
 
   handleExternalChange: (id, content) => {
     if (get().activeId !== id) return
+    // the draft highlight must follow its text like threads do — stale offsets
+    // would paint random text after Claude's edits; if the text is gone, drop it
+    const draft = get().draftComment
+    const draftLoc = draft ? locateAnchor(content, draft.anchor) : null
     set({
       content,
       external: { seq: extSeq++, content },
-      threads: reanchor(get().threads, content)
+      threads: reanchor(get().threads, content),
+      draftComment:
+        draft && draftLoc
+          ? { anchor: { ...draft.anchor, from: draftLoc.from, to: draftLoc.to } }
+          : null
     })
   }
 }))

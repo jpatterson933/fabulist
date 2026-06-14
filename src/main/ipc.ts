@@ -7,6 +7,7 @@ import * as library from './library'
 import * as git from './git'
 import * as comments from './comments'
 import { agentManager } from './agent'
+import * as skills from './skills'
 
 const DOC_FILE = library.DOC_FILE
 
@@ -20,6 +21,13 @@ export function registerIpc(win: BrowserWindow): void {
   ipcMain.handle('library:reveal', (_e, id: string) => {
     shell.showItemInFolder(path.join(library.docPath(id), DOC_FILE))
   })
+  ipcMain.handle('doc:attachFiles', (_e, id: string) => library.attachFiles(id))
+  ipcMain.handle('doc:attachText', (_e, id: string, text: string) =>
+    library.attachText(id, text)
+  )
+  ipcMain.handle('doc:removeAttachment', (_e, id: string, rel: string) =>
+    library.removeAttachment(id, rel)
+  )
 
   // --- document content; track our own writes so the watcher can skip echoes ---
   const lastWritten = new Map<string, string>()
@@ -45,6 +53,12 @@ export function registerIpc(win: BrowserWindow): void {
   ipcMain.handle('doc:setModel', (_e, id: string, model: string) =>
     library.patchState(id, { model: model || undefined })
   )
+  ipcMain.handle('doc:getAutoApprove', async (_e, id: string) =>
+    Boolean((await library.readState(id)).autoApprove)
+  )
+  ipcMain.handle('doc:setAutoApprove', (_e, id: string, on: boolean) =>
+    library.patchState(id, { autoApprove: on || undefined })
+  )
   ipcMain.handle('doc:getFont', async (_e, id: string) => (await library.readState(id)).font ?? '')
   ipcMain.handle('doc:setFont', (_e, id: string, font: string) =>
     library.patchState(id, { font: font || undefined })
@@ -52,6 +66,19 @@ export function registerIpc(win: BrowserWindow): void {
   ipcMain.handle('doc:saveChat', (_e, id: string, chat: unknown[]) =>
     library.patchState(id, { chat })
   )
+
+  // --- skills (self-contained; see src/main/skills.ts) ---
+  ipcMain.handle('skills:installFromDisk', () => skills.installFromDisk())
+  ipcMain.handle('skills:list', () => skills.list())
+  ipcMain.handle('skills:listForDoc', (_e, docId: string) => skills.listForDoc(docId))
+  ipcMain.handle('skills:setEnabled', (_e, docId: string, slug: string, on: boolean) =>
+    skills.setEnabled(docId, slug, on)
+  )
+  ipcMain.handle('skills:remove', (_e, slug: string) => skills.remove(slug))
+  ipcMain.handle('skills:read', (_e, slug: string) => skills.readSkillFile(slug))
+  ipcMain.handle('skills:reveal', () => {
+    shell.openPath(skills.SKILLS_ROOT)
+  })
 
   // --- history ---
   ipcMain.handle('history:log', (_e, id: string) => git.log(library.docPath(id)))
@@ -105,9 +132,12 @@ export function registerIpc(win: BrowserWindow): void {
   ipcMain.handle('agent:models', () => agentManager.listModels())
   // warm the cache so the picker is populated by the time a doc is open
   void agentManager.listModels()
-  ipcMain.on('agent:permission-response', (_e, requestId: string, approved: boolean) => {
-    agentManager.resolvePermission(requestId, approved)
-  })
+  ipcMain.on(
+    'agent:permission-response',
+    (_e, requestId: string, approved: boolean, answers?: Record<string, string>) => {
+      agentManager.resolvePermission(requestId, approved, answers)
+    }
+  )
 
   // --- watch the open doc folder for external changes (Claude's edits land here) ---
   let watcher: FSWatcher | null = null

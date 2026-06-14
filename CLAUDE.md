@@ -1,8 +1,10 @@
 # Fabulist — repo notes
 
-Workflow: commit and push directly to `main` — no feature branches. Every
-user-visible change must include an entry under `[Unreleased]` in CHANGELOG.md
-in the same commit.
+Workflow: agents must NOT commit, must NOT push to GitHub, and must NOT start
+any servers or long-running processes (no `npm run dev`, no app launches) —
+leave changes in the working tree for the user to review and commit. Every
+user-visible change must still include an entry under `[Unreleased]` in
+CHANGELOG.md.
 
 AI-native writing studio. Electron main process runs the Claude Agent SDK directly;
 each user document is a Claude Code project folder under `~/Documents/Fabulist/`.

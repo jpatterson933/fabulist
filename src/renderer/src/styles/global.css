@@ -758,6 +758,11 @@ input::placeholder {
   flex-direction: column;
   gap: 14px;
 }
+/* children must never be crushed to fit the column — the container scrolls.
+   (an approval card's overflow:hidden otherwise lets flexbox squash it to its border) */
+.chat-scroll > * {
+  flex-shrink: 0;
+}
 
 .chat-empty {
   margin: auto 8px;
@@ -902,10 +907,143 @@ input::placeholder {
   color: var(--ink);
 }
 
+/* ─── attachment chips above the composer ─── */
+
+.attach-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.attach-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  background: var(--paper-deeper, rgba(0, 0, 0, 0.04));
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+  border-radius: 7px;
+  padding: 4px 8px;
+  font-size: 11.5px;
+  color: var(--ink-soft);
+}
+.attach-chip-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.attach-chip button {
+  color: var(--ink-faint);
+  font-size: 11px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.attach-chip button:hover {
+  color: var(--ink);
+}
+
 .chat-inputrow {
+  position: relative;
   display: flex;
   gap: 8px;
   align-items: flex-end;
+}
+
+/* ─── `/` skill autocomplete ─── */
+
+.slash-menu {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  right: 42px;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper, #fff);
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+  border-radius: 9px;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.12);
+  padding: 4px;
+  max-height: 260px;
+  overflow-y: auto;
+  z-index: 40;
+}
+.slash-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  text-align: left;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  min-width: 0;
+}
+.slash-item.is-selected {
+  background: var(--paper-deeper, rgba(0, 0, 0, 0.05));
+}
+.slash-item-name {
+  font-weight: 600;
+  color: var(--ink);
+  flex-shrink: 0;
+}
+.slash-item-desc {
+  color: var(--ink-faint);
+  font-size: 11.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.slash-item-manage {
+  border-top: 1px solid var(--line-soft, rgba(0, 0, 0, 0.06));
+  border-radius: 0 0 6px 6px;
+  color: var(--ink-soft);
+  font-size: 11.5px;
+}
+
+/* ─── + menu (skills / attachments) ─── */
+
+.plus-menu {
+  position: relative;
+  display: flex;
+}
+.plus-button {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.1));
+  color: var(--ink-soft);
+  font-size: 14px;
+  line-height: 1;
+  transition: background 130ms ease, color 130ms ease;
+}
+.plus-button:hover {
+  background: var(--paper-deeper, rgba(0, 0, 0, 0.04));
+  color: var(--ink);
+}
+.plus-menu-pop {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  background: var(--paper, #fff);
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+  border-radius: 8px;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.12);
+  padding: 4px;
+  z-index: 40;
+}
+.plus-menu-pop button {
+  text-align: left;
+  white-space: nowrap;
+  padding: 6px 10px;
+  border-radius: 5px;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
+.plus-menu-pop button:hover {
+  background: var(--paper-deeper, rgba(0, 0, 0, 0.05));
+  color: var(--ink);
 }
 
 .chat-inputrow textarea {
@@ -935,11 +1073,35 @@ input::placeholder {
   cursor: default;
 }
 
+.chat-options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
 .model-picker {
   display: flex;
   align-items: center;
   gap: 7px;
-  margin-top: 8px;
+}
+
+.auto-approve {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  /* smaller than the model label so the + button fits between them on one line */
+  font-size: 9.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-faint);
+  cursor: pointer;
+  user-select: none;
+}
+.auto-approve input {
+  accent-color: var(--ink-soft);
+  cursor: pointer;
 }
 
 .model-picker label {
@@ -970,6 +1132,41 @@ input::placeholder {
 .model-picker select:disabled {
   opacity: 0.55;
   cursor: default;
+}
+
+/* ─── applied-edit record (auto-apply mode) ─── */
+
+.applied-edit {
+  margin: 6px 0;
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+  border-radius: 8px;
+  background: var(--paper-deeper, rgba(0, 0, 0, 0.025));
+  font-size: 12px;
+}
+.applied-edit summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+  list-style: none;
+  color: var(--ink-faint);
+}
+.applied-edit summary::-webkit-details-marker {
+  display: none;
+}
+.applied-edit[open] summary {
+  color: var(--ink-soft);
+}
+.applied-edit .approval-diff {
+  padding: 0 10px 8px;
+}
+.applied-edit-group-items {
+  padding: 0 8px 8px;
+}
+.applied-edit-group-items .applied-edit {
+  margin: 4px 0;
 }
 
 /* ─── approval card ─── */
@@ -1029,6 +1226,60 @@ input::placeholder {
   display: flex;
   gap: 8px;
   padding: 10px 13px 13px;
+}
+
+.question-block {
+  padding: 10px 13px 2px;
+}
+.question-chip {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent-deep);
+  background: var(--accent-wash);
+  border-radius: 999px;
+  padding: 2px 8px;
+  margin-bottom: 4px;
+}
+.question-text {
+  margin: 2px 0 8px;
+  font-size: 13px;
+  color: var(--ink);
+}
+.question-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.question-option {
+  text-align: left;
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.12));
+  border-radius: 8px;
+  background: var(--paper);
+  padding: 7px 10px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+}
+.question-option:hover {
+  border-color: var(--accent);
+}
+.question-option.is-picked {
+  border-color: var(--accent);
+  background: var(--accent-wash);
+}
+.question-option-label {
+  display: block;
+  font-weight: 600;
+  color: var(--ink);
+}
+.question-option-desc {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--ink-soft);
 }
 
 .approval-inline .approval-head {
@@ -1442,4 +1693,148 @@ input::placeholder {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ─── skills panel ─── */
+
+.skills {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  padding: 12px 10px;
+  overflow-y: auto;
+  font-size: 13px;
+}
+
+.skills-add {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+}
+.skills-status {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+.skills-error {
+  color: var(--bad, #b3261e);
+}
+
+.skills-empty {
+  margin: auto 8px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.skills-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.skill-row {
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.skill-row-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+}
+.skill-row.is-expanded {
+  background: var(--paper-deeper, rgba(0, 0, 0, 0.02));
+}
+.skill-row-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  min-width: 0;
+}
+.skill-row-toggle input {
+  accent-color: var(--ink-soft);
+  cursor: pointer;
+}
+.skill-row-name {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.skill-row-actions {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.skill-row-desc {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-faint);
+}
+.skill-row-body {
+  margin: 8px 0 0;
+  max-height: 240px;
+  overflow: auto;
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  background: var(--paper-deeper, rgba(0, 0, 0, 0.025));
+  border-radius: 6px;
+  padding: 8px;
+}
+
+.skills-foot {
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+}
+
+/* ─── modal (skills manager) ─── */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+}
+.modal {
+  display: flex;
+  flex-direction: column;
+  width: min(440px, calc(100vw - 48px));
+  max-height: min(620px, calc(100vh - 64px));
+  background: var(--paper, #fff);
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.08));
+  border-radius: 12px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.22);
+  overflow: hidden;
+}
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line-soft, rgba(0, 0, 0, 0.06));
+}
+.modal-title {
+  font-weight: 700;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--ink-soft);
+}
+.modal .skills {
+  overflow-y: auto;
 }

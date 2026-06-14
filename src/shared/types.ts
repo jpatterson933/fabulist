@@ -60,6 +60,13 @@ export interface PermissionRequest {
   edits?: { old: string; new: string; all?: boolean }[]
   /** For Bash: the command */
   command?: string
+  /** For AskUserQuestion: choices to put to the author; answered, not approved */
+  questions?: {
+    question: string
+    header: string
+    multiSelect?: boolean
+    options: { label: string; description?: string }[]
+  }[]
   /** Human summary line */
   summary: string
 }
@@ -71,6 +78,8 @@ export type AgentEvent =
   | { kind: 'assistant-text'; docId: string; itemId: string; text: string }
   | { kind: 'tool-note'; docId: string; itemId: string; toolId: string; note: string; done?: boolean; ok?: boolean }
   | { kind: 'permission-request'; docId: string; request: PermissionRequest }
+  /** an edit applied without review (auto-apply mode) — informational record */
+  | { kind: 'edit-applied'; docId: string; request: PermissionRequest }
   | { kind: 'permission-resolved'; docId: string; requestId: string; approved: boolean }
   | {
       kind: 'result'
@@ -91,6 +100,8 @@ export interface ChatItem {
   at: number
   /** tool activity lines shown under an assistant item */
   toolNotes?: { toolId: string; note: string; done?: boolean; ok?: boolean }[]
+  /** an auto-applied edit, rendered as a collapsed diff card */
+  edit?: { tool: string; filePath?: string; before: string; after: string }
   streaming?: boolean
   error?: string
 }
@@ -130,6 +141,20 @@ export const FONT_CHOICES: FontChoice[] = [
 ]
 
 export const DEFAULT_FONT = FONT_CHOICES[0].value
+
+/** An installed skill — read straight from its SKILL.md frontmatter */
+export interface SkillMeta {
+  /** library folder name */
+  slug: string
+  name: string
+  description: string
+}
+
+export interface DocSkill {
+  skill: SkillMeta
+  /** enabled for the current document */
+  enabled: boolean
+}
 
 export interface SendOptions {
   /** When set, Claude's final reply is also appended to this comment thread */

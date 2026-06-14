@@ -5,8 +5,10 @@ import type {
   CommentThread,
   CommitInfo,
   DocMeta,
+  DocSkill,
   ModelChoice,
-  SendOptions
+  SendOptions,
+  SkillMeta
 } from '@shared/types'
 
 const api = {
@@ -27,9 +29,17 @@ const api = {
     getModel: (id: string): Promise<string> => ipcRenderer.invoke('doc:getModel', id),
     setModel: (id: string, model: string): Promise<void> =>
       ipcRenderer.invoke('doc:setModel', id, model),
+    getAutoApprove: (id: string): Promise<boolean> => ipcRenderer.invoke('doc:getAutoApprove', id),
+    setAutoApprove: (id: string, on: boolean): Promise<void> =>
+      ipcRenderer.invoke('doc:setAutoApprove', id, on),
     getFont: (id: string): Promise<string> => ipcRenderer.invoke('doc:getFont', id),
     setFont: (id: string, font: string): Promise<void> =>
       ipcRenderer.invoke('doc:setFont', id, font),
+    attachFiles: (id: string): Promise<string[]> => ipcRenderer.invoke('doc:attachFiles', id),
+    attachText: (id: string, text: string): Promise<string> =>
+      ipcRenderer.invoke('doc:attachText', id, text),
+    removeAttachment: (id: string, rel: string): Promise<void> =>
+      ipcRenderer.invoke('doc:removeAttachment', id, rel),
     saveChat: (id: string, chat: ChatItem[]): Promise<void> =>
       ipcRenderer.invoke('doc:saveChat', id, chat),
     onExternalChange: (cb: (id: string, content: string) => void): (() => void) => {
@@ -64,14 +74,29 @@ const api = {
       return () => ipcRenderer.removeListener('comments:changed', listener)
     }
   },
+  skills: {
+    installFromDisk: (): Promise<SkillMeta[]> => ipcRenderer.invoke('skills:installFromDisk'),
+    list: (): Promise<SkillMeta[]> => ipcRenderer.invoke('skills:list'),
+    listForDoc: (docId: string): Promise<DocSkill[]> =>
+      ipcRenderer.invoke('skills:listForDoc', docId),
+    setEnabled: (docId: string, slug: string, on: boolean): Promise<void> =>
+      ipcRenderer.invoke('skills:setEnabled', docId, slug, on),
+    remove: (slug: string): Promise<void> => ipcRenderer.invoke('skills:remove', slug),
+    read: (slug: string): Promise<string> => ipcRenderer.invoke('skills:read', slug),
+    reveal: (): Promise<void> => ipcRenderer.invoke('skills:reveal')
+  },
   agent: {
     send: (id: string, prompt: string, opts?: SendOptions): Promise<void> =>
       ipcRenderer.invoke('agent:send', id, prompt, opts ?? {}),
     interrupt: (id: string): Promise<void> => ipcRenderer.invoke('agent:interrupt', id),
     busy: (id: string): Promise<boolean> => ipcRenderer.invoke('agent:busy', id),
     models: (): Promise<ModelChoice[]> => ipcRenderer.invoke('agent:models'),
-    respondPermission: (requestId: string, approved: boolean): void => {
-      ipcRenderer.send('agent:permission-response', requestId, approved)
+    respondPermission: (
+      requestId: string,
+      approved: boolean,
+      answers?: Record<string, string>
+    ): void => {
+      ipcRenderer.send('agent:permission-response', requestId, approved, answers)
     },
     onEvent: (cb: (event: AgentEvent) => void): (() => void) => {
       const listener = (_e: unknown, event: AgentEvent): void => cb(event)
