@@ -28,7 +28,9 @@ All notable changes to Fabulist are documented here. The format follows
   Fraunces, Plex Sans, Plex Mono — all bundled, offline), persisted per document.
 
 ### Fixed
-- Command (Bash) approval cards no longer vanish when the chat is full: the chat column
+- Editor/IDE "Cannot find module '@shared/types'" on renderer imports: added root
+  `tsconfig.json` so TypeScript path aliases resolve in the language service (build
+  already worked via `tsconfig.web.json`).
   could flex-squash the card (its `overflow: hidden` allowed shrinking) down to a bare
   border line, leaving the run waiting on an approval you couldn't see or click. Chat
   items no longer shrink — the panel scrolls instead.
