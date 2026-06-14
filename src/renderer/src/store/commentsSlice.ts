@@ -18,6 +18,19 @@ export const createCommentsSlice: StateCreator<Store, [], [], CommentsSlice> = (
     set({ threads: reanchor(raw, get().content) })
   },
 
+  clearCommentDrafts: () =>
+    set({ draftComment: null, activeThreadId: null, queuedCommentSends: [], scrollTo: null }),
+
+  resetComments: () =>
+    set({ threads: [], draftComment: null, activeThreadId: null, queuedCommentSends: [], scrollTo: null }),
+
+  sendNextQueuedComment: () => {
+    const [next, ...rest] = get().queuedCommentSends
+    if (!next) return
+    set({ queuedCommentSends: rest })
+    void get().askClaude(next.prompt, { quote: next.quote, commentId: next.commentId })
+  },
+
   // Editor reports mapped positions after edits; recompute context and persist.
   persistAnchors: (anchors) => {
     const id = get().activeId

@@ -1,14 +1,9 @@
 import { promises as fs } from 'node:fs'
-import path from 'node:path'
-import type { CommentThread, CommentMessage } from '@shared/types'
-import { docPath, COMMENTS_FILE, newId } from './library'
+import type { AnchorUpdate, CommentThread, CommentMessage } from '@shared/types'
+import { commentsFile as file, newId } from './library'
 
 interface CommentsFile {
   threads: CommentThread[]
-}
-
-function file(id: string): string {
-  return path.join(docPath(id), COMMENTS_FILE)
 }
 
 export async function listThreads(docId: string): Promise<CommentThread[]> {
@@ -77,10 +72,7 @@ export async function removeThread(docId: string, threadId: string): Promise<voi
 }
 
 /** Renderer keeps anchors mapped through edits; persist the whole set at once. */
-export async function updateAnchors(
-  docId: string,
-  anchors: { id: string; anchor: CommentThread['anchor']; status?: CommentThread['status'] }[]
-): Promise<void> {
+export async function updateAnchors(docId: string, anchors: AnchorUpdate[]): Promise<void> {
   const threads = await listThreads(docId)
   for (const a of anchors) {
     const t = threads.find((th) => th.id === a.id)

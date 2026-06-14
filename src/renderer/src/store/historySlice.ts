@@ -21,6 +21,8 @@ export const createHistorySlice: StateCreator<Store, [], [], HistorySlice> = (se
 
   closePreview: () => set({ preview: null }),
 
+  resetHistory: () => set({ commits: [], preview: null }),
+
   restorePreview: async () => {
     const id = get().activeId
     const preview = get().preview

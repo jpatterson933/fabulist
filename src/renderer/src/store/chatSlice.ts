@@ -1,5 +1,6 @@
 import type { StateCreator } from 'zustand'
 import type { ChatItem } from '@shared/types'
+import { isPrimaryDoc } from '@shared/doc'
 import type { ChatSlice, Store } from './types'
 import { nextSeq } from './shared'
 
@@ -23,6 +24,13 @@ export const createChatSlice: StateCreator<Store, [], [], ChatSlice> = (set, get
     const id = get().activeId
     if (id) window.fabulist.agent.interrupt(id)
   },
+
+  loadChat: async (id) => {
+    const chat = await window.fabulist.doc.chat(id)
+    set({ chats: { ...get().chats, [id]: chat ?? [] } })
+  },
+
+  resetChatRun: () => set({ pendingCommentId: null }),
 
   revealEdit: (edit) => {
     // locate by the inserted text (fall back to the replaced text) in the
@@ -84,21 +92,18 @@ export const createChatSlice: StateCreator<Store, [], [], ChatSlice> = (set, get
           return { ...item, toolNotes: notes, streaming: false }
         })
         break
-      case 'permission-request':
-        if (!get().permissions.some((p) => p.requestId === e.request.requestId)) {
-          // document edits render inline in the editor — only pull the user to
-          // the chat tab for requests that have nowhere else to appear
-          const inline = e.request.filePath === 'document.md'
-          set({
-            permissions: [...get().permissions, e.request],
-            // never steal focus for a background document's request — its
-            // card renders when that document becomes active again
-            ...(e.docId === activeId
-              ? { sidebarOpen: true, ...(inline ? {} : { tab: 'chat' as const }) }
-              : {})
-          })
+      case 'permission-request': {
+        if (get().permissions.some((p) => p.requestId === e.request.requestId)) break
+        get().addPermission(e.request) // PermissionsSlice owns the array
+        // document edits render inline in the editor — only pull the user to
+        // the chat tab for requests that have nowhere else to appear; never
+        // steal focus for a background document's request
+        if (e.docId === activeId) {
+          const inline = isPrimaryDoc(e.request.filePath)
+          set({ sidebarOpen: true, ...(inline ? {} : { tab: 'chat' as const }) })
         }
         break
+      }
       case 'edit-applied':
         updateChat(e.docId, (items) => [
           ...items,
@@ -117,7 +122,7 @@ export const createChatSlice: StateCreator<Store, [], [], ChatSlice> = (set, get
         ])
         break
       case 'permission-resolved':
-        set({ permissions: get().permissions.filter((p) => p.requestId !== e.requestId) })
+        get().removePermission(e.requestId)
         break
       case 'result': {
         if (!e.ok && e.error) {
@@ -133,12 +138,8 @@ export const createChatSlice: StateCreator<Store, [], [], ChatSlice> = (set, get
           get().loadHistory()
           get().loadDocs()
           if (e.commentId) get().reloadThreads()
-          // a comment may have queued while Claude was busy — send it now
-          const [next, ...rest] = get().queuedCommentSends
-          if (next) {
-            set({ queuedCommentSends: rest })
-            void get().askClaude(next.prompt, { quote: next.quote, commentId: next.commentId })
-          }
+          // a comment may have queued while Claude was busy — CommentsSlice owns the queue
+          get().sendNextQueuedComment()
         }
         break
       }

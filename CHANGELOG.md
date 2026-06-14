@@ -27,7 +27,17 @@ All notable changes to Fabulist are documented here. The format follows
 - Per-document editor typeface: an **Aa** picker in the header (Newsreader, Literata,
   Fraunces, Plex Sans, Plex Mono — all bundled, offline), persisted per document.
 
+### Added
+- A failed save now surfaces as a dismissible error banner instead of being silently
+  swallowed — if writing your changes to disk fails, you'll see why rather than losing
+  work without warning.
+
 ### Fixed
+- Notebook (`NotebookEdit`) approval cards were blank and labelled with the bare
+  tool name: they now show the proposed cell source as a diff and read "Editing
+  `<file>.ipynb`", like every other file edit. (Tool descriptions, approval
+  payloads, and the approval policy are now defined once per tool in a single
+  registry, so a tool can no longer be half-wired.)
 - Editor/IDE "Cannot find module '@shared/types'" on renderer imports: added root
   `tsconfig.json` so TypeScript path aliases resolve in the language service (build
   already worked via `tsconfig.web.json`).

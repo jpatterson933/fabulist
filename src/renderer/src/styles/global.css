@@ -1838,3 +1838,25 @@ input::placeholder {
 .modal .skills {
   overflow-y: auto;
 }
+
+/* Dismissible error banner for surfaced failures (e.g. a failed manuscript save). */
+.error-toast {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 560px;
+  padding: 9px 12px;
+  border-radius: 9px;
+  background: oklch(0.95 0.025 25);
+  color: var(--bad);
+  box-shadow: 0 6px 24px oklch(0 0 0 / 0.18);
+  font-size: 12.5px;
+}
+.error-toast-text {
+  flex: 1;
+}

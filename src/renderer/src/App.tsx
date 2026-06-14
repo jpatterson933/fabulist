@@ -17,6 +17,8 @@ export default function App(): React.JSX.Element {
   const libraryOpen = useStore((s) => s.libraryOpen)
   const toggleLibrary = useStore((s) => s.toggleLibrary)
   const snapshot = useStore((s) => s.snapshot)
+  const lastError = useStore((s) => s.lastError)
+  const dismissError = useStore((s) => s.dismissError)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
@@ -84,6 +86,14 @@ export default function App(): React.JSX.Element {
         )}
       </main>
       {doc && sidebarOpen && <Sidebar docId={doc.id} />}
+      {lastError && (
+        <div className="error-toast" role="alert">
+          <span className="error-toast-text">{lastError}</span>
+          <button className="btn-ghost btn-small" onClick={dismissError} title="Dismiss">
+            ✕
+          </button>
+        </div>
+      )}
     </div>
   )
 }

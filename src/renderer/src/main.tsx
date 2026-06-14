@@ -12,27 +12,9 @@ import '@fontsource/ibm-plex-mono/500.css'
 import './styles/global.css'
 import App from './App'
 import { useStore } from './store'
+import { bootstrap } from './store/bootstrap'
 
-const store = useStore.getState()
-
-window.fabulist.agent.onEvent((e) => useStore.getState().handleAgentEvent(e))
-window.fabulist.doc.onExternalChange((id, content) =>
-  useStore.getState().handleExternalChange(id, content)
-)
-window.fabulist.comments.onChanged((id) => {
-  if (useStore.getState().activeId === id) useStore.getState().reloadThreads()
-})
-
-window.addEventListener('beforeunload', () => {
-  const { activeId } = useStore.getState()
-  if (activeId) {
-    void useStore.getState().flushWrite()
-    void window.fabulist.doc.snapshot(activeId, 'Edited')
-  }
-})
-
-void store.loadDocs()
-void store.loadModels()
+bootstrap()
 
 if (import.meta.env.DEV) {
   // makes the store drivable from devtools / CDP during development

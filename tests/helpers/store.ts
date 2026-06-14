@@ -21,12 +21,8 @@ export function makeFabulist(
       snapshot: vi.fn(async () => true),
       watch: vi.fn(async () => {}),
       chat: vi.fn(async () => []),
-      getModel: vi.fn(async () => ''),
-      setModel: vi.fn(async () => {}),
-      getAutoApprove: vi.fn(async () => false),
-      setAutoApprove: vi.fn(async () => {}),
-      getFont: vi.fn(async () => ''),
-      setFont: vi.fn(async () => {}),
+      getSettings: vi.fn(async () => ({ model: '', font: '', autoApprove: false })),
+      setSetting: vi.fn(async () => {}),
       saveChat: vi.fn(async () => {})
     },
     history: {

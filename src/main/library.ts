@@ -1,8 +1,10 @@
 import { app, dialog } from 'electron'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
-import { randomUUID } from 'node:crypto'
-import type { DocMeta } from '@shared/types'
+import { randomUUID, createHash } from 'node:crypto'
+import type { ChatItem, DocMeta } from '@shared/types'
+import { DOC_FILE, COMMENTS_FILE } from '@shared/doc'
+import { SETTING_DEFAULTS, type DocSettings, type SettingKey } from '@shared/settings'
 import { initRepo, commitAll } from './git'
 import { validateDocId } from './pathGuards'
 
@@ -25,8 +27,8 @@ export async function ensureLibraryRoot(): Promise<void> {
   await fs.mkdir(LIBRARY_ROOT, { recursive: true })
 }
 
-export const DOC_FILE = 'document.md'
-export const COMMENTS_FILE = 'comments.json'
+// Re-exported from the shared contract so existing `library.DOC_FILE` callers keep working.
+export { DOC_FILE, COMMENTS_FILE }
 
 const CLAUDE_MD = (title: string) => `# About this project
 
@@ -61,6 +63,32 @@ function slugify(title: string): string {
 
 export function docPath(id: string): string {
   return path.join(LIBRARY_ROOT, validateDocId(id))
+}
+
+/** Absolute path to a document's manuscript file. */
+export function docFile(id: string): string {
+  return path.join(docPath(id), DOC_FILE)
+}
+
+/** Absolute path to a document's app-managed comments sidecar. */
+export function commentsFile(id: string): string {
+  return path.join(docPath(id), COMMENTS_FILE)
+}
+
+// --- write-echo suppression: the folder watcher must ignore our own writes ---
+// Lives next to the writer (readDoc/writeDoc record the content they produce)
+// so the watcher can ask `isEcho` instead of the IPC layer carrying a hash map.
+const lastWritten = new Map<string, string>()
+const hashContent = (s: string): string => createHash('sha1').update(s).digest('hex')
+
+/** Remember the content we just put on disk for `id`, so its watch event is skipped. */
+export function recordWrite(id: string, content: string): void {
+  lastWritten.set(id, hashContent(content))
+}
+
+/** True when `content` matches what the app last wrote for `id` (a watch echo, not a real edit). */
+export function isEcho(id: string, content: string): boolean {
+  return lastWritten.get(id) === hashContent(content)
 }
 
 async function readMeta(id: string): Promise<DocMeta | null> {
@@ -128,11 +156,14 @@ export async function deleteDoc(id: string): Promise<void> {
 }
 
 export async function readDoc(id: string): Promise<string> {
-  return fs.readFile(path.join(docPath(id), DOC_FILE), 'utf8')
+  const content = await fs.readFile(docFile(id), 'utf8')
+  recordWrite(id, content) // a read establishes the baseline the watcher dedups against
+  return content
 }
 
 export async function writeDoc(id: string, content: string): Promise<void> {
-  await fs.writeFile(path.join(docPath(id), DOC_FILE), content)
+  recordWrite(id, content)
+  await fs.writeFile(docFile(id), content)
 }
 
 /**
@@ -183,17 +214,17 @@ export async function attachText(id: string, text: string): Promise<string> {
   return path.posix.join('attachments', name)
 }
 
-// --- per-doc app state (session ids, chat transcript) under .fabulist/ ---
+// --- per-doc app state under .fabulist/state.json ---
+//
+// Two concerns share this file but are accessed through separate, typed layers:
+//   • the agent SESSION (sessionId, chat transcript) — readState/patchState/readChat
+//   • the user SETTINGS (DocSettings: model/font/autoApprove) — readSettings/writeSetting
+// Keeping them split at the API level means a new setting touches only the
+// settings registry (src/shared/settings.ts), not the agent's resume state.
 
-interface DocState {
+interface DocState extends Partial<DocSettings> {
   sessionId?: string
-  chat?: unknown[]
-  /** Claude Code model alias/id for this doc's agent; undefined = CLI default */
-  model?: string
-  /** editor font choice for this document */
-  font?: string
-  /** when true, file edits apply without an approval card (Bash still asks) */
-  autoApprove?: boolean
+  chat?: ChatItem[]
 }
 
 async function statePath(id: string): Promise<string> {
@@ -224,6 +255,46 @@ export async function readState(id: string): Promise<DocState> {
 export async function patchState(id: string, patch: Partial<DocState>): Promise<void> {
   const cur = await readState(id)
   await fs.writeFile(await statePath(id), JSON.stringify({ ...cur, ...patch }, null, 2))
+}
+
+// --- user settings (typed view over state.json; defaults owned here) ---
+
+/** Read all per-document settings, applying defaults for anything unset. */
+export async function readSettings(id: string): Promise<DocSettings> {
+  const state = await readState(id)
+  return {
+    model: state.model ?? SETTING_DEFAULTS.model,
+    font: state.font ?? SETTING_DEFAULTS.font,
+    autoApprove: state.autoApprove ?? SETTING_DEFAULTS.autoApprove
+  }
+}
+
+/** Persist one setting; a falsy/empty value is stored as "unset" (back to its default). */
+export async function writeSetting<K extends SettingKey>(
+  id: string,
+  key: K,
+  value: DocSettings[K]
+): Promise<void> {
+  await patchState(id, { [key]: value || undefined })
+}
+
+// --- agent transcript (validated on read; main never re-trusts on-disk JSON) ---
+
+function sanitizeChat(chat: unknown): ChatItem[] {
+  if (!Array.isArray(chat)) return []
+  return chat.filter(
+    (c): c is ChatItem =>
+      !!c &&
+      typeof c === 'object' &&
+      typeof (c as ChatItem).id === 'string' &&
+      ((c as ChatItem).role === 'user' || (c as ChatItem).role === 'assistant') &&
+      typeof (c as ChatItem).text === 'string'
+  )
+}
+
+/** The persisted chat transcript for a document, filtered to well-formed items. */
+export async function readChat(id: string): Promise<ChatItem[]> {
+  return sanitizeChat((await readState(id)).chat)
 }
 
 export function newId(): string {

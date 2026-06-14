@@ -25,6 +25,7 @@
     "node": ">=20"
   },
   "scripts": {
+    "install": "npm install --ignore-scripts && node node_modules/electron/install.js",
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",

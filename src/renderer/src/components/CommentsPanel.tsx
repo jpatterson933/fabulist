@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CommentThread } from '@shared/types'
 import { useStore } from '@/store'
-import { relativeTime } from '@/components/Library'
+import { relativeTime, truncate } from '@/lib/format'
 import { AttachChips, useAttachments } from '@/lib/useAttachments'
 
 export default function CommentsPanel(): React.JSX.Element {
@@ -220,8 +220,4 @@ function ThreadCard({ thread }: { thread: CommentThread }): React.JSX.Element {
       )}
     </div>
   )
-}
-
-function truncate(s: string, n: number): string {
-  return s.length > n ? s.slice(0, n) + '…' : s
 }
