@@ -43,4 +43,31 @@ describe('agent tool policy', () => {
   it('does not silently allow unknown MCP-prefixed tools', () => {
     expect(decideTool(cwd, 'mcp__unknown__mutate', {})).toEqual({ kind: 'ask' })
   })
+
+  it('asks for MultiEdit and resolves its file path', () => {
+    expect(decideTool(cwd, 'MultiEdit', { file_path: 'document.md', edits: [] })).toEqual({
+      kind: 'ask',
+      filePath: 'document.md'
+    })
+  })
+
+  it('resolves a NotebookEdit via notebook_path and asks', () => {
+    expect(decideTool(cwd, 'NotebookEdit', { notebook_path: 'analysis.ipynb' })).toEqual({
+      kind: 'ask',
+      filePath: 'analysis.ipynb'
+    })
+  })
+
+  it('denies a NotebookEdit that escapes the document root', () => {
+    expect(decideTool(cwd, 'NotebookEdit', { notebook_path: '../escape.ipynb' })).toMatchObject({
+      kind: 'deny'
+    })
+  })
+
+  it('allows NotebookRead as read-only', () => {
+    expect(decideTool(cwd, 'NotebookRead', { notebook_path: 'analysis.ipynb' })).toEqual({
+      kind: 'allow',
+      filePath: 'analysis.ipynb'
+    })
+  })
 })

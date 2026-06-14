@@ -4,6 +4,7 @@ import path from 'node:path'
 import { createRequire } from 'node:module'
 import { app, type WebContents } from 'electron'
 import type { AgentEvent, ModelChoice, PermissionRequest, SendOptions } from '@shared/types'
+import { toModelArg } from '@shared/model'
 import {
   LIBRARY_ROOT,
   ensureLibraryRoot,
@@ -16,7 +17,14 @@ import {
 import { commitAll } from './git'
 import * as comments from './comments'
 import { decideTool, isFileEditTool } from './toolPolicy'
+import { describeTool, buildToolPayload } from './toolRegistry'
+import { parseSdkMessages, type ParsedRun, type SdkMessage } from './sdkStream'
 import { PermissionBroker } from './permissionBroker'
+import { emitEvent } from './ipcTyped'
+import { logError } from './log'
+
+// Re-exported so existing importers (and tests) keep `agent.describeTool` working.
+export { describeTool }
 
 const systemAppend = (autoApprove: boolean): string => `
 You are operating inside Fabulist, a writing studio. The current working directory is a
@@ -117,7 +125,7 @@ export class AgentManager {
   }
 
   private emit(event: AgentEvent): void {
-    if (this.wc && !this.wc.isDestroyed()) this.wc.send('agent:event', event)
+    if (this.wc) emitEvent(this.wc, 'agent:event', event)
   }
 
   isBusy(docId: string): boolean {
@@ -164,7 +172,7 @@ export class AgentManager {
 
     const options: Options = {
       cwd,
-      model: state.model || undefined,
+      model: toModelArg(state.model),
       pathToClaudeCodeExecutable: ENGINE_BINARY,
       resume: state.sessionId,
       abortController: abort,
@@ -186,129 +194,64 @@ export class AgentManager {
     const q = query({ prompt: input(), options })
     this.active.set(docId, { abort, q })
 
-    let sessionId: string | undefined
-    let currentItemId = newId()
-    let streamedText = ''
-    let finalText = ''
-    let resultOk = false
-    let resultError: string | undefined
-    let costUsd: number | undefined
-    let durationMs: number | undefined
-
+    // Translation of engine messages → AgentEvents is a pure generator (sdkStream);
+    // send() just emits what it yields and acts on the run summary it returns.
+    let run: ParsedRun = { ok: false, finalText: '' }
     try {
-      for await (const msg of q) {
-        if ('session_id' in msg && msg.session_id) sessionId = msg.session_id
-
-        switch (msg.type) {
-          case 'stream_event': {
-            const ev = msg.event as { type: string; delta?: { type: string; text?: string } }
-            if (ev.type === 'message_start') {
-              // a fresh assistant message begins
-              if (streamedText) currentItemId = newId()
-              streamedText = ''
-            }
-            if (ev.type === 'content_block_delta' && ev.delta?.type === 'text_delta' && ev.delta.text) {
-              streamedText += ev.delta.text
-              emit({ kind: 'text-delta', docId, itemId: currentItemId, delta: ev.delta.text })
-              emit({ kind: 'status', docId, status: 'working' })
-            }
-            break
-          }
-          case 'assistant': {
-            // content block unions vary across SDK patch releases; treat structurally
-            const blocks = msg.message.content as Array<{
-              type: string
-              text?: string
-              id?: string
-              name?: string
-              input?: unknown
-            }>
-            const text = blocks
-              .filter((b) => b.type === 'text')
-              .map((b) => b.text ?? '')
-              .join('\n')
-            if (text.trim()) {
-              emit({ kind: 'assistant-text', docId, itemId: currentItemId, text })
-              finalText = text
-              streamedText = ''
-            }
-            for (const b of blocks) {
-              if (b.type === 'tool_use' && b.id && b.name) {
-                emit({
-                  kind: 'tool-note',
-                  docId,
-                  itemId: currentItemId,
-                  toolId: b.id,
-                  note: describeTool(b.name, b.input as Record<string, unknown>, cwd)
-                })
-                emit({ kind: 'status', docId, status: 'working', detail: b.name })
-              }
-            }
-            break
-          }
-          case 'user': {
-            // tool results come back as user messages
-            const content = msg.message.content
-            if (Array.isArray(content)) {
-              for (const b of content) {
-                if (b.type === 'tool_result' && typeof b.tool_use_id === 'string') {
-                  emit({
-                    kind: 'tool-note',
-                    docId,
-                    itemId: currentItemId,
-                    toolId: b.tool_use_id,
-                    note: '',
-                    done: true,
-                    ok: !b.is_error
-                  })
-                }
-              }
-            }
-            break
-          }
-          case 'result': {
-            resultOk = msg.subtype === 'success'
-            if (msg.subtype === 'success') {
-              if (msg.result?.trim()) finalText = msg.result
-            } else {
-              resultError = msg.subtype.replace(/_/g, ' ')
-            }
-            costUsd = msg.total_cost_usd
-            durationMs = msg.duration_ms
-            break
-          }
-        }
+      const events = parseSdkMessages(q as AsyncIterable<SdkMessage>, { docId, cwd, newId })
+      let step = await events.next()
+      while (!step.done) {
+        emit(step.value)
+        step = await events.next()
       }
+      run = step.value
     } catch (err) {
-      resultOk = false
-      resultError = err instanceof Error ? err.message : String(err)
+      run = { ok: false, finalText: '', error: err instanceof Error ? err.message : String(err) }
     } finally {
       this.active.delete(docId)
       this.permissions.clearDoc(docId)
     }
 
-    if (sessionId) await patchState(docId, { sessionId }).catch(() => {})
+    await this.completeRun(docId, cwd, prompt, opts, run, editsApplied)
+  }
+
+  /** Post-run side-effects: persist the session, commit edits, reply to a comment, announce the result. */
+  private async completeRun(
+    docId: string,
+    cwd: string,
+    prompt: string,
+    opts: SendOptions,
+    run: ParsedRun,
+    editsApplied: number
+  ): Promise<void> {
+    if (run.sessionId) {
+      await patchState(docId, { sessionId: run.sessionId }).catch((e) =>
+        logError('persisting agent session', e)
+      )
+    }
 
     if (editsApplied > 0) {
       const label = prompt.replace(/\s+/g, ' ').slice(0, 64)
-      await commitAll(cwd, `Claude: ${label}`).catch(() => {})
+      await commitAll(cwd, `Claude: ${label}`).catch((e) => logError('committing agent edits', e))
     }
 
-    if (opts.commentId && resultOk && finalText.trim()) {
-      await comments.reply(docId, opts.commentId, 'claude', finalText.trim()).catch(() => {})
+    if (opts.commentId && run.ok && run.finalText.trim()) {
+      await comments
+        .reply(docId, opts.commentId, 'claude', run.finalText.trim())
+        .catch((e) => logError('recording comment reply', e))
     }
 
-    emit({
+    this.emit({
       kind: 'result',
       docId,
-      ok: resultOk,
-      text: finalText,
-      error: resultError,
-      costUsd,
-      durationMs,
+      ok: run.ok,
+      text: run.finalText,
+      error: run.error,
+      costUsd: run.costUsd,
+      durationMs: run.durationMs,
       commentId: opts.commentId
     })
-    emit({ kind: 'status', docId, status: resultOk ? 'done' : 'error', detail: resultError })
+    this.emit({ kind: 'status', docId, status: run.ok ? 'done' : 'error', detail: run.error })
   }
 
   /** The approval gate. Decides per tool whether to allow, deny, or ask the human. */
@@ -375,45 +318,11 @@ export class AgentManager {
       filePath,
       summary: describeTool(tool, input, cwd)
     }
-    if (tool === 'Bash') {
-      request.command = String(input.command ?? '')
-    } else if (tool === 'AskUserQuestion' && Array.isArray(input.questions)) {
-      const questions = input.questions as {
-        question?: string
-        header?: string
-        multiSelect?: boolean
-        options?: { label?: string; description?: string }[]
-      }[]
-      request.questions = questions.map((q) => ({
-        question: String(q.question ?? ''),
-        header: String(q.header ?? ''),
-        multiSelect: Boolean(q.multiSelect),
-        options: (q.options ?? []).map((o) => ({
-          label: String(o.label ?? ''),
-          description: o.description ? String(o.description) : undefined
-        }))
-      }))
-    } else if (tool === 'Write' && filePath) {
-      request.after = String(input.content ?? '')
-      request.before = await fs
-        .readFile(path.resolve(cwd, filePath), 'utf8')
-        .catch(() => '')
-    } else if (tool === 'Edit') {
-      request.before = String(input.old_string ?? '')
-      request.after = String(input.new_string ?? '')
-      request.edits = [
-        { old: request.before, new: request.after, all: Boolean(input.replace_all) }
-      ]
-    } else if (tool === 'MultiEdit' && Array.isArray(input.edits)) {
-      const edits = input.edits as { old_string?: string; new_string?: string; replace_all?: boolean }[]
-      request.before = edits.map((e) => e.old_string ?? '').join('\n…\n')
-      request.after = edits.map((e) => e.new_string ?? '').join('\n…\n')
-      request.edits = edits.map((e) => ({
-        old: String(e.old_string ?? ''),
-        new: String(e.new_string ?? ''),
-        all: Boolean(e.replace_all)
-      }))
-    }
+    // The tool registry owns each tool's card payload (diff / command / questions).
+    await buildToolPayload(request, tool, input, {
+      cwd,
+      readFile: (rel) => fs.readFile(path.resolve(cwd, rel), 'utf8')
+    })
     return request
   }
 
@@ -457,52 +366,18 @@ export class AgentManager {
   }
 }
 
-function buildPrompt(prompt: string, opts: SendOptions): string {
+export function buildPrompt(prompt: string, opts: SendOptions): string {
   const parts: string[] = []
   if (opts.quote) {
     parts.push(`The author highlighted this passage in ${DOC_FILE}:\n\n"""\n${opts.quote}\n"""`)
   }
   if (opts.commentId) {
     parts.push(
-      'This is a comment on that passage. Address it specifically. If a text change is warranted, edit document.md directly. Your chat reply will be recorded in the comment thread, so keep it self-contained and brief.'
+      `This is a comment on that passage. Address it specifically. If a text change is warranted, edit ${DOC_FILE} directly. Your chat reply will be recorded in the comment thread, so keep it self-contained and brief.`
     )
   }
   parts.push(prompt)
   return parts.join('\n\n')
-}
-
-function describeTool(tool: string, input: Record<string, unknown>, cwd: string): string {
-  const rel = (p: unknown): string =>
-    typeof p === 'string' ? path.relative(cwd, path.resolve(cwd, p)) || '.' : ''
-  switch (tool) {
-    case 'Read':
-      return `Reading ${rel(input.file_path)}`
-    case 'Write':
-      return `Writing ${rel(input.file_path)}`
-    case 'Edit':
-    case 'MultiEdit':
-      return `Editing ${rel(input.file_path)}`
-    case 'Bash':
-      return `Running: ${String(input.command ?? '').slice(0, 80)}`
-    case 'Grep':
-      return `Searching for "${String(input.pattern ?? '')}"`
-    case 'Glob':
-      return `Listing ${String(input.pattern ?? '')}`
-    case 'WebSearch':
-      return `Searching the web: ${String(input.query ?? '')}`
-    case 'WebFetch':
-      return `Fetching ${String(input.url ?? '')}`
-    case 'TodoWrite':
-      return 'Updating plan'
-    case 'Task':
-      return `Delegating: ${String(input.description ?? '')}`
-    case 'AskUserQuestion': {
-      const qs = input.questions as { question?: string }[] | undefined
-      return `Asking: ${String(qs?.[0]?.question ?? '').slice(0, 80)}`
-    }
-    default:
-      return tool
-  }
 }
 
 export const agentManager = new AgentManager()

@@ -1,48 +1,33 @@
 import path from 'node:path'
+import { COMMENTS_FILE, isManagedFile } from '@shared/doc'
 import { resolveInside } from './pathGuards'
+import { isReadOnly, toolPathInput } from './toolRegistry'
 
-const COMMENTS_FILE = 'comments.json'
-
-const READ_ONLY = new Set([
-  'Read',
-  'Glob',
-  'Grep',
-  'WebFetch',
-  'WebSearch',
-  'TodoWrite',
-  'Task',
-  'NotebookRead',
-  'ListMcpResourcesTool'
-])
-
-const FILE_EDIT_TOOLS = new Set(['Write', 'Edit', 'MultiEdit', 'NotebookEdit'])
+export { isFileEditTool } from './toolRegistry'
 
 export type ToolDecision =
   | { kind: 'allow'; filePath?: string }
   | { kind: 'ask'; filePath?: string }
   | { kind: 'deny'; message: string; filePath?: string }
 
-export function isFileEditTool(tool: string): boolean {
-  return FILE_EDIT_TOOLS.has(tool)
-}
-
+/**
+ * The pure approval policy for one tool call: deny path escapes and edits to
+ * app-managed files, auto-allow read-only tools, and ask for everything else.
+ * Tool classification and path lookup come from the tool registry, so adding a
+ * tool there is the only edit needed.
+ */
 export function decideTool(cwd: string, tool: string, input: Record<string, unknown>): ToolDecision {
-  const filePath = resolveToolFile(cwd, toolPath(input))
+  const filePath = resolveToolFile(cwd, toolPathInput(tool, input))
   if (filePath.kind === 'deny') return filePath
-  if (filePath.filePath === COMMENTS_FILE) {
+  if (isManagedFile(filePath.filePath)) {
     return {
       kind: 'deny',
-      message:
-        'comments.json is managed by Fabulist. Reply in chat instead; the app records comment replies.',
+      message: `${COMMENTS_FILE} is managed by Fabulist. Reply in chat instead; the app records comment replies.`,
       filePath: filePath.filePath
     }
   }
-  if (READ_ONLY.has(tool)) return { kind: 'allow', filePath: filePath.filePath }
+  if (isReadOnly(tool)) return { kind: 'allow', filePath: filePath.filePath }
   return { kind: 'ask', filePath: filePath.filePath }
-}
-
-function toolPath(input: Record<string, unknown>): unknown {
-  return input.file_path ?? input.notebook_path ?? input.path
 }
 
 function resolveToolFile(

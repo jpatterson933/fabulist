@@ -11,5 +11,12 @@ export const createPermissionsSlice: StateCreator<Store, [], [], PermissionsSlic
 
   setInlineSuggestion: (requestId) => {
     if (get().inlineSuggestionId !== requestId) set({ inlineSuggestionId: requestId })
-  }
+  },
+
+  addPermission: (request) => set({ permissions: [...get().permissions, request] }),
+
+  removePermission: (requestId) =>
+    set({ permissions: get().permissions.filter((p) => p.requestId !== requestId) }),
+
+  resetPermissions: () => set({ permissions: [], inlineSuggestionId: null })
 })

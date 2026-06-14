@@ -1,5 +1,6 @@
 import type {
   AgentEvent,
+  AgentStatus,
   ChatItem,
   CommentAnchor,
   CommentThread,
@@ -8,6 +9,7 @@ import type {
   ModelChoice,
   PermissionRequest
 } from '@shared/types'
+import type { DocSettings } from '@shared/settings'
 
 export type SidebarTab = 'chat' | 'comments' | 'history'
 
@@ -16,7 +18,7 @@ export interface DraftComment {
 }
 
 export interface AgentState {
-  status: 'idle' | 'starting' | 'working' | 'done' | 'error'
+  status: AgentStatus
   detail?: string
 }
 
@@ -52,6 +54,16 @@ export interface DocSlice {
   handleExternalChange: (id: string, content: string) => void
 }
 
+/** Renderer error reporting — the one place that decides how a reported error surfaces. */
+export interface ErrorsSlice {
+  /** Last surfaced error (e.g. a failed manuscript save), shown as a dismissible banner. */
+  lastError: string | null
+  /** Report an error from anywhere: formats, logs (→ terminal), and shows the banner. */
+  reportError: (e: unknown, context?: string) => void
+  /** Clear the error banner. */
+  dismissError: () => void
+}
+
 /** Comment threads, the in-progress draft, and re-anchoring through edits. */
 export interface CommentsSlice {
   threads: CommentThread[]
@@ -62,6 +74,12 @@ export interface CommentsSlice {
   queuedCommentSends: { commentId: string; prompt: string; quote: string }[]
 
   reloadThreads: () => Promise<void>
+  /** Clear the in-progress draft / active thread / queue (on opening a document). */
+  clearCommentDrafts: () => void
+  /** Clear all comment state including loaded threads (on closing a document). */
+  resetComments: () => void
+  /** Send the next queued comment to the agent, if any (called when a run finishes). */
+  sendNextQueuedComment: () => void
   persistAnchors: (anchors: { id: string; from: number; to: number }[]) => void
   startDraftComment: (anchor: CommentAnchor) => void
   cancelDraftComment: () => void
@@ -85,6 +103,10 @@ export interface ChatSlice {
   revealPos: { pos: number; seq: number } | null
 
   askClaude: (prompt: string, opts?: { quote?: string; commentId?: string }) => Promise<void>
+  /** Load the persisted transcript for a document into the chat map. */
+  loadChat: (id: string) => Promise<void>
+  /** Clear per-run chat state (the comment thread being replied to). */
+  resetChatRun: () => void
   interrupt: () => void
   /** scroll the editor to where an applied edit landed (best-effort, by quote) */
   revealEdit: (edit: NonNullable<ChatItem['edit']>) => void
@@ -103,6 +125,12 @@ export interface PermissionsSlice {
     answers?: Record<string, string>
   ) => void
   setInlineSuggestion: (requestId: string | null) => void
+  /** Append a pending request (deduped by the caller). Owned here, not written by other slices. */
+  addPermission: (request: PermissionRequest) => void
+  /** Drop a resolved request by id. */
+  removePermission: (requestId: string) => void
+  /** Clear all pending requests and the inline suggestion (on opening a document). */
+  resetPermissions: () => void
 }
 
 /** Per-document preferences: model, font, and auto-apply. */
@@ -117,6 +145,10 @@ export interface SettingsSlice {
   setAutoApprove: (on: boolean) => void
   loadModels: () => Promise<void>
   setFont: (font: string) => void
+  /** Distribute a freshly-loaded settings bundle into the slice. */
+  applySettings: (settings: DocSettings) => void
+  /** Fetch and apply this document's settings (used by openDoc). */
+  loadSettings: (id: string) => Promise<void>
 }
 
 /** Git history list and version preview/restore. */
@@ -128,6 +160,8 @@ export interface HistorySlice {
   openPreview: (commit: CommitInfo) => Promise<void>
   closePreview: () => void
   restorePreview: () => Promise<void>
+  /** Clear history list and any open preview (on closing a document). */
+  resetHistory: () => void
 }
 
 export type Store = DocSlice &
@@ -135,4 +169,5 @@ export type Store = DocSlice &
   ChatSlice &
   PermissionsSlice &
   SettingsSlice &
-  HistorySlice
+  HistorySlice &
+  ErrorsSlice

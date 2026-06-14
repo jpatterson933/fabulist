@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { EditorView } from '@codemirror/view'
 import { EditorState, Compartment } from '@codemirror/state'
 import { FONT_CHOICES } from '@shared/types'
+import { isPrimaryDoc } from '@shared/doc'
 import { useStore } from '@/store'
 import { makeAnchor } from '@/lib/anchors'
 import { minimalReplace } from '@/lib/externalMerge'
@@ -43,7 +44,7 @@ export default function Editor({ docId }: { docId: string }): React.JSX.Element 
 
   // a pending document.md permission rendered as an in-document suggestion
   const suggestion = useMemo(() => {
-    const req = permissions.find((p) => p.docId === docId && p.filePath === 'document.md')
+    const req = permissions.find((p) => p.docId === docId && isPrimaryDoc(p.filePath))
     if (!req) return null
     const segments = computeSuggestion(content, req)
     return segments ? { requestId: req.requestId, segments } : null

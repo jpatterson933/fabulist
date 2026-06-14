@@ -35,6 +35,13 @@ export interface CommentThread {
   messages: CommentMessage[]
 }
 
+/** One thread's re-anchored position, persisted in a batch after editor edits. */
+export interface AnchorUpdate {
+  id: string
+  anchor: CommentAnchor
+  status?: CommentThread['status']
+}
+
 export interface CommitInfo {
   hash: string
   subject: string
@@ -51,6 +58,8 @@ export interface PermissionRequest {
   requestId: string
   docId: string
   tool: string
+  /** What kind of approval this is, derived from the tool registry — lets the UI pick one card variant */
+  kind?: 'edit' | 'command' | 'question'
   /** Relative path of the file being changed, if a file tool */
   filePath?: string
   /** For file edits: text being replaced / replacement (or whole file for Write) */
@@ -71,8 +80,11 @@ export interface PermissionRequest {
   summary: string
 }
 
+/** Lifecycle state of an agent run, shared by the wire event and the store. */
+export type AgentStatus = 'idle' | 'starting' | 'working' | 'done' | 'error'
+
 export type AgentEvent =
-  | { kind: 'status'; docId: string; status: 'idle' | 'starting' | 'working' | 'done' | 'error'; detail?: string }
+  | { kind: 'status'; docId: string; status: AgentStatus; detail?: string }
   | { kind: 'user-echo'; docId: string; itemId: string; text: string; quote?: string }
   | { kind: 'text-delta'; docId: string; itemId: string; delta: string }
   | { kind: 'assistant-text'; docId: string; itemId: string; text: string }

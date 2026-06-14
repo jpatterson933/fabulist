@@ -21,13 +21,12 @@ export function makeFabulist(
       snapshot: vi.fn(async () => true),
       watch: vi.fn(async () => {}),
       chat: vi.fn(async () => []),
-      getModel: vi.fn(async () => ''),
-      setModel: vi.fn(async () => {}),
-      getAutoApprove: vi.fn(async () => false),
-      setAutoApprove: vi.fn(async () => {}),
-      getFont: vi.fn(async () => ''),
-      setFont: vi.fn(async () => {}),
-      saveChat: vi.fn(async () => {})
+      getSettings: vi.fn(async () => ({ model: '', font: '', autoApprove: false })),
+      setSetting: vi.fn(async () => {}),
+      saveChat: vi.fn(async () => {}),
+      attachFiles: vi.fn(async () => []),
+      attachText: vi.fn(async () => ''),
+      removeAttachment: vi.fn(async () => {})
     },
     history: {
       log: vi.fn(async () => []),
@@ -41,6 +40,15 @@ export function makeFabulist(
       setStatus: vi.fn(async () => {}),
       remove: vi.fn(async () => {}),
       updateAnchors: vi.fn(async () => {})
+    },
+    skills: {
+      installFromDisk: vi.fn(async () => []),
+      list: vi.fn(async () => []),
+      listForDoc: vi.fn(async () => []),
+      setEnabled: vi.fn(async () => {}),
+      remove: vi.fn(async () => {}),
+      read: vi.fn(async () => ''),
+      reveal: vi.fn(async () => {})
     },
     agent: {
       send: vi.fn(async () => {}),

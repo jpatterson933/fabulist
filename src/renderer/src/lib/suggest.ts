@@ -1,5 +1,6 @@
 import { diffWordsWithSpace } from 'diff'
 import type { PermissionRequest } from '@shared/types'
+import { isPrimaryDoc } from '@shared/doc'
 
 export interface SuggestSegment {
   kind: 'del' | 'ins'
@@ -85,7 +86,7 @@ export function suggestionSegments(current: string, proposed: string): SuggestSe
 }
 
 export function computeSuggestion(current: string, req: PermissionRequest): SuggestSegment[] | null {
-  if (req.filePath !== 'document.md') return null
+  if (!isPrimaryDoc(req.filePath)) return null
   const proposed = buildProposed(current, req)
   if (proposed === null) return null
   const segments = suggestionSegments(current, proposed)

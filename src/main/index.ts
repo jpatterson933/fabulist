@@ -1,6 +1,7 @@
 import { app, BrowserWindow, shell } from 'electron'
 import path from 'node:path'
 import { registerIpc } from './ipc'
+import { attachDiagnostics } from './log'
 
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
@@ -20,6 +21,7 @@ function createWindow(): BrowserWindow {
   })
 
   win.on('ready-to-show', () => win.show())
+  attachDiagnostics(win)
 
   win.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url)
