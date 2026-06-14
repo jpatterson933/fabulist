@@ -9,13 +9,14 @@ import {
   ensureLibraryRoot,
   docPath,
   DOC_FILE,
-  COMMENTS_FILE,
   readState,
   patchState,
   newId
 } from './library'
 import { commitAll } from './git'
 import * as comments from './comments'
+import { decideTool, isFileEditTool } from './toolPolicy'
+import { PermissionBroker } from './permissionBroker'
 
 const systemAppend = (autoApprove: boolean): string => `
 You are operating inside Fabulist, a writing studio. The current working directory is a
@@ -52,11 +53,6 @@ function resolveEngineBinary(): string | undefined {
 
 const ENGINE_BINARY = resolveEngineBinary()
 
-// Tools that read but never mutate — no approval needed.
-const READ_ONLY = new Set([
-  'Read', 'Glob', 'Grep', 'WebFetch', 'WebSearch', 'TodoWrite', 'Task', 'NotebookRead', 'ListMcpResourcesTool'
-])
-
 interface ActiveRun {
   abort: AbortController
   q: ReturnType<typeof query>
@@ -66,11 +62,7 @@ type Emitter = (event: AgentEvent) => void
 
 export class AgentManager {
   private active = new Map<string, ActiveRun>()
-  private pendingPermissions = new Map<
-    string,
-    (approved: boolean, answers?: Record<string, string>) => void
-  >()
-  private pendingRequests = new Map<string, PermissionRequest>()
+  private permissions = new PermissionBroker()
   private wc: WebContents | null = null
   private modelsCache: ModelChoice[] | null = null
 
@@ -133,11 +125,7 @@ export class AgentManager {
   }
 
   resolvePermission(requestId: string, approved: boolean, answers?: Record<string, string>): void {
-    const resolve = this.pendingPermissions.get(requestId)
-    if (resolve) {
-      this.pendingPermissions.delete(requestId)
-      resolve(approved, answers)
-    }
+    this.permissions.resolve(requestId, approved, answers)
   }
 
   async interrupt(docId: string): Promise<void> {
@@ -296,12 +284,7 @@ export class AgentManager {
       resultError = err instanceof Error ? err.message : String(err)
     } finally {
       this.active.delete(docId)
-      // fail any approval cards still open
-      for (const [id, resolve] of this.pendingPermissions) {
-        resolve(false)
-        emit({ kind: 'permission-resolved', docId, requestId: id, approved: false })
-      }
-      this.pendingPermissions.clear()
+      this.permissions.clearDoc(docId)
     }
 
     if (sessionId) await patchState(docId, { sessionId }).catch(() => {})
@@ -337,27 +320,16 @@ export class AgentManager {
     signal: AbortSignal,
     onEditApplied: () => void
   ): Promise<PermissionResult> {
-    if (READ_ONLY.has(tool) || tool.startsWith('mcp__')) {
+    const decision = decideTool(cwd, tool, input)
+    if (decision.kind === 'deny') {
+      return { behavior: 'deny', message: decision.message }
+    }
+    if (decision.kind === 'allow') {
       return { behavior: 'allow', updatedInput: input }
     }
 
-    const fileTools = new Set(['Write', 'Edit', 'MultiEdit', 'NotebookEdit'])
-    let filePath: string | undefined
-    if (fileTools.has(tool) && typeof input.file_path === 'string') {
-      filePath = path.relative(cwd, path.resolve(cwd, input.file_path))
-    }
-
-    // comments.json belongs to the app
-    if (filePath === COMMENTS_FILE) {
-      return {
-        behavior: 'deny',
-        message: 'comments.json is managed by Fabulist. Reply in chat instead; the app records comment replies.'
-      }
-    }
-
-    // auto-approve mode: file edits apply immediately, no approval card.
-    // Read fresh each time so flipping the toggle mid-run takes effect.
-    if (fileTools.has(tool)) {
+    const filePath = decision.filePath
+    if (isFileEditTool(tool)) {
       const { autoApprove } = await readState(docId).catch(() => ({ autoApprove: false }))
       if (autoApprove) {
         if (filePath) {
@@ -459,20 +431,16 @@ export class AgentManager {
       status: 'working',
       detail: request.questions ? 'Waiting for your answer' : 'Waiting for your approval'
     })
-    this.pendingRequests.set(request.requestId, request)
     return new Promise((resolve) => {
       const done = (approved: boolean, answers?: Record<string, string>): void => {
-        this.pendingPermissions.delete(request.requestId)
-        this.pendingRequests.delete(request.requestId)
+        this.permissions.delete(request.requestId)
         this.emit({ kind: 'permission-resolved', docId, requestId: request.requestId, approved })
-        // drop the "Waiting for…" label once nothing is pending — long thinking
-        // stretches emit no status, so a stale label would sit there lying
-        if (this.pendingPermissions.size === 0) {
+        if (!this.permissions.hasAnyForDoc(docId)) {
           this.emit({ kind: 'status', docId, status: 'working' })
         }
         resolve({ approved, answers })
       }
-      this.pendingPermissions.set(request.requestId, done)
+      this.permissions.add(request, done)
       signal.addEventListener('abort', () => done(false), { once: true })
     })
   }
@@ -483,10 +451,8 @@ export class AgentManager {
    * waiting on a request the UI no longer knows about.
    */
   resendPending(docId: string): void {
-    for (const request of this.pendingRequests.values()) {
-      if (request.docId === docId) {
-        this.emit({ kind: 'permission-request', docId, request })
-      }
+    for (const request of this.permissions.requestsForDoc(docId)) {
+      this.emit({ kind: 'permission-request', docId, request })
     }
   }
 }

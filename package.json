@@ -28,6 +28,9 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "test": "vitest run --config tests/vitest.config.ts",
+    "test:watch": "vitest --config tests/vitest.config.ts",
+    "test:regression": "vitest run --config tests/vitest.config.ts tests/regression",
     "start": "electron-vite preview",
     "pack": "npm run build && electron-builder --dir",
     "dist": "npm run build && electron-builder"
@@ -62,6 +65,7 @@
     "electron-vite": "^5.0.0",
     "typescript": "^6.0.3",
     "vite": "^7.3.4",
+    "vitest": "^4.1.8",
     "ws": "^8.21.0"
   }
 }

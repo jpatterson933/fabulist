@@ -59,7 +59,7 @@ export default function ChatPanel({ docId }: { docId: string }): React.JSX.Eleme
   const send = (): void => {
     if ((!input.trim() && attachments.paths.length === 0) || busy) return
     stickToBottom.current = true // sending always jumps to the latest
-    askClaude(attachments.consume(input))
+    void askClaude(attachments.consume(input))
     setInput('')
     setSlash(null)
   }

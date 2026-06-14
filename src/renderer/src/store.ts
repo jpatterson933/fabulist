@@ -88,7 +88,7 @@ interface FabulistStore {
   setActiveThread: (threadId: string | null) => void
   jumpToThread: (threadId: string) => void
 
-  askClaude: (prompt: string, opts?: { quote?: string; commentId?: string }) => void
+  askClaude: (prompt: string, opts?: { quote?: string; commentId?: string }) => Promise<void>
   /** send a comment thread to Claude now, or queue it if the agent is busy */
   engageClaudeOnThread: (thread: CommentThread) => void
   setModel: (model: string) => void
@@ -342,7 +342,7 @@ export const useStore = create<FabulistStore>((set, get) => ({
       })
       return
     }
-    get().askClaude(prompt, { quote: thread.anchor.text, commentId: thread.id })
+    void get().askClaude(prompt, { quote: thread.anchor.text, commentId: thread.id })
   },
 
   resolveThread: async (threadId, status) => {
@@ -371,14 +371,14 @@ export const useStore = create<FabulistStore>((set, get) => ({
     })
   },
 
-  askClaude: (prompt, opts = {}) => {
+  askClaude: async (prompt, opts = {}) => {
     const id = get().activeId
     if (!id || !prompt.trim()) return
     // comment-initiated prompts reply into the thread — stay where the user is
     if (opts.commentId) set({ pendingCommentId: opts.commentId, sidebarOpen: true })
     else set({ tab: 'chat', sidebarOpen: true })
-    void get().flushWrite()
-    window.fabulist.agent.send(id, prompt.trim(), opts)
+    await get().flushWrite()
+    await window.fabulist.agent.send(id, prompt.trim(), opts)
   },
 
   setModel: (model) => {
@@ -571,7 +571,7 @@ export const useStore = create<FabulistStore>((set, get) => ({
           const [next, ...rest] = get().queuedCommentSends
           if (next) {
             set({ queuedCommentSends: rest })
-            get().askClaude(next.prompt, { quote: next.quote, commentId: next.commentId })
+            void get().askClaude(next.prompt, { quote: next.quote, commentId: next.commentId })
           }
         }
         break
