@@ -6,8 +6,6 @@ import { nextSeq, reanchor } from './shared'
 let writeTimer: ReturnType<typeof setTimeout> | null = null
 let idleCommitTimer: ReturnType<typeof setTimeout> | null = null
 
-const errText = (e: unknown): string => (e instanceof Error ? e.message : String(e))
-
 export const createDocSlice: StateCreator<Store, [], [], DocSlice> = (set, get) => ({
   docs: [],
   activeId: null,
@@ -16,7 +14,6 @@ export const createDocSlice: StateCreator<Store, [], [], DocSlice> = (set, get) 
   tab: 'chat',
   sidebarOpen: true,
   libraryOpen: true,
-  lastError: null,
 
   loadDocs: async () => {
     set({ docs: await window.fabulist.library.list() })
@@ -37,20 +34,25 @@ export const createDocSlice: StateCreator<Store, [], [], DocSlice> = (set, get) 
   // Orchestrate the open: set this slice's own fields, then let each slice load
   // and reset its OWN state. docSlice no longer reaches into other slices' fields.
   openDoc: async (id) => {
-    await get().closeDoc()
-    const content = await window.fabulist.doc.read(id)
-    set({ activeId: id, content, external: { seq: nextSeq(), content } })
-    await Promise.all([
-      get().reloadThreads(), // CommentsSlice → threads (re-anchored)
-      get().loadHistory(), // HistorySlice → commits
-      get().loadSettings(id), // SettingsSlice → model/font/autoApprove
-      get().loadChat(id) // ChatSlice → chats[id]
-    ])
-    get().clearCommentDrafts() // CommentsSlice transient
-    get().resetPermissions() // PermissionsSlice
-    get().resetChatRun() // ChatSlice transient
-    // watching also re-emits any permission requests pending for this doc
-    await window.fabulist.doc.watch(id)
+    try {
+      await get().closeDoc()
+      const content = await window.fabulist.doc.read(id)
+      set({ activeId: id, content, external: { seq: nextSeq(), content } })
+      await Promise.all([
+        get().reloadThreads(), // CommentsSlice → threads (re-anchored)
+        get().loadHistory(), // HistorySlice → commits
+        get().loadSettings(id), // SettingsSlice → model/font/autoApprove
+        get().loadChat(id) // ChatSlice → chats[id]
+      ])
+      get().clearCommentDrafts() // CommentsSlice transient
+      get().resetPermissions() // PermissionsSlice
+      get().resetChatRun() // ChatSlice transient
+      // watching also re-emits any permission requests pending for this doc
+      await window.fabulist.doc.watch(id)
+    } catch (e) {
+      // surface instead of failing silently — a doc that won't open is a real error
+      get().reportError(e, 'Couldn’t open the document')
+    }
   },
 
   closeDoc: async () => {
@@ -73,7 +75,7 @@ export const createDocSlice: StateCreator<Store, [], [], DocSlice> = (set, get) 
       writeTimer = null
       window.fabulist.doc
         .write(id, get().content)
-        .catch((e) => get().reportError(`Couldn't save your changes: ${errText(e)}`))
+        .catch((e) => get().reportError(e, 'Couldn’t save your changes'))
     }, 400)
     if (idleCommitTimer) clearTimeout(idleCommitTimer)
     idleCommitTimer = setTimeout(async () => {
@@ -93,7 +95,7 @@ export const createDocSlice: StateCreator<Store, [], [], DocSlice> = (set, get) 
       writeTimer = null
       await window.fabulist.doc
         .write(id, get().content)
-        .catch((e) => get().reportError(`Couldn't save your changes: ${errText(e)}`))
+        .catch((e) => get().reportError(e, 'Couldn’t save your changes'))
     }
   },
 
@@ -108,9 +110,6 @@ export const createDocSlice: StateCreator<Store, [], [], DocSlice> = (set, get) 
   setTab: (tab) => set({ tab, sidebarOpen: true }),
   toggleSidebar: () => set({ sidebarOpen: !get().sidebarOpen }),
   toggleLibrary: () => set({ libraryOpen: !get().libraryOpen }),
-
-  reportError: (message) => set({ lastError: message }),
-  dismissError: () => set({ lastError: null }),
 
   handleExternalChange: (id, content) => {
     if (get().activeId !== id) return

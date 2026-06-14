@@ -36,8 +36,6 @@ export interface DocSlice {
   tab: SidebarTab
   sidebarOpen: boolean
   libraryOpen: boolean
-  /** Last surfaced error (e.g. a failed manuscript save), shown as a dismissible banner. */
-  lastError: string | null
 
   loadDocs: () => Promise<void>
   createDoc: (title: string) => Promise<void>
@@ -52,12 +50,18 @@ export interface DocSlice {
   setTab: (tab: SidebarTab) => void
   toggleSidebar: () => void
   toggleLibrary: () => void
-  /** Surface a user-facing error (instead of swallowing it). */
-  reportError: (message: string) => void
-  /** Clear the error banner. */
-  dismissError: () => void
 
   handleExternalChange: (id: string, content: string) => void
+}
+
+/** Renderer error reporting — the one place that decides how a reported error surfaces. */
+export interface ErrorsSlice {
+  /** Last surfaced error (e.g. a failed manuscript save), shown as a dismissible banner. */
+  lastError: string | null
+  /** Report an error from anywhere: formats, logs (→ terminal), and shows the banner. */
+  reportError: (e: unknown, context?: string) => void
+  /** Clear the error banner. */
+  dismissError: () => void
 }
 
 /** Comment threads, the in-progress draft, and re-anchoring through edits. */
@@ -165,4 +169,5 @@ export type Store = DocSlice &
   ChatSlice &
   PermissionsSlice &
   SettingsSlice &
-  HistorySlice
+  HistorySlice &
+  ErrorsSlice

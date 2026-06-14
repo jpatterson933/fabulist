@@ -21,6 +21,7 @@ import { describeTool, buildToolPayload } from './toolRegistry'
 import { parseSdkMessages, type ParsedRun, type SdkMessage } from './sdkStream'
 import { PermissionBroker } from './permissionBroker'
 import { emitEvent } from './ipcTyped'
+import { logError } from './log'
 
 // Re-exported so existing importers (and tests) keep `agent.describeTool` working.
 export { describeTool }
@@ -223,15 +224,21 @@ export class AgentManager {
     run: ParsedRun,
     editsApplied: number
   ): Promise<void> {
-    if (run.sessionId) await patchState(docId, { sessionId: run.sessionId }).catch(() => {})
+    if (run.sessionId) {
+      await patchState(docId, { sessionId: run.sessionId }).catch((e) =>
+        logError('persisting agent session', e)
+      )
+    }
 
     if (editsApplied > 0) {
       const label = prompt.replace(/\s+/g, ' ').slice(0, 64)
-      await commitAll(cwd, `Claude: ${label}`).catch(() => {})
+      await commitAll(cwd, `Claude: ${label}`).catch((e) => logError('committing agent edits', e))
     }
 
     if (opts.commentId && run.ok && run.finalText.trim()) {
-      await comments.reply(docId, opts.commentId, 'claude', run.finalText.trim()).catch(() => {})
+      await comments
+        .reply(docId, opts.commentId, 'claude', run.finalText.trim())
+        .catch((e) => logError('recording comment reply', e))
     }
 
     this.emit({

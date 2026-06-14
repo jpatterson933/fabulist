@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { DocSkill } from '@shared/types'
+import { errorMessage } from '@shared/errors'
 
 /**
  * Skills manager — deliberately self-contained: all state is local and all IO
@@ -30,7 +31,7 @@ export default function SkillsPanel({ docId }: { docId: string }): React.JSX.Ele
       if (added.length > 0) setNotice(`Installed ${added.map((s) => s.name).join(', ')}`)
       await refresh()
     } catch (err) {
-      setError(err instanceof Error ? err.message.replace(/^Error invoking remote method.*?: Error: /, '') : String(err))
+      setError(errorMessage(err))
     } finally {
       setBusy(false)
     }

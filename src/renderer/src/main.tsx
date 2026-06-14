@@ -11,6 +11,7 @@ import '@fontsource/ibm-plex-mono/400.css'
 import '@fontsource/ibm-plex-mono/500.css'
 import './styles/global.css'
 import App from './App'
+import ErrorBoundary from './components/ErrorBoundary'
 import { useStore } from './store'
 import { bootstrap } from './store/bootstrap'
 
@@ -23,6 +24,8 @@ if (import.meta.env.DEV) {
 
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </React.StrictMode>
 )

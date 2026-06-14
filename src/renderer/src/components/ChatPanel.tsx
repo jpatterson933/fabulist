@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { DocSkill } from '@shared/types'
 import { useStore } from '@/store'
+import { selectChat } from '@/store/selectors'
 import SkillsPanel from '@/components/SkillsPanel'
 import { AttachChips, useAttachments } from '@/lib/useAttachments'
 import { ApprovalCard } from '@/components/chat/ApprovalCard'
@@ -15,7 +16,7 @@ function slashTokenAt(text: string, caret: number): { start: number; query: stri
 }
 
 export default function ChatPanel({ docId }: { docId: string }): React.JSX.Element {
-  const chat = useStore((s) => s.chats[docId] ?? [])
+  const chat = useStore(selectChat(docId))
   const allPermissions = useStore((s) => s.permissions)
   const permissions = useMemo(
     () => allPermissions.filter((p) => p.docId === docId),

@@ -6,6 +6,7 @@ import { createChatSlice } from './chatSlice'
 import { createPermissionsSlice } from './permissionsSlice'
 import { createSettingsSlice } from './settingsSlice'
 import { createHistorySlice } from './historySlice'
+import { createErrorsSlice } from './errorsSlice'
 
 export type { Store, SidebarTab, DraftComment, AgentState } from './types'
 
@@ -18,5 +19,6 @@ export const useStore = create<Store>()((...a) => ({
   ...createChatSlice(...a),
   ...createPermissionsSlice(...a),
   ...createSettingsSlice(...a),
-  ...createHistorySlice(...a)
+  ...createHistorySlice(...a),
+  ...createErrorsSlice(...a)
 }))

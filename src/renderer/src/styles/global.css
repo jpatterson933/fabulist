@@ -1860,3 +1860,21 @@ input::placeholder {
 .error-toast-text {
   flex: 1;
 }
+
+/* Full-screen fallback when a render throws (ErrorBoundary) — never a blank window. */
+.app-crash {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: 100vh;
+  text-align: center;
+  padding: 24px;
+}
+.app-crash-detail {
+  max-width: 520px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  white-space: pre-wrap;
+}
