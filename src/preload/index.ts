@@ -69,6 +69,28 @@ const api = {
     read: (slug: string) => invoke('skills:read', slug),
     reveal: () => invoke('skills:reveal')
   },
+  skillStudio: {
+    list: () => invoke('skillStudio:list'),
+    create: (name: string) => invoke('skillStudio:create', name),
+    remove: (slug: string) => invoke('skillStudio:delete', slug),
+    reveal: (slug?: string) => invoke('skillStudio:reveal', slug),
+    listFiles: (slug: string) => invoke('skillStudio:listFiles', slug),
+    readFile: (slug: string, rel: string) => invoke('skillStudio:readFile', slug, rel),
+    writeFile: (slug: string, rel: string, content: string) =>
+      invoke('skillStudio:writeFile', slug, rel, content),
+    createFile: (slug: string, rel: string) => invoke('skillStudio:createFile', slug, rel),
+    createFolder: (slug: string, rel: string) => invoke('skillStudio:createFolder', slug, rel),
+    deleteFile: (slug: string, rel: string) => invoke('skillStudio:deleteFile', slug, rel),
+    test: (slug: string, prompt: string) => invoke('skillStudio:test', slug, prompt),
+    resetTest: (slug: string) => invoke('skillStudio:resetTest', slug),
+    interruptTest: (slug: string) => invoke('skillStudio:interruptTest', slug),
+    testBusy: (slug: string) => invoke('skillStudio:testBusy', slug),
+    onEvent: (cb: (event: AgentEvent) => void) => subscribe('skillStudio:event', cb),
+    authSend: (slug: string, prompt: string) => invoke('skillStudio:authSend', slug, prompt),
+    authInterrupt: (slug: string) => invoke('skillStudio:authInterrupt', slug),
+    authBusy: (slug: string) => invoke('skillStudio:authBusy', slug),
+    onAuthEvent: (cb: (event: AgentEvent) => void) => subscribe('skillStudio:authEvent', cb)
+  },
   agent: {
     send: (id: string, prompt: string, opts?: SendOptions) =>
       invoke('agent:send', id, prompt, opts ?? {}),

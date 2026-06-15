@@ -7,8 +7,9 @@ import { createPermissionsSlice } from './permissionsSlice'
 import { createSettingsSlice } from './settingsSlice'
 import { createHistorySlice } from './historySlice'
 import { createErrorsSlice } from './errorsSlice'
+import { createSkillStudioSlice } from './skillStudioSlice'
 
-export type { Store, SidebarTab, DraftComment, AgentState } from './types'
+export type { Store, SidebarTab, DraftComment, AgentState, AppMode } from './types'
 
 // One store, composed from focused slices. Every slice receives the shared
 // (set, get), so cross-slice calls (e.g. the chat reducer reloading history or
@@ -20,5 +21,6 @@ export const useStore = create<Store>()((...a) => ({
   ...createPermissionsSlice(...a),
   ...createSettingsSlice(...a),
   ...createHistorySlice(...a),
-  ...createErrorsSlice(...a)
+  ...createErrorsSlice(...a),
+  ...createSkillStudioSlice(...a)
 }))

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { selectChat } from '@/store/selectors'
+import { selectChat, selectTestChat } from '@/store/selectors'
 import type { Store } from '@/store/types'
 import type { ChatItem } from '@shared/types'
 
@@ -20,5 +20,21 @@ describe('selectChat', () => {
     const chat: ChatItem[] = [{ id: 'm', role: 'user', text: 'hi', at: 0 }]
     const s = state({ doc: chat })
     expect(selectChat('doc')(s)).toBe(chat)
+  })
+})
+
+const testState = (testChats: Record<string, ChatItem[]>): Store =>
+  ({ testChats }) as unknown as Store
+
+describe('selectTestChat', () => {
+  it('returns the SAME empty array reference when the skill has no test chat', () => {
+    const s = testState({})
+    expect(selectTestChat('missing')(s)).toBe(selectTestChat('missing')(s))
+  })
+
+  it('returns the skill test chat array by reference when present', () => {
+    const chat: ChatItem[] = [{ id: 'm', role: 'user', text: 'hi', at: 0 }]
+    const s = testState({ skill: chat })
+    expect(selectTestChat('skill')(s)).toBe(chat)
   })
 })

@@ -6,6 +6,8 @@ import * as versioning from './versioning'
 import * as comments from './comments'
 import { agentManager } from './agent'
 import * as skills from './skills'
+import * as skillStudio from './skillStudio'
+import { studioAgent } from './studioAgent'
 import { watchFiles, type DocWatcher } from './docWatcher'
 
 const DOC_FILE = library.DOC_FILE
@@ -21,6 +23,7 @@ export function registerIpc(win: BrowserWindow): void {
   registerVersioning()
   registerComments()
   registerSkills()
+  registerSkillStudio(win)
   registerAgent(win)
 }
 
@@ -102,6 +105,51 @@ function registerSkills(): void {
   handle('skills:reveal', () => {
     shell.openPath(skills.SKILLS_ROOT)
   })
+}
+
+function registerSkillStudio(win: BrowserWindow): void {
+  studioAgent.attach(win.webContents)
+
+  handle('skillStudio:list', () => skillStudio.listSkills())
+  handle('skillStudio:create', (_e, name) => skillStudio.createSkill(name))
+  handle('skillStudio:delete', (_e, slug) => skillStudio.deleteSkill(slug))
+  handle('skillStudio:reveal', (_e, slug) => skillStudio.reveal(slug))
+  handle('skillStudio:listFiles', (_e, slug) => skillStudio.listFiles(slug))
+  handle('skillStudio:readFile', (_e, slug, rel) => skillStudio.readFile(slug, rel))
+  handle('skillStudio:writeFile', (_e, slug, rel, content) =>
+    skillStudio.writeFile(slug, rel, content)
+  )
+  handle('skillStudio:createFile', (_e, slug, rel) => skillStudio.createFile(slug, rel))
+  handle('skillStudio:createFolder', (_e, slug, rel) => skillStudio.createFolder(slug, rel))
+  handle('skillStudio:deleteFile', (_e, slug, rel) => skillStudio.deleteFile(slug, rel))
+
+  // fire and forget; progress streams back over skillStudio:event
+  handle('skillStudio:test', (_e, slug, prompt) => {
+    studioAgent.test(slug, prompt).catch((err) => {
+      emitEvent(win.webContents, 'skillStudio:event', {
+        kind: 'status',
+        docId: slug,
+        status: 'error',
+        detail: err instanceof Error ? err.message : String(err)
+      })
+    })
+  })
+  handle('skillStudio:resetTest', (_e, slug) => studioAgent.resetTest(slug))
+  handle('skillStudio:interruptTest', (_e, slug) => studioAgent.interrupt(slug))
+  handle('skillStudio:testBusy', (_e, slug) => studioAgent.isBusy(slug))
+
+  handle('skillStudio:authSend', (_e, slug, prompt) => {
+    studioAgent.authSend(slug, prompt).catch((err) => {
+      emitEvent(win.webContents, 'skillStudio:authEvent', {
+        kind: 'status',
+        docId: slug,
+        status: 'error',
+        detail: err instanceof Error ? err.message : String(err)
+      })
+    })
+  })
+  handle('skillStudio:authInterrupt', (_e, slug) => studioAgent.authInterrupt(slug))
+  handle('skillStudio:authBusy', (_e, slug) => studioAgent.authBusy(slug))
 }
 
 function registerAgent(win: BrowserWindow): void {

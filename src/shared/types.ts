@@ -80,6 +80,16 @@ export interface PermissionRequest {
   summary: string
 }
 
+/** Token + cost usage for one agent run, read off the SDK result message. */
+export interface RunUsage {
+  inputTokens: number
+  outputTokens: number
+  cacheReadTokens: number
+  cacheCreationTokens: number
+  costUsd?: number
+  numTurns?: number
+}
+
 /** Lifecycle state of an agent run, shared by the wire event and the store. */
 export type AgentStatus = 'idle' | 'starting' | 'working' | 'done' | 'error'
 
@@ -101,6 +111,7 @@ export type AgentEvent =
       error?: string
       costUsd?: number
       durationMs?: number
+      usage?: RunUsage
       commentId?: string
     }
 
@@ -114,6 +125,8 @@ export interface ChatItem {
   toolNotes?: { toolId: string; note: string; done?: boolean; ok?: boolean }[]
   /** an auto-applied edit, rendered as a collapsed diff card */
   edit?: { tool: string; filePath?: string; before: string; after: string }
+  /** a token/cost usage line for a finished run (Skill Studio test/authoring) */
+  usage?: RunUsage
   streaming?: boolean
   error?: string
 }
@@ -166,6 +179,20 @@ export interface DocSkill {
   skill: SkillMeta
   /** enabled for the current document */
   enabled: boolean
+}
+
+/** A skill being authored in the Skill Studio — read from its SKILL.md frontmatter. */
+export interface StudioSkill {
+  /** folder name under the studio plugin's skills/ dir */
+  slug: string
+  name: string
+  description: string
+}
+
+/** One file or directory inside a studio skill's folder (posix-relative path). */
+export interface StudioFile {
+  rel: string
+  isDir: boolean
 }
 
 export interface SendOptions {

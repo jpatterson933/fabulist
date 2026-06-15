@@ -50,6 +50,7 @@
     "@fontsource/ibm-plex-sans": "^5.2.8",
     "@lezer/highlight": "^1.2.3",
     "diff": "^9.0.0",
+    "prettier": "^3.8.4",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "zustand": "^5.0.14"

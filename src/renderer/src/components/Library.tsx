@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useStore } from '@/store'
 import { relativeTime } from '@/lib/format'
+import WorkspaceSwitcher from '@/studio/WorkspaceSwitcher'
 
 export default function Library(): React.JSX.Element {
   const docs = useStore((s) => s.docs)
@@ -25,10 +26,7 @@ export default function Library(): React.JSX.Element {
       <div className="library-inner">
         <div className="library-lights" />
         <div className="library-brand">
-          <span className="library-brand-glyph" aria-hidden>
-            ❡
-          </span>
-          <span className="library-brand-mark">Fabulist</span>
+          <WorkspaceSwitcher />
         </div>
 
         <div className="library-head">

@@ -56,6 +56,27 @@ export function makeFabulist(
       busy: vi.fn(async () => false),
       models: vi.fn(async () => []),
       respondPermission: vi.fn(() => {})
+    },
+    skillStudio: {
+      list: vi.fn(async () => []),
+      create: vi.fn(async () => ({ slug: 'skill', name: 'skill', description: '' })),
+      remove: vi.fn(async () => {}),
+      reveal: vi.fn(async () => {}),
+      listFiles: vi.fn(async () => []),
+      readFile: vi.fn(async () => ''),
+      writeFile: vi.fn(async () => {}),
+      createFile: vi.fn(async () => {}),
+      createFolder: vi.fn(async () => {}),
+      deleteFile: vi.fn(async () => {}),
+      test: vi.fn(async () => {}),
+      resetTest: vi.fn(async () => {}),
+      interruptTest: vi.fn(async () => {}),
+      testBusy: vi.fn(async () => false),
+      onEvent: vi.fn(() => () => {}),
+      authSend: vi.fn(async () => {}),
+      authInterrupt: vi.fn(async () => {}),
+      authBusy: vi.fn(async () => false),
+      onAuthEvent: vi.fn(() => () => {})
     }
   }
   for (const ns of Object.keys(overrides)) {
