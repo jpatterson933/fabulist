@@ -27,6 +27,7 @@ export function registerIpc(win: BrowserWindow): void {
 function registerLibrary(): void {
   handle('library:list', () => library.listDocs())
   handle('library:create', (_e, title) => library.createDoc(title))
+  handle('library:clone', (_e, id) => library.cloneDoc(id))
   handle('library:delete', (_e, id) => library.deleteDoc(id))
   handle('library:reveal', (_e, id) => {
     shell.showItemInFolder(library.docFile(id))

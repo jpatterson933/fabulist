@@ -151,6 +151,33 @@ export async function createDoc(title: string): Promise<DocMeta> {
   return meta
 }
 
+/** Rewrite the first non-empty line's heading text, matching how readMeta derives a title. */
+function retitle(content: string, title: string): string {
+  const lines = content.split('\n')
+  const idx = lines.findIndex((l) => l.trim())
+  if (idx === -1) return `# ${title}\n\n`
+  const hashes = lines[idx].match(/^#+/)?.[0] ?? '#'
+  lines[idx] = `${hashes} ${title}`
+  return lines.join('\n')
+}
+
+/**
+ * Duplicate a document's current text into a brand-new document. Only the
+ * manuscript carries over (retitled "<title> (copy)"); chat, comments, history,
+ * and the agent session all start fresh — createDoc builds the new folder, this
+ * just overwrites its stub body. Nothing is read from the source's app state.
+ */
+export async function cloneDoc(sourceId: string): Promise<DocMeta> {
+  const content = await fs.readFile(docFile(sourceId), 'utf8')
+  const firstLine = content.split('\n').find((l) => l.trim()) ?? ''
+  const srcTitle = firstLine.replace(/^#+\s*/, '').trim() || 'Untitled'
+  const title = `${srcTitle} (copy)`
+  const meta = await createDoc(title)
+  await writeDoc(meta.id, retitle(content, title))
+  await commitAll(docPath(meta.id), 'Cloned document')
+  return (await readMeta(meta.id)) ?? meta
+}
+
 export async function deleteDoc(id: string): Promise<void> {
   await fs.rm(docPath(id), { recursive: true, force: true })
 }

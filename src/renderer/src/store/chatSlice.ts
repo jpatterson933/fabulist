@@ -34,11 +34,13 @@ export const createChatSlice: StateCreator<Store, [], [], ChatSlice> = (set, get
 
   revealEdit: (edit) => {
     // locate by the inserted text (fall back to the replaced text) in the
-    // current content — positions from the edit itself would be stale
+    // current content — positions from the edit itself would be stale. The
+    // span we find is what the editor scrolls to and briefly highlights.
     const { content } = get()
     const needle = [edit.after, edit.before].find((s) => s && content.includes(s))
     if (needle === undefined) return
-    set({ revealPos: { pos: content.indexOf(needle), seq: nextSeq() } })
+    const from = content.indexOf(needle)
+    set({ revealPos: { from, to: from + needle.length, seq: nextSeq() } })
   },
 
   handleAgentEvent: (e) => {

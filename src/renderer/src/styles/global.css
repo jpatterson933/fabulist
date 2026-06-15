@@ -301,7 +301,7 @@ input::placeholder {
   display: block;
   width: 100%;
   text-align: left;
-  padding: 10px 26px 10px 12px;
+  padding: 10px 48px 10px 12px;
 }
 
 .library-item-title {
@@ -330,10 +330,10 @@ input::placeholder {
   color: var(--ink-faint);
 }
 
-.library-item-x {
+.library-item-x,
+.library-item-clone {
   position: absolute;
   top: 8px;
-  right: 8px;
   width: 20px;
   height: 20px;
   border-radius: 5px;
@@ -343,12 +343,24 @@ input::placeholder {
   opacity: 0;
   transition: all 140ms ease;
 }
-.library-item:hover .library-item-x {
+.library-item-x {
+  right: 8px;
+}
+.library-item-clone {
+  right: 30px;
+  font-size: 13px;
+}
+.library-item:hover .library-item-x,
+.library-item:hover .library-item-clone {
   opacity: 1;
 }
 .library-item-x:hover {
   background: var(--bad);
   color: white;
+}
+.library-item-clone:hover {
+  background: var(--paper-deeper);
+  color: var(--ink);
 }
 
 .library-item-confirm {
@@ -586,6 +598,21 @@ input::placeholder {
   }
   100% {
     box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+/* transient highlight on "Show in document" — blooms in, then sits on the new
+   text (Claude's accent) until the next click clears it */
+.cm-reveal {
+  background: var(--accent-wash) !important;
+  border-radius: 2px;
+  box-shadow: 0 0 0 2px var(--accent-wash);
+  animation: reveal-flash 800ms var(--ease-out);
+}
+
+@keyframes reveal-flash {
+  from {
+    box-shadow: 0 0 0 6px var(--accent-wash);
   }
 }
 

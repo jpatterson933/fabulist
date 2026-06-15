@@ -6,6 +6,13 @@ All notable changes to Fabulist are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- **Clone a document**: a clone button (⧉) on each library row copies the document's
+  current text into a brand-new document — titled "<title> (copy)" — with chat,
+  comments, history, and the agent session all starting fresh. Only the manuscript
+  carries over; everything else is reset.
+- **"Show in document" now highlights the edit**: clicking it on an applied-edit card
+  still scrolls to the change, and now also paints a brief highlight over the new text
+  so your eye lands on it. The highlight is temporary — the next click anywhere clears it.
 - **Skills**: install Claude Code skills (SKILL.md instruction packs) from a local
   folder or archive, then toggle them on per document — managed
   from a **Skills modal** opened via the **+** button next to the model picker (or the
@@ -33,6 +40,9 @@ All notable changes to Fabulist are documented here. The format follows
   work without warning.
 
 ### Fixed
+- A comment you were typing no longer vanishes when you switch sidebar tabs (e.g. to
+  the Claude tab and back) — the in-progress draft text now lives in the store, so it
+  survives until you post or cancel.
 - Notebook (`NotebookEdit`) approval cards were blank and labelled with the bare
   tool name: they now show the proposed cell source as a diff and read "Editing
   `<file>.ipynb`", like every other file edit. (Tool descriptions, approval

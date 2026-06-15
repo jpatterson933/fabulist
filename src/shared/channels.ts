@@ -28,6 +28,7 @@ import type { DocSettings, SettingKey } from './settings'
 export interface InvokeChannels {
   'library:list': () => DocMeta[]
   'library:create': (title: string) => DocMeta
+  'library:clone': (id: string) => DocMeta
   'library:delete': (id: string) => void
   'library:reveal': (id: string) => void
 

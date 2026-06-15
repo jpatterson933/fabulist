@@ -23,6 +23,7 @@ const api = {
   library: {
     list: () => invoke('library:list'),
     create: (title: string) => invoke('library:create', title),
+    clone: (id: string) => invoke('library:clone', id),
     remove: (id: string) => invoke('library:delete', id),
     reveal: (id: string) => invoke('library:reveal', id)
   },

@@ -15,6 +15,8 @@ export type SidebarTab = 'chat' | 'comments' | 'history'
 
 export interface DraftComment {
   anchor: CommentAnchor
+  /** in-progress text, kept in the store so it survives tab switches and sidebar toggles */
+  text: string
 }
 
 export interface AgentState {
@@ -39,6 +41,8 @@ export interface DocSlice {
 
   loadDocs: () => Promise<void>
   createDoc: (title: string) => Promise<void>
+  /** Duplicate a document's current text into a fresh document, then open it. */
+  cloneDoc: (id: string) => Promise<void>
   deleteDoc: (id: string) => Promise<void>
   openDoc: (id: string) => Promise<void>
   closeDoc: () => Promise<void>
@@ -82,6 +86,8 @@ export interface CommentsSlice {
   sendNextQueuedComment: () => void
   persistAnchors: (anchors: { id: string; from: number; to: number }[]) => void
   startDraftComment: (anchor: CommentAnchor) => void
+  /** Update the in-progress draft text (persisted in the store across tab switches). */
+  setDraftCommentText: (text: string) => void
   cancelDraftComment: () => void
   submitDraftComment: (text: string) => Promise<void>
   replyToThread: (threadId: string, text: string) => Promise<void>
@@ -99,8 +105,8 @@ export interface ChatSlice {
   agent: Record<string, AgentState>
   /** thread Claude is currently replying to */
   pendingCommentId: string | null
-  /** opt-in scroll request to a document offset (e.g. "Show in document" on an edit card) */
-  revealPos: { pos: number; seq: number } | null
+  /** opt-in request to scroll to + transiently highlight an edited span (e.g. "Show in document") */
+  revealPos: { from: number; to: number; seq: number } | null
 
   askClaude: (prompt: string, opts?: { quote?: string; commentId?: string }) => Promise<void>
   /** Load the persisted transcript for a document into the chat map. */
