@@ -2,7 +2,7 @@ import type { StateCreator } from 'zustand'
 import type { ChatItem } from '@shared/types'
 import { isPrimaryDoc } from '@shared/doc'
 import type { ChatSlice, Store } from './types'
-import { nextSeq } from './shared'
+import { findEditSpan, nextSeq } from './shared'
 
 export const createChatSlice: StateCreator<Store, [], [], ChatSlice> = (set, get) => ({
   chats: {},
@@ -33,14 +33,9 @@ export const createChatSlice: StateCreator<Store, [], [], ChatSlice> = (set, get
   resetChatRun: () => set({ pendingCommentId: null }),
 
   revealEdit: (edit) => {
-    // locate by the inserted text (fall back to the replaced text) in the
-    // current content — positions from the edit itself would be stale. The
-    // span we find is what the editor scrolls to and briefly highlights.
-    const { content } = get()
-    const needle = [edit.after, edit.before].find((s) => s && content.includes(s))
-    if (needle === undefined) return
-    const from = content.indexOf(needle)
-    set({ revealPos: { from, to: from + needle.length, seq: nextSeq() } })
+    // the span we find is what the editor scrolls to and briefly highlights
+    const span = findEditSpan(get().content, edit)
+    if (span) set({ revealPos: { ...span, seq: nextSeq() } })
   },
 
   handleAgentEvent: (e) => {

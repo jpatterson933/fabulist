@@ -1,8 +1,9 @@
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { shell } from 'electron'
-import type { StudioFile, StudioSkill } from '@shared/types'
-import { LIBRARY_ROOT } from './library'
+import type { ArchivedTest, ChatItem, StudioFile, StudioSkill } from '@shared/types'
+import { formatTestVersion } from '@shared/testVersion'
+import { LIBRARY_ROOT, sanitizeChat } from './library'
 import { initRepo, commitAll } from './git'
 import { validateSkillSlug, resolveInside } from './pathGuards'
 
@@ -30,6 +31,10 @@ import { validateSkillSlug, resolveInside } from './pathGuards'
  */
 export const STUDIO_ROOT = path.join(LIBRARY_ROOT, '.skill-studio')
 const MARKET_DIR = path.join(STUDIO_ROOT, '.claude-plugin')
+// Per-skill app state (chat transcripts + authoring session), kept OUTSIDE the
+// plugin folders so it never shows in the file tree or loads as plugin content.
+// Dot-dir, so listPluginSlugs skips it; gitignored so transcripts aren't versioned.
+const STATE_DIR = path.join(STUDIO_ROOT, '.state')
 
 const MAX_FILES = 800
 const MAX_DEPTH = 8
@@ -43,13 +48,6 @@ export function pluginPath(slug: string): string {
 }
 function skillMdPath(slug: string): string {
   return path.join(pluginPath(slug), 'skills', slug, 'SKILL.md')
-}
-
-async function writeIfAbsent(p: string, content: string): Promise<void> {
-  if (!(await exists(p))) {
-    await fs.mkdir(path.dirname(p), { recursive: true })
-    await fs.writeFile(p, content)
-  }
 }
 
 function slugify(name: string): string {
@@ -104,12 +102,123 @@ async function writeMarketplace(): Promise<void> {
 export async function ensureStudio(): Promise<void> {
   const fresh = !(await exists(STUDIO_ROOT))
   await fs.mkdir(MARKET_DIR, { recursive: true })
-  await writeIfAbsent(path.join(STUDIO_ROOT, '.gitignore'), '.DS_Store\n')
+  await ensureGitignore()
   await writeMarketplace()
   if (fresh) {
     await initRepo(STUDIO_ROOT).catch(() => {})
     await commitAll(STUDIO_ROOT, 'Initialize Skill Studio').catch(() => {})
   }
+}
+
+/** Keep .DS_Store and the .state/ app-state dir out of git, without clobbering manual edits. */
+async function ensureGitignore(): Promise<void> {
+  const giPath = path.join(STUDIO_ROOT, '.gitignore')
+  const cur = await fs.readFile(giPath, 'utf8').catch(() => '')
+  const lines = cur.split(/\r?\n/)
+  const missing = ['.DS_Store', '.state/'].filter((w) => !lines.includes(w))
+  if (missing.length === 0) return
+  await fs.writeFile(giPath, (cur && !cur.endsWith('\n') ? cur + '\n' : cur) + missing.join('\n') + '\n')
+}
+
+// --- per-skill app state under .skill-studio/.state/<slug>.json ---
+
+interface StudioState {
+  authChat?: ChatItem[]
+  testChat?: ChatItem[]
+  /** resume id for the authoring conversation, so it continues after a restart */
+  authSessionId?: string
+  /** version index of the CURRENT live test (1 = the first); see shared/testVersion.ts */
+  testVersion?: number
+  /** archived test runs, most-recent-first, read-only */
+  archivedTests?: ArchivedTest[]
+}
+
+const MAX_ARCHIVED = 50
+
+/** Validate archived-test entries read off disk (never trust on-disk JSON). */
+function sanitizeArchived(v: unknown): ArchivedTest[] {
+  if (!Array.isArray(v)) return []
+  return v
+    .filter(
+      (a): a is ArchivedTest =>
+        !!a &&
+        typeof (a as ArchivedTest).version === 'string' &&
+        typeof (a as ArchivedTest).at === 'number'
+    )
+    .map((a) => ({ version: a.version, at: a.at, chat: sanitizeChat(a.chat) }))
+}
+
+function statePath(slug: string): string {
+  return path.join(STATE_DIR, `${validateSkillSlug(slug)}.json`)
+}
+
+async function readStudioState(slug: string): Promise<StudioState> {
+  try {
+    return JSON.parse(await fs.readFile(statePath(slug), 'utf8')) as StudioState
+  } catch {
+    return {}
+  }
+}
+
+async function patchStudioState(slug: string, patch: Partial<StudioState>): Promise<void> {
+  const cur = await readStudioState(slug)
+  await fs.mkdir(STATE_DIR, { recursive: true })
+  await fs.writeFile(statePath(slug), JSON.stringify({ ...cur, ...patch }, null, 2))
+}
+
+/** The persisted authoring + test transcripts, live test version, and archive (validated on read). */
+export async function readChats(slug: string): Promise<{
+  authChat: ChatItem[]
+  testChat: ChatItem[]
+  testVersion: number
+  archivedTests: ArchivedTest[]
+}> {
+  const s = await readStudioState(slug)
+  return {
+    authChat: sanitizeChat(s.authChat),
+    testChat: sanitizeChat(s.testChat),
+    testVersion: typeof s.testVersion === 'number' ? s.testVersion : 1,
+    archivedTests: sanitizeArchived(s.archivedTests)
+  }
+}
+
+/**
+ * Archive the current test transcript under its version, then bump to the next version
+ * and clear the live thread. Returns the assigned version + the next live version so the
+ * renderer can update without re-reading. The sandbox/session are dropped separately
+ * (resetTest) — an archived run is a read-only transcript, not a resumable session.
+ */
+export async function archiveTest(
+  slug: string,
+  chat: ChatItem[]
+): Promise<{ version: string; at: number; nextVersion: number }> {
+  const s = await readStudioState(slug)
+  const cur = typeof s.testVersion === 'number' ? s.testVersion : 1
+  const version = formatTestVersion(cur)
+  const at = Date.now()
+  const entry: ArchivedTest = { version, at, chat: sanitizeChat(chat).slice(-200) }
+  // most-recent-first, capped
+  const archivedTests = [entry, ...(s.archivedTests ?? [])].slice(0, MAX_ARCHIVED)
+  const nextVersion = cur + 1
+  await patchStudioState(slug, { archivedTests, testChat: [], testVersion: nextVersion })
+  return { version, at, nextVersion }
+}
+
+export async function saveAuthChat(slug: string, chat: ChatItem[]): Promise<void> {
+  await patchStudioState(slug, { authChat: sanitizeChat(chat).slice(-200) })
+}
+
+export async function saveTestChat(slug: string, chat: ChatItem[]): Promise<void> {
+  await patchStudioState(slug, { testChat: sanitizeChat(chat).slice(-200) })
+}
+
+/** Authoring session resume id (the test session isn't resumable — its sandbox is ephemeral). */
+export async function readAuthSessionId(slug: string): Promise<string | undefined> {
+  return (await readStudioState(slug)).authSessionId
+}
+
+export async function saveAuthSessionId(slug: string, sessionId: string): Promise<void> {
+  await patchStudioState(slug, { authSessionId: sessionId })
 }
 
 export async function listSkills(): Promise<StudioSkill[]> {
@@ -146,8 +255,28 @@ export async function createSkill(name: string): Promise<StudioSkill> {
 
 export async function deleteSkill(slug: string): Promise<void> {
   await fs.rm(pluginPath(slug), { recursive: true, force: true })
+  await fs.rm(statePath(slug), { force: true }).catch(() => {})
   await writeMarketplace()
   await commitAll(STUDIO_ROOT, `Remove skill ${slug}`).catch(() => {})
+}
+
+/**
+ * The skills this plugin ships (one entry per skills/<dir>/SKILL.md), by frontmatter
+ * name + description. Powers the Test tab's "/" picker — the model sees these same
+ * skills via the SDK's `skills: 'all'`, so picking one mirrors invoking it for real.
+ */
+export async function listPluginSkills(slug: string): Promise<{ name: string; description: string }[]> {
+  const skillsDir = path.join(pluginPath(slug), 'skills')
+  const entries = await fs.readdir(skillsDir, { withFileTypes: true }).catch(() => [])
+  const out: { name: string; description: string }[] = []
+  for (const e of entries) {
+    if (!e.isDirectory()) continue
+    const src = await fs.readFile(path.join(skillsDir, e.name, 'SKILL.md'), 'utf8').catch(() => null)
+    if (src === null) continue
+    const fm = parseFrontmatter(src)
+    out.push({ name: fm.name || e.name, description: fm.description })
+  }
+  return out.sort((a, b) => a.name.localeCompare(b.name))
 }
 
 /** Everything inside a skill's plugin folder (files + dirs), so the full structure shows. */

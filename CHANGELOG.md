@@ -32,6 +32,40 @@ All notable changes to Fabulist are documented here. The format follows
   studio only), and the skill editor is now a syntax-highlighting **Markdown editor** that
   colors each element type — headings, bold, italics, inline/fenced code, links, lists,
   blockquotes, rules — from a swappable per-element palette.
+- **Resizable Skill Studio sidebar**: drag the chat/test/comments panel's left edge to widen
+  it (it won't go narrower than the default); double-click the edge to snap back.
+- **Versioned, archived test runs**: Skill Studio test threads are now numbered — the live
+  thread shows **TEST v0.0.1** (an odometer that carries: `0.0.9`→`0.1.0`, `0.9.9`→`1.0.0`).
+  **New test** now archives the current run instead of discarding it: the button arms to
+  **"Archive current test?"** and a second click files the run under its version, bumps to
+  the next, and opens a fresh thread (an empty thread just clears — nothing to archive). The
+  authoring **Chat**'s `/` reference menu gains an **Archived** entry beneath `/test` — a
+  searchable list of past runs (most-recent-first, top 5, filter by version) you can weave
+  into a message just like the live run. Archives (version + timestamp + transcript) persist
+  across restarts, capped at the 50 most recent.
+- **Invoke a specific skill in a test, like a real user would**: the Skill Studio **Test**
+  tab now enables the plugin's skills the way the engine does (the Agent SDK's `skills: 'all'`)
+  and lets you type `/` to pick one by name. Picking a skill sends a "use the `<name>` skill"
+  invocation (the natural-language equivalent of calling it) and then lets the skill's own
+  `SKILL.md` drive what it reads — proper progressive disclosure, rather than the test harness
+  steering it to pre-read everything. Leave the picker alone to give a plain task and let the
+  model select a skill by its description, as it would in the wild. The chat shows your task
+  plus a short "Using the `<name>` skill" marker; the directive goes to the model, not the echo.
+- **Reference a test run from the authoring chat**: in the Skill Studio **Chat**, type
+  `/` to reference the latest **Test** run — its transcript (your prompt, the skill's
+  replies, the tools it ran, files it touched, and any errors) is woven into the message
+  Claude receives, so you can say *"the test did X but I expected Y — review and propose a
+  fix"* and it can see exactly what happened. Your chat bubble shows just your note plus a
+  short "Referenced the latest test run" marker; the full transcript goes to the model, not
+  the visible echo. Oversized transcripts keep their most-recent turns.
+- **Skillulist authoring edits now follow the same approval flow as the writing app**:
+  the authoring **Chat** no longer applies (and commits) the agent's file edits silently.
+  By default each edit arrives as an **approval card** with a diff — **Apply** or
+  **Decline** — and only approved edits are written and committed. An **Auto-apply edits**
+  toggle under the composer (mirroring the writing app) flips back to immediate, no-card
+  application for fast iteration. Either way, an applied edit shows as a collapsed diff in
+  chat with a **Show in file** button that opens the edited file and briefly highlights the
+  changed text, the same reveal the document editor uses.
 - **Clone a document**: a clone button (⧉) on each library row copies the document's
   current text into a brand-new document — titled "<title> (copy)" — with chat,
   comments, history, and the agent session all starting fresh. Only the manuscript
@@ -66,6 +100,39 @@ All notable changes to Fabulist are documented here. The format follows
   work without warning.
 
 ### Fixed
+- **Stray highlight when switching Skill Studio files**: opening a file no longer carries
+  over the "Show in file" highlight from a previous reveal (it bled onto longer files —
+  usually Markdown — as a half-page accent wash). The highlight is cleared on every file
+  open and re-applied only for the file a reveal actually targets.
+- **Auto-format no longer snaps the editor to the top**: formatting a Skill Studio file (and
+  agent edits to the open file) now apply as a minimal in-place change, so CodeMirror keeps
+  your scroll position instead of jumping to line 1.
+- **Skill Studio chat renders Markdown** instead of showing raw `**asterisks**`, `###`
+  headings, and `|` tables. The authoring **Chat**, **Test** transcript, and **Comments**
+  notes now display the LLM's output as formatted Markdown (GFM — headings, bold/italic,
+  lists, fenced code, blockquotes, tables, links) so it's readable. Links open in your
+  system browser; raw HTML is not rendered (XSS-safe). Scoped to the Skill Studio chat
+  surfaces only — the document chat and every file editor still show/edit raw source
+  exactly as before.
+- **Skill Studio chats now survive an app restart**: the authoring and test transcripts
+  used to live only in memory, so quitting and relaunching wiped them — unlike the
+  document chat, which persists. Both threads (and the authoring session, so the
+  conversation resumes) are now saved per skill under `.skill-studio/.state/<slug>.json`
+  and restored when you open the skill. State lives outside the plugin folder (so it never
+  shows in the file tree or loads as plugin content) and is gitignored; "New test" and
+  deleting a skill clear it. Restored transcripts are validated on read.
+- **Chats no longer yank you to the bottom while you're reading**: a streaming reply
+  only auto-scrolls when you're already at (or near) the bottom — scroll up to read and
+  it stays put until you return. This was already true of the document chat; the Skill
+  Studio **authoring** and **test** threads shared none of it (they jumped on every
+  token) and now do, via one shared `useStickToBottom` hook so all three chats behave
+  identically.
+- **Testing a skill no longer auto-skips its questions**: when a skill under test asks the
+  user a question (`AskUserQuestion`), the **Test** thread now surfaces a question card and
+  waits for your answer — just as a real user would see — instead of silently allowing it
+  answer-less, which the engine had treated as "skipped" so the skill pressed on with
+  defaults. (The throwaway sandbox still auto-approves everything else for friction-free
+  iteration.)
 - A comment you were typing no longer vanishes when you switch sidebar tabs (e.g. to
   the Claude tab and back) — the in-progress draft text now lives in the store, so it
   survives until you post or cancel.

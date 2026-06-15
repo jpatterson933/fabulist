@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useStore } from '@/store'
 import { selectComments } from '@/store/selectors'
+import Markdown from '@/components/Markdown'
 import { truncate } from '@/lib/format'
 
 /**
@@ -67,7 +68,7 @@ export default function StudioComments({ slug }: { slug: string }): React.JSX.El
           <div className="thread-messages">
             <div className="thread-msg">
               <span className="thread-msg-author">{c.file}</span>
-              <p>{c.note}</p>
+              <Markdown text={c.note} />
             </div>
           </div>
           <div className="thread-actions">

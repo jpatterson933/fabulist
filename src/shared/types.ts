@@ -131,6 +131,25 @@ export interface ChatItem {
   error?: string
 }
 
+/** A test thread archived when the user started a new one — read-only history, versioned. */
+export interface ArchivedTest {
+  /** odometer version label, e.g. "0.0.1" (see shared/testVersion.ts) */
+  version: string
+  at: number
+  chat: ChatItem[]
+}
+
+/**
+ * How a studio chat message is shown vs. what the model receives. `echo` is the text
+ * the chat bubble displays (the user's note); `quote` is an optional short marker (e.g.
+ * "Using the X skill" / "Referenced test v0.0.1"). The full prompt — which may carry a
+ * woven-in transcript or invocation directive — is sent separately to the model.
+ */
+export interface DisplayOptions {
+  echo: string
+  quote?: string
+}
+
 export interface ModelChoice {
   value: string // Claude Code model alias or full model id; '' = CLI default
   label: string

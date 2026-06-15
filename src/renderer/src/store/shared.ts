@@ -1,5 +1,21 @@
-import type { CommentThread } from '@shared/types'
+import type { ChatItem, CommentThread } from '@shared/types'
 import { locateAnchor } from '@/lib/anchors'
+
+/**
+ * Locate where an applied edit landed in the current text, by the inserted text
+ * (falling back to the replaced text) — the edit's own offsets are stale. Returns the
+ * span to reveal, or null if the text isn't present. Shared by the document chat
+ * (revealEdit) and the Skill Studio (revealStudioEdit).
+ */
+export function findEditSpan(
+  content: string,
+  edit: NonNullable<ChatItem['edit']>
+): { from: number; to: number } | null {
+  const needle = [edit.after, edit.before].find((s) => s && content.includes(s))
+  if (needle === undefined) return null
+  const from = content.indexOf(needle)
+  return { from, to: from + needle.length }
+}
 
 let extSeq = 1
 

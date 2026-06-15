@@ -4,16 +4,11 @@ import { useStore } from '@/store'
 import { selectChat } from '@/store/selectors'
 import SkillsPanel from '@/components/SkillsPanel'
 import { AttachChips, useAttachments } from '@/lib/useAttachments'
+import { useStickToBottom } from '@/lib/useStickToBottom'
 import { ApprovalCard } from '@/components/chat/ApprovalCard'
 import { ChatBubble, EditGroupCard, groupConsecutiveEdits } from '@/components/chat/Messages'
 import { ModelPicker, AutoApproveToggle, PlusMenu } from '@/components/chat/ComposeOptions'
-
-/** The `/name` token the caret is inside, if any — start/end are offsets into the text. */
-function slashTokenAt(text: string, caret: number): { start: number; query: string } | null {
-  const m = text.slice(0, caret).match(/(?:^|\s)(\/[a-z0-9-]*)$/i)
-  if (!m) return null
-  return { start: caret - m[1].length, query: m[1].slice(1) }
-}
+import { slashTokenAt } from '@/lib/slash'
 
 export default function ChatPanel({ docId }: { docId: string }): React.JSX.Element {
   const chat = useStore(selectChat(docId))
@@ -32,11 +27,10 @@ export default function ChatPanel({ docId }: { docId: string }): React.JSX.Eleme
   const [skillsOpen, setSkillsOpen] = useState(false)
   const [slash, setSlash] = useState<{ start: number; query: string } | null>(null)
   const [slashSel, setSlashSel] = useState(0)
-  const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   // follow new output only while the user is at (or near) the bottom —
   // scrolling up to read pauses the auto-scroll until they return
-  const stickToBottom = useRef(true)
+  const { scrollRef, onScroll, stick } = useStickToBottom([chat, permissions])
 
   const busy = agent?.status === 'starting' || agent?.status === 'working'
 
@@ -49,19 +43,15 @@ export default function ChatPanel({ docId }: { docId: string }): React.JSX.Eleme
 
   useEffect(refreshSkills, [refreshSkills])
 
-  // a new approval card must never sit out of sight below the fold —
-  // jump to it even if the user had scrolled up to read
+  // a new approval card must never sit out of sight below the fold — pin to it
+  // even if the user had scrolled up to read (the hook's effect then scrolls)
   const prevPermCount = useRef(0)
-  useEffect(() => {
-    if (permissions.length > prevPermCount.current) stickToBottom.current = true
-    prevPermCount.current = permissions.length
-    const el = scrollRef.current
-    if (el && stickToBottom.current) el.scrollTop = el.scrollHeight
-  }, [chat, permissions])
+  if (permissions.length > prevPermCount.current) stick()
+  prevPermCount.current = permissions.length
 
   const send = (): void => {
     if ((!input.trim() && attachments.paths.length === 0) || busy) return
-    stickToBottom.current = true // sending always jumps to the latest
+    stick() // sending always jumps to the latest
     void askClaude(attachments.consume(input))
     setInput('')
     setSlash(null)
@@ -115,14 +105,7 @@ export default function ChatPanel({ docId }: { docId: string }): React.JSX.Eleme
 
   return (
     <div className="chat">
-      <div
-        className="chat-scroll"
-        ref={scrollRef}
-        onScroll={(e) => {
-          const el = e.currentTarget
-          stickToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 60
-        }}
-      >
+      <div className="chat-scroll" ref={scrollRef} onScroll={onScroll}>
         {chat.length === 0 && (
           <div className="chat-empty">
             <p>

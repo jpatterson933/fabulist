@@ -84,6 +84,272 @@ describe('skill studio slice', () => {
     expect(useStore.getState().testChats['a'].filter((c) => c.usage)).toHaveLength(2)
   })
 
+  it('passes the auto-apply flag to the authoring agent', async () => {
+    const authSend = vi.fn(async () => {})
+    const { useStore } = await freshStore(makeFabulist({ skillStudio: { authSend } }))
+    useStore.setState({ activeSkill: 'a' })
+
+    await useStore.getState().authSend('build it')
+    expect(authSend.mock.calls[0].slice(0, 3)).toEqual(['a', 'build it', false])
+
+    useStore.getState().setStudioAutoApprove(true)
+    expect(useStore.getState().studioAutoApprove).toBe(true)
+    await useStore.getState().authSend('again')
+    expect(authSend.mock.calls[1].slice(0, 3)).toEqual(['a', 'again', true])
+  })
+
+  it('weaves the test transcript into an authoring prompt when referenced', async () => {
+    const authSend = vi.fn(async () => {})
+    const { useStore } = await freshStore(makeFabulist({ skillStudio: { authSend } }))
+    useStore.setState({
+      activeSkill: 'a',
+      testChats: {
+        a: [
+          { id: 'u', role: 'user', text: 'write a haiku', at: 0 },
+          { id: 'r', role: 'assistant', text: 'Here is your haiku…', at: 0 }
+        ]
+      }
+    })
+
+    await useStore.getState().authSend('the test ignored the haiku rule, fix it', { testRef: 'current' })
+    const [slug, prompt, , display] = authSend.mock.calls[0] as [
+      string,
+      string,
+      boolean,
+      { echo: string; quote?: string }
+    ]
+    expect(slug).toBe('a')
+    // the model receives the transcript woven in…
+    expect(prompt).toContain('write a haiku')
+    expect(prompt).toContain('Here is your haiku')
+    expect(prompt).toContain('the test ignored the haiku rule, fix it')
+    // …but the chat echoes only the user's note, plus a short reference marker
+    expect(display.echo).toBe('the test ignored the haiku rule, fix it')
+    expect(display.quote).toMatch(/test run/i)
+  })
+
+  it('skips the transcript framing when there is no test run to reference', async () => {
+    const authSend = vi.fn(async () => {})
+    const { useStore } = await freshStore(makeFabulist({ skillStudio: { authSend } }))
+    useStore.setState({ activeSkill: 'a' })
+    await useStore.getState().authSend('just edit it', { testRef: 'current' })
+    const [, prompt, , display] = authSend.mock.calls[0]
+    expect(prompt).toBe('just edit it') // no <test-run> framing
+    expect(display).toBeUndefined()
+  })
+
+  it('queues an authoring approval card and clears it when resolved', async () => {
+    const { useStore } = await freshStore()
+    useStore.setState({ activeSkill: 'a', studioTab: 'test' })
+    const request = {
+      requestId: 'r1',
+      docId: 'a',
+      tool: 'Edit',
+      filePath: 'skills/a/SKILL.md',
+      before: 'old',
+      after: 'new',
+      summary: 'Editing SKILL.md',
+      kind: 'edit' as const
+    }
+    useStore.getState().handleAuthEvent({ kind: 'permission-request', docId: 'a', request })
+    expect(useStore.getState().authPermissions['a']).toHaveLength(1)
+    // a pending approval pulls the user to the chat tab where the card lives
+    expect(useStore.getState().studioTab).toBe('chat')
+
+    useStore
+      .getState()
+      .handleAuthEvent({ kind: 'permission-resolved', docId: 'a', requestId: 'r1', approved: true })
+    expect(useStore.getState().authPermissions['a']).toHaveLength(0)
+  })
+
+  it('queues a test-run question and routes the answer to the studio channel', async () => {
+    const respondPermission = vi.fn(() => {})
+    const { useStore } = await freshStore(makeFabulist({ skillStudio: { respondPermission } }))
+    useStore.setState({ activeSkill: 'a' })
+    const request = {
+      requestId: 'q1',
+      docId: 'a',
+      tool: 'AskUserQuestion',
+      summary: 'Asking: Tone?',
+      kind: 'question' as const,
+      questions: [{ question: 'Tone?', header: 'Tone', options: [{ label: 'Punchy' }] }]
+    }
+    useStore.getState().handleStudioEvent({ kind: 'permission-request', docId: 'a', request })
+    expect(useStore.getState().testPermissions['a']).toHaveLength(1)
+
+    useStore.getState().respondStudioPermission('q1', true, { Tone: 'Punchy' })
+    expect(respondPermission).toHaveBeenCalledWith('q1', true, { Tone: 'Punchy' })
+
+    useStore
+      .getState()
+      .handleStudioEvent({ kind: 'permission-resolved', docId: 'a', requestId: 'q1', approved: true })
+    expect(useStore.getState().testPermissions['a']).toHaveLength(0)
+  })
+
+  it('reveals an applied edit by locating its text in the opened file', async () => {
+    const readFile = vi.fn(async () => 'intro\nthe new line\noutro')
+    const { useStore } = await freshStore(
+      makeFabulist({ skillStudio: { readFile, listFiles: vi.fn(async () => []) } })
+    )
+    useStore.setState({ activeSkill: 'a' })
+    await useStore.getState().revealStudioEdit({
+      tool: 'Edit',
+      filePath: 'skills/a/SKILL.md',
+      before: 'the old line',
+      after: 'the new line'
+    })
+    expect(useStore.getState().openFilePath).toBe('skills/a/SKILL.md')
+    const pos = useStore.getState().studioRevealPos
+    expect(pos).not.toBeNull()
+    // the span points at the inserted text inside the loaded content
+    expect('intro\nthe new line\noutro'.slice(pos!.from, pos!.to)).toBe('the new line')
+  })
+
+  it('restores persisted transcripts when a skill is opened', async () => {
+    const readChats = vi.fn(async () => ({
+      authChat: [{ id: 'a1', role: 'user' as const, text: 'earlier note', at: 0 }],
+      testChat: [{ id: 't1', role: 'assistant' as const, text: 'earlier test', at: 0 }]
+    }))
+    const { useStore } = await freshStore(makeFabulist({ skillStudio: { readChats } }))
+
+    await useStore.getState().openStudioSkill('a')
+    expect(readChats).toHaveBeenCalledWith('a')
+    expect(useStore.getState().authChats['a']?.[0]?.text).toBe('earlier note')
+    expect(useStore.getState().testChats['a']?.[0]?.text).toBe('earlier test')
+  })
+
+  it('does not clobber an in-memory transcript when re-opening a skill', async () => {
+    const readChats = vi.fn(async () => ({
+      authChat: [{ id: 'disk', role: 'user' as const, text: 'from disk', at: 0 }],
+      testChat: []
+    }))
+    const { useStore } = await freshStore(makeFabulist({ skillStudio: { readChats } }))
+    // live in-memory threads already exist (e.g. a background run streamed into them)
+    useStore.setState({
+      authChats: { a: [{ id: 'live', role: 'user', text: 'in memory', at: 0 }] },
+      testChats: { a: [] }
+    })
+
+    await useStore.getState().openStudioSkill('a')
+    expect(readChats).not.toHaveBeenCalled() // both threads already present → no disk read
+    expect(useStore.getState().authChats['a']?.[0]?.text).toBe('in memory')
+  })
+
+  it('persists the authoring transcript when a run finishes', async () => {
+    const saveAuthChat = vi.fn(async () => {})
+    const { useStore } = await freshStore(makeFabulist({ skillStudio: { saveAuthChat } }))
+    useStore.setState({ activeSkill: 'a' })
+    useStore.getState().handleAuthEvent({ kind: 'user-echo', docId: 'a', itemId: 'u1', text: 'hi' })
+    useStore.getState().handleAuthEvent({ kind: 'assistant-text', docId: 'a', itemId: 'r1', text: 'done' })
+    useStore.getState().handleAuthEvent({ kind: 'result', docId: 'a', ok: true })
+    expect(saveAuthChat).toHaveBeenCalledTimes(1)
+    const [slug, chat] = saveAuthChat.mock.calls[0]
+    expect(slug).toBe('a')
+    expect(chat.map((c: { text: string }) => c.text)).toEqual(['hi', 'done'])
+  })
+
+  it('clears the persisted test transcript on reset', async () => {
+    const saveTestChat = vi.fn(async () => {})
+    const resetTest = vi.fn(async () => {})
+    const { useStore } = await freshStore(makeFabulist({ skillStudio: { saveTestChat, resetTest } }))
+    useStore.setState({ activeSkill: 'a', testChats: { a: [{ id: 't', role: 'assistant', text: 'x', at: 0 }] } })
+    await useStore.getState().resetTest()
+    expect(saveTestChat).toHaveBeenCalledWith('a', [])
+    expect(useStore.getState().testChats['a']).toEqual([])
+  })
+
+  it('invokes a picked skill with a directive, keeping the chat echo clean', async () => {
+    const test = vi.fn(async () => {})
+    const { useStore } = await freshStore(makeFabulist({ skillStudio: { test } }))
+    useStore.setState({ activeSkill: 'a' })
+
+    await useStore.getState().testSkill('write a subject line', { skill: 'copywriting' })
+    const [slug, prompt, display] = test.mock.calls[0] as [
+      string,
+      string,
+      { echo: string; quote?: string }
+    ]
+    expect(slug).toBe('a')
+    // the model gets the explicit invocation directive + the task
+    expect(prompt).toContain('Use the "copywriting" skill')
+    expect(prompt).toContain('write a subject line')
+    // the chat shows just the task plus a short marker
+    expect(display.echo).toBe('write a subject line')
+    expect(display.quote).toMatch(/copywriting skill/i)
+  })
+
+  it('runs a plain task with no directive when no skill is picked', async () => {
+    const test = vi.fn(async () => {})
+    const { useStore } = await freshStore(makeFabulist({ skillStudio: { test } }))
+    useStore.setState({ activeSkill: 'a' })
+    await useStore.getState().testSkill('just do it')
+    const [, prompt, display] = test.mock.calls[0]
+    expect(prompt).toBe('just do it')
+    expect(display).toBeUndefined()
+  })
+
+  it('archives the live test, bumps the version, and prepends it to the archive', async () => {
+    const archiveTest = vi.fn(async () => ({ version: '0.0.1', at: 123, nextVersion: 2 }))
+    const resetTest = vi.fn(async () => {})
+    const { useStore } = await freshStore(makeFabulist({ skillStudio: { archiveTest, resetTest } }))
+    useStore.setState({
+      activeSkill: 'a',
+      testChats: { a: [{ id: 't', role: 'assistant', text: 'ran', at: 0 }] },
+      testVersion: { a: 1 }
+    })
+
+    await useStore.getState().archiveAndResetTest()
+    expect(archiveTest).toHaveBeenCalledTimes(1)
+    expect(resetTest).toHaveBeenCalledTimes(1) // session + sandbox dropped
+    expect(useStore.getState().testVersion['a']).toBe(2)
+    expect(useStore.getState().testChats['a']).toEqual([])
+    const arch = useStore.getState().archivedTests['a']
+    expect(arch).toHaveLength(1)
+    expect(arch[0].version).toBe('0.0.1')
+    expect(arch[0].chat.map((c) => c.text)).toEqual(['ran'])
+  })
+
+  it('clears (does not archive) an empty test thread', async () => {
+    const archiveTest = vi.fn(async () => ({ version: '0.0.1', at: 0, nextVersion: 2 }))
+    const { useStore } = await freshStore(makeFabulist({ skillStudio: { archiveTest } }))
+    useStore.setState({ activeSkill: 'a', testChats: { a: [] } })
+    await useStore.getState().archiveAndResetTest()
+    expect(archiveTest).not.toHaveBeenCalled()
+  })
+
+  it('references an archived run by version', async () => {
+    const authSend = vi.fn(async () => {})
+    const { useStore } = await freshStore(makeFabulist({ skillStudio: { authSend } }))
+    useStore.setState({
+      activeSkill: 'a',
+      archivedTests: {
+        a: [{ version: '0.0.1', at: 0, chat: [{ id: 'x', role: 'assistant', text: 'archived output', at: 0 }] }]
+      }
+    })
+    await useStore.getState().authSend('what went wrong here?', { testRef: { version: '0.0.1' } })
+    // skillStudio.authSend(slug, prompt, autoApprove, display)
+    const [, prompt, , display] = authSend.mock.calls[0] as [string, string, boolean, { quote?: string }]
+    expect(prompt).toContain('archived output')
+    expect(prompt).toContain('what went wrong here?')
+    expect(display.quote).toMatch(/test v0\.0\.1/i)
+  })
+
+  it('restores the test version and archive when a skill is opened', async () => {
+    const readChats = vi.fn(async () => ({
+      authChat: [],
+      testChat: [],
+      testVersion: 3,
+      archivedTests: [
+        { version: '0.0.2', at: 0, chat: [] },
+        { version: '0.0.1', at: 0, chat: [] }
+      ]
+    }))
+    const { useStore } = await freshStore(makeFabulist({ skillStudio: { readChats } }))
+    await useStore.getState().openStudioSkill('a')
+    expect(useStore.getState().testVersion['a']).toBe(3)
+    expect(useStore.getState().archivedTests['a'].map((x) => x.version)).toEqual(['0.0.2', '0.0.1'])
+  })
+
   it('turns a comment into a chat prompt and switches to the chat tab', async () => {
     const authSend = vi.fn(async () => {})
     const { useStore } = await freshStore(makeFabulist({ skillStudio: { authSend } }))

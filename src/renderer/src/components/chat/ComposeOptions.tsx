@@ -64,6 +64,24 @@ export function AutoApproveToggle(): React.JSX.Element {
   )
 }
 
+export function StudioAutoApproveToggle(): React.JSX.Element {
+  const autoApprove = useStore((s) => s.studioAutoApprove)
+  const setAutoApprove = useStore((s) => s.setStudioAutoApprove)
+  return (
+    <label
+      className="auto-approve"
+      title="Apply the authoring agent's edits to the skill's files immediately, without approval cards. Otherwise each edit waits for your approval."
+    >
+      <input
+        type="checkbox"
+        checked={autoApprove}
+        onChange={(e) => setAutoApprove(e.target.checked)}
+      />
+      Auto-apply edits
+    </label>
+  )
+}
+
 export function ModelPicker({ disabled }: { disabled: boolean }): React.JSX.Element {
   const model = useStore((s) => s.model)
   const models = useStore((s) => s.models)

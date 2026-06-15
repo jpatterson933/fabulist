@@ -7,38 +7,17 @@ import {
 import { promises as fs } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { createRequire } from 'node:module'
-import { app, type WebContents } from 'electron'
-import type { AgentEvent, PermissionRequest } from '@shared/types'
+import { type WebContents } from 'electron'
+import type { AgentEvent, DisplayOptions, PermissionRequest } from '@shared/types'
 import { newId } from './library'
 import { decideTool, isFileEditTool } from './toolPolicy'
 import { describeTool, buildToolPayload } from './toolRegistry'
 import { commitAll } from './git'
 import { parseSdkMessages, type ParsedRun, type SdkMessage } from './sdkStream'
+import { PermissionBroker } from './permissionBroker'
+import { ENGINE_BINARY } from './engineBinary'
 import { emitEvent } from './ipcTyped'
-import { ensureStudio, pluginPath } from './skillStudio'
-
-/**
- * Mirrors agent.ts's engine resolution: in packaged builds the SDK's native binary
- * sits inside app.asar, which child_process.spawn can't execute. Returns undefined
- * in dev (the SDK resolves its own). Duplicated here, not imported, so the document
- * AgentManager stays untouched by the studio.
- */
-function resolveEngineBinary(): string | undefined {
-  if (!app.isPackaged) return undefined
-  try {
-    const req = createRequire(import.meta.url)
-    const pkg = `@anthropic-ai/claude-agent-sdk-${process.platform}-${process.arch}`
-    const bin = path.join(
-      path.dirname(req.resolve(`${pkg}/package.json`)),
-      process.platform === 'win32' ? 'claude.exe' : 'claude'
-    )
-    return bin.replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`)
-  } catch {
-    return undefined
-  }
-}
-const ENGINE_BINARY = resolveEngineBinary()
+import { ensureStudio, pluginPath, readAuthSessionId, saveAuthSessionId } from './skillStudio'
 
 /** Log token + cost consumption for a run — the client tracks this closely. */
 function logUsage(label: string, slug: string, run: ParsedRun): void {
@@ -53,18 +32,22 @@ function logUsage(label: string, slug: string, run: ParsedRun): void {
 }
 
 const TEST_APPEND = `
-You are running inside Fabulist's Skill Studio as a TEST of the skill(s) under
-development, which are loaded as a local plugin. Behave exactly as you would for a
-real user who invoked the skill: follow the skill's instructions, ground yourself in
-its materials, and produce the real deliverable. The working directory is a throwaway
-sandbox — you may create or edit files there freely. Keep chat replies focused on the result.`
+You are running inside Fabulist's Skill Studio, testing the skill(s) under development —
+loaded as a local plugin and enabled for this session. Behave as you would for any real
+user: let the relevant skill and its own instructions drive what you read and do; don't
+pre-read the whole skill folder. The working directory is a throwaway sandbox — you may
+create or edit files there freely. Keep chat replies focused on the result.`
 
-const AUTHOR_APPEND = `
+const AUTHOR_APPEND = (autoApprove: boolean): string => `
 You are helping the user AUTHOR a Claude skill inside Fabulist's Skill Studio. The working
 directory IS the skill's plugin folder; the deliverable is its files — primarily the
 skills/<name>/SKILL.md and any supporting materials. Read the files to understand the current
-state, then make focused edits with Write/Edit. Briefly say what you changed. You can only edit
-files inside this folder; other tools (e.g. running commands) are unavailable here.`
+state, then make focused edits with Write/Edit. ${
+  autoApprove
+    ? 'Your file edits are applied immediately without review,'
+    : 'Every file edit you make is shown to the user as a diff for approval before it is applied,'
+} so make edits confidently but keep them minimal and well-scoped. Briefly say what you changed.
+You can only edit files inside this folder; other tools (e.g. running commands) are unavailable here.`
 
 interface ActiveRun {
   abort: AbortController
@@ -86,6 +69,8 @@ export class StudioAgentManager {
   /** authoring chat runs + their resume ids, keyed by skill slug */
   private authActive = new Map<string, ActiveRun>()
   private authSessions = new Map<string, string>()
+  /** pending approval/question requests, shared by the test and authoring gates */
+  private permissions = new PermissionBroker()
   private wc: WebContents | null = null
 
   attach(wc: WebContents): void {
@@ -98,6 +83,11 @@ export class StudioAgentManager {
 
   private emitAuth(event: AgentEvent): void {
     if (this.wc) emitEvent(this.wc, 'skillStudio:authEvent', event)
+  }
+
+  /** Resolve a pending approval/answer from the renderer (test or authoring). */
+  resolvePermission(requestId: string, approved: boolean, answers?: Record<string, string>): void {
+    this.permissions.resolve(requestId, approved, answers)
   }
 
   isBusy(slug: string): boolean {
@@ -131,12 +121,20 @@ export class StudioAgentManager {
     return dir
   }
 
-  async test(slug: string, prompt: string): Promise<void> {
+  async test(slug: string, prompt: string, display?: DisplayOptions): Promise<void> {
     if (this.active.has(slug)) throw new Error('A test is already running for this skill')
     await ensureStudio()
     const cwd = await this.ensureSandbox(slug)
 
-    this.emit({ kind: 'user-echo', docId: slug, itemId: newId(), text: prompt })
+    // `prompt` is what the model receives (may carry a "use the <skill>" directive);
+    // the chat echoes `display.echo` + a short marker when provided
+    this.emit({
+      kind: 'user-echo',
+      docId: slug,
+      itemId: newId(),
+      text: display?.echo ?? prompt,
+      quote: display?.quote
+    })
     this.emit({ kind: 'status', docId: slug, status: 'starting' })
 
     const abort = new AbortController()
@@ -158,9 +156,13 @@ export class StudioAgentManager {
       // isolate the test: load ONLY this skill's plugin, ignore ambient project/user config
       settingSources: [],
       plugins: [{ type: 'local', path: pluginPath(slug) }],
+      // enable every skill the plugin ships (the SDK's first-class "skills on" knob) so the
+      // model sees and can invoke them via the Skill tool, exactly as in a real session
+      skills: 'all',
       systemPrompt: { type: 'preset', preset: 'claude_code', append: TEST_APPEND },
       permissionMode: 'default',
-      canUseTool: (tool, toolInput) => this.gate(cwd, tool, toolInput as Record<string, unknown>),
+      canUseTool: (tool, toolInput, { signal }) =>
+        this.gate(slug, cwd, tool, toolInput as Record<string, unknown>, signal),
       stderr: (line) => {
         if (process.env.FABULIST_DEBUG) console.error('[studio]', line)
       }
@@ -182,6 +184,7 @@ export class StudioAgentManager {
       run = { ok: false, finalText: '', error: err instanceof Error ? err.message : String(err) }
     } finally {
       this.active.delete(slug)
+      this.permissions.clearDoc(slug)
     }
 
     if (run.sessionId) this.sessions.set(slug, run.sessionId)
@@ -201,16 +204,27 @@ export class StudioAgentManager {
 
   /**
    * The jail gate: auto-approve everything so iteration is friction-free, EXCEPT
-   * path escapes (and app-managed files), which decideTool still denies — so a test
-   * run can never reach outside its throwaway sandbox.
+   * (a) path escapes / app-managed files, which decideTool denies — so a test run
+   * can never reach outside its throwaway sandbox — and (b) AskUserQuestion, which
+   * is the skill genuinely asking the user a question: surface it and WAIT for the
+   * tester's answer. (Auto-allowing it answer-less makes the engine treat the
+   * question as skipped, so the skill silently proceeds on defaults — not a real test.)
    */
   private async gate(
+    slug: string,
     cwd: string,
     tool: string,
-    input: Record<string, unknown>
+    input: Record<string, unknown>,
+    signal: AbortSignal
   ): Promise<PermissionResult> {
     const decision = decideTool(cwd, tool, input)
     if (decision.kind === 'deny') return { behavior: 'deny', message: decision.message }
+    if (tool === 'AskUserQuestion') {
+      const request = await this.buildRequest(slug, cwd, tool, input)
+      const { approved, answers } = await this.askHuman((e) => this.emit(e), slug, request, signal)
+      if (approved) return { behavior: 'allow', updatedInput: answers ? { ...input, answers } : input }
+      return { behavior: 'deny', message: 'The tester skipped the question. Proceed with your best judgment.' }
+    }
     return { behavior: 'allow', updatedInput: input }
   }
 
@@ -230,13 +244,33 @@ export class StudioAgentManager {
     }
   }
 
-  async authSend(slug: string, prompt: string): Promise<void> {
+  async authSend(
+    slug: string,
+    prompt: string,
+    autoApprove = false,
+    display?: DisplayOptions
+  ): Promise<void> {
     if (this.authActive.has(slug)) throw new Error('Claude is already working on this skill')
     await ensureStudio()
     const cwd = pluginPath(slug)
 
-    this.emitAuth({ kind: 'user-echo', docId: slug, itemId: newId(), text: prompt })
+    // `prompt` is what the model receives (may carry a woven-in test transcript);
+    // the chat echoes `display.echo` + a short quote marker when provided
+    this.emitAuth({
+      kind: 'user-echo',
+      docId: slug,
+      itemId: newId(),
+      text: display?.echo ?? prompt,
+      quote: display?.quote
+    })
     this.emitAuth({ kind: 'status', docId: slug, status: 'starting' })
+
+    // after a restart the resume id is only on disk — reload it so the authoring
+    // conversation continues instead of starting cold (mirrors the document app)
+    if (!this.authSessions.has(slug)) {
+      const sid = await readAuthSessionId(slug).catch(() => undefined)
+      if (sid) this.authSessions.set(slug, sid)
+    }
 
     const abort = new AbortController()
     const edits = { count: 0 }
@@ -256,9 +290,10 @@ export class StudioAgentManager {
       abortController: abort,
       includePartialMessages: true,
       settingSources: ['project'],
-      systemPrompt: { type: 'preset', preset: 'claude_code', append: AUTHOR_APPEND },
+      systemPrompt: { type: 'preset', preset: 'claude_code', append: AUTHOR_APPEND(autoApprove) },
       permissionMode: 'default',
-      canUseTool: (tool, ti) => this.authGate(slug, cwd, tool, ti as Record<string, unknown>, edits),
+      canUseTool: (tool, ti, { signal }) =>
+        this.authGate(slug, cwd, tool, ti as Record<string, unknown>, edits, autoApprove, signal),
       stderr: (line) => {
         if (process.env.FABULIST_DEBUG) console.error('[studio:author]', line)
       }
@@ -280,9 +315,13 @@ export class StudioAgentManager {
       run = { ok: false, finalText: '', error: err instanceof Error ? err.message : String(err) }
     } finally {
       this.authActive.delete(slug)
+      this.permissions.clearDoc(slug)
     }
 
-    if (run.sessionId) this.authSessions.set(slug, run.sessionId)
+    if (run.sessionId) {
+      this.authSessions.set(slug, run.sessionId)
+      await saveAuthSessionId(slug, run.sessionId).catch(() => {})
+    }
     if (edits.count > 0) {
       await commitAll(cwd, `Author: ${prompt.replace(/\s+/g, ' ').slice(0, 60)}`).catch(() => {})
     }
@@ -301,31 +340,47 @@ export class StudioAgentManager {
   }
 
   /**
-   * Authoring gate: read-only tools pass; file edits AUTO-APPLY (the studio is a build
-   * workspace — fast iteration over approval cards) and are recorded as a collapsed diff
-   * in chat; the path guard still confines edits to the skill's own folder; everything
-   * else (e.g. Bash) is denied, so no command runs without a UI to approve it.
+   * Authoring gate — mirrors the document app's gate (src/main/agent.ts). Read-only
+   * tools pass; file edits are shown to the user as a diff for approval before they
+   * apply, UNLESS auto-apply is on (then they apply immediately for fast iteration);
+   * either way an applied edit is recorded as a collapsed diff in chat. A clarifying
+   * AskUserQuestion is surfaced and waited on. The path guard still confines edits to
+   * the skill's own folder, and everything else (e.g. Bash) is denied.
    */
   private async authGate(
     slug: string,
     cwd: string,
     tool: string,
     input: Record<string, unknown>,
-    edits: { count: number }
+    edits: { count: number },
+    autoApprove: boolean,
+    signal: AbortSignal
   ): Promise<PermissionResult> {
     const decision = decideTool(cwd, tool, input)
     if (decision.kind === 'deny') return { behavior: 'deny', message: decision.message }
     if (decision.kind === 'allow') return { behavior: 'allow', updatedInput: input }
     if (isFileEditTool(tool) && decision.filePath) {
-      const request = await this.buildAuthRequest(slug, cwd, tool, input, decision.filePath)
+      const request = await this.buildRequest(slug, cwd, tool, input, decision.filePath)
+      if (!autoApprove) {
+        const { approved } = await this.askHuman((e) => this.emitAuth(e), slug, request, signal)
+        if (!approved) return { behavior: 'deny', message: 'The author declined this change.' }
+      }
+      // approved edits leave the same collapsed diff card in chat that auto-applied
+      // ones do — the record shouldn't depend on the mode
       this.emitAuth({ kind: 'edit-applied', docId: slug, request })
       edits.count++
       return { behavior: 'allow', updatedInput: input }
     }
+    if (tool === 'AskUserQuestion') {
+      const request = await this.buildRequest(slug, cwd, tool, input)
+      const { approved, answers } = await this.askHuman((e) => this.emitAuth(e), slug, request, signal)
+      if (approved) return { behavior: 'allow', updatedInput: answers ? { ...input, answers } : input }
+      return { behavior: 'deny', message: 'The author skipped the question. Proceed with your best judgment.' }
+    }
     return { behavior: 'deny', message: 'Only file edits are available while authoring a skill here.' }
   }
 
-  private async buildAuthRequest(
+  private async buildRequest(
     slug: string,
     cwd: string,
     tool: string,
@@ -344,6 +399,45 @@ export class StudioAgentManager {
       readFile: (rel) => fs.readFile(path.resolve(cwd, rel), 'utf8')
     })
     return request
+  }
+
+  /**
+   * Surface a request to the renderer and block until it answers (or the run is
+   * interrupted). Mirrors AgentManager.askHuman; the emitter routes the events to
+   * the right stream (test → skillStudio:event, authoring → skillStudio:authEvent).
+   */
+  private askHuman(
+    emit: (event: AgentEvent) => void,
+    slug: string,
+    request: PermissionRequest,
+    signal: AbortSignal
+  ): Promise<{ approved: boolean; answers?: Record<string, string> }> {
+    emit({ kind: 'permission-request', docId: slug, request })
+    // the run is paused on the user, not working — say so, or a pending approval
+    // reads as a frozen spinner
+    emit({
+      kind: 'status',
+      docId: slug,
+      status: 'working',
+      detail: request.questions ? 'Waiting for your answer' : 'Waiting for your approval'
+    })
+    return new Promise((resolve) => {
+      // the renderer (resolvePermission) and an interrupt (abort) can both reach
+      // done(); settle exactly once so the resolution + events aren't emitted twice
+      let settled = false
+      const done = (approved: boolean, answers?: Record<string, string>): void => {
+        if (settled) return
+        settled = true
+        this.permissions.delete(request.requestId)
+        emit({ kind: 'permission-resolved', docId: slug, requestId: request.requestId, approved })
+        if (!this.permissions.hasAnyForDoc(slug)) {
+          emit({ kind: 'status', docId: slug, status: 'working' })
+        }
+        resolve({ approved, answers })
+      }
+      this.permissions.add(request, done)
+      signal.addEventListener('abort', () => done(false), { once: true })
+    })
   }
 }
 
