@@ -1,4 +1,4 @@
-import type { AgentEvent } from '@shared/types'
+import type { AgentEvent, RunUsage } from '@shared/types'
 import { describeTool } from './toolRegistry'
 
 // The engine→UI translator, extracted from AgentManager.send so it is a pure,
@@ -32,6 +32,13 @@ export interface SdkMessage {
   result?: string
   total_cost_usd?: number
   duration_ms?: number
+  num_turns?: number
+  usage?: {
+    input_tokens?: number
+    output_tokens?: number
+    cache_read_input_tokens?: number
+    cache_creation_input_tokens?: number
+  }
 }
 
 /** Summary of a finished run, used for persistence and the final result event. */
@@ -42,6 +49,7 @@ export interface ParsedRun {
   error?: string
   costUsd?: number
   durationMs?: number
+  usage?: RunUsage
 }
 
 export interface ParseCtx {
@@ -136,6 +144,16 @@ export async function* parseSdkMessages(
         }
         run.costUsd = msg.total_cost_usd
         run.durationMs = msg.duration_ms
+        if (msg.usage) {
+          run.usage = {
+            inputTokens: msg.usage.input_tokens ?? 0,
+            outputTokens: msg.usage.output_tokens ?? 0,
+            cacheReadTokens: msg.usage.cache_read_input_tokens ?? 0,
+            cacheCreationTokens: msg.usage.cache_creation_input_tokens ?? 0,
+            costUsd: msg.total_cost_usd,
+            numTurns: msg.num_turns
+          }
+        }
         break
       }
     }

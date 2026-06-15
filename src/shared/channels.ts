@@ -17,7 +17,9 @@ import type {
   DocSkill,
   ModelChoice,
   SendOptions,
-  SkillMeta
+  SkillMeta,
+  StudioFile,
+  StudioSkill
 } from './types'
 import type { DocSettings, SettingKey } from './settings'
 
@@ -52,6 +54,27 @@ export interface InvokeChannels {
   'skills:read': (slug: string) => string
   'skills:reveal': () => void
 
+  // Skill Studio — author skills as a real local Claude plugin (.skill-studio/),
+  // separate from the consume library above, and test them in a jailed sandbox.
+  'skillStudio:list': () => StudioSkill[]
+  'skillStudio:create': (name: string) => StudioSkill
+  'skillStudio:delete': (slug: string) => void
+  'skillStudio:reveal': (slug?: string) => void
+  'skillStudio:listFiles': (slug: string) => StudioFile[]
+  'skillStudio:readFile': (slug: string, rel: string) => string
+  'skillStudio:writeFile': (slug: string, rel: string, content: string) => void
+  'skillStudio:createFile': (slug: string, rel: string) => void
+  'skillStudio:createFolder': (slug: string, rel: string) => void
+  'skillStudio:deleteFile': (slug: string, rel: string) => void
+  'skillStudio:test': (slug: string, prompt: string) => void
+  'skillStudio:resetTest': (slug: string) => void
+  'skillStudio:interruptTest': (slug: string) => void
+  'skillStudio:testBusy': (slug: string) => boolean
+  // the authoring chat — an agent that reads/edits the skill IN its own folder
+  'skillStudio:authSend': (slug: string, prompt: string) => void
+  'skillStudio:authInterrupt': (slug: string) => void
+  'skillStudio:authBusy': (slug: string) => boolean
+
   'history:log': (id: string) => CommitInfo[]
   'history:show': (id: string, rev: string) => string
   'history:restore': (id: string, rev: string) => string
@@ -81,6 +104,10 @@ export interface SendChannels {
 /** Push channels main→renderer (`webContents.send` ↔ `ipcRenderer.on`). */
 export interface EventChannels {
   'agent:event': (event: AgentEvent) => void
+  /** Streaming for a Skill Studio test run; reuses AgentEvent with docId = the skill slug. */
+  'skillStudio:event': (event: AgentEvent) => void
+  /** Streaming for the Skill Studio authoring chat; reuses AgentEvent with docId = the skill slug. */
+  'skillStudio:authEvent': (event: AgentEvent) => void
   'doc:external-change': (id: string, content: string) => void
   'comments:changed': (id: string) => void
 }

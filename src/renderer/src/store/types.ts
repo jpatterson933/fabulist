@@ -7,11 +7,45 @@ import type {
   CommitInfo,
   DocMeta,
   ModelChoice,
-  PermissionRequest
+  PermissionRequest,
+  StudioFile,
+  StudioSkill
 } from '@shared/types'
 import type { DocSettings } from '@shared/settings'
 
 export type SidebarTab = 'chat' | 'comments' | 'history'
+
+/** Which top-level workspace is showing — the writing studio or the Skill Studio. */
+export type AppMode = 'doc' | 'skillStudio'
+
+/** Which Skill Studio sidebar tab is showing. */
+export type StudioTab = 'chat' | 'comments' | 'test'
+
+/** A note anchored to a quoted passage of a skill file (in-memory for now). */
+export interface StudioComment {
+  id: string
+  /** the skill file the quote came from, relative to the plugin folder */
+  file: string
+  quote: string
+  note: string
+  at: number
+}
+
+/** An in-progress comment: the captured selection, before a note is written. */
+export interface StudioDraftComment {
+  file: string
+  quote: string
+}
+
+/** Running token/cost totals across a skill's runs (test or authoring) this session. */
+export interface UsageTotals {
+  inputTokens: number
+  outputTokens: number
+  cacheReadTokens: number
+  cacheCreationTokens: number
+  costUsd: number
+  runs: number
+}
 
 export interface DraftComment {
   anchor: CommentAnchor
@@ -170,10 +204,76 @@ export interface HistorySlice {
   resetHistory: () => void
 }
 
+/**
+ * Skill Studio — a self-contained second workspace for authoring skills (as a real
+ * Claude plugin) and testing them in a jailed sandbox. Owns the top-level `mode`
+ * switch and all of its own state; nothing else in the store reads these fields.
+ */
+export interface SkillStudioSlice {
+  mode: AppMode
+  /** left skill rail open (collapsible, mirrors the library rail) */
+  studioRailOpen: boolean
+  /** which sidebar tab (chat / comments / test) is showing */
+  studioTab: StudioTab
+  /** skills in the studio (each is its own plugin) */
+  studioSkills: StudioSkill[]
+  /** slug of the skill currently being edited */
+  activeSkill: string | null
+  /** files + dirs inside the active skill's folder */
+  studioFiles: StudioFile[]
+  /** the file open in the editor, relative to the active skill's folder */
+  openFilePath: string | null
+  /** editor buffer for openFilePath */
+  fileContent: string
+  fileDirty: boolean
+  /** authoring-chat transcript + run status, keyed by skill slug */
+  authChats: Record<string, ChatItem[]>
+  authAgent: Record<string, AgentStatus>
+  /** comments per skill (in-memory) + the in-progress draft */
+  comments: Record<string, StudioComment[]>
+  studioDraft: StudioDraftComment | null
+  /** test-thread transcript + run status, keyed by skill slug */
+  testChats: Record<string, ChatItem[]>
+  testAgent: Record<string, AgentStatus>
+  /** cumulative token/cost totals per skill — authoring and test runs (client tracks this) */
+  authUsage: Record<string, UsageTotals>
+  testUsage: Record<string, UsageTotals>
+
+  openStudio: () => Promise<void>
+  closeStudio: () => void
+  toggleStudioRail: () => void
+  setStudioTab: (tab: StudioTab) => void
+  loadStudioSkills: () => Promise<void>
+  createStudioSkill: (name: string) => Promise<void>
+  deleteStudioSkill: (slug: string) => Promise<void>
+  openStudioSkill: (slug: string) => Promise<void>
+  loadStudioFiles: (slug: string) => Promise<void>
+  openStudioFile: (rel: string) => Promise<void>
+  setFileContent: (text: string) => void
+  flushStudioFile: () => Promise<void>
+  addStudioFile: (rel: string) => Promise<void>
+  addStudioFolder: (rel: string) => Promise<void>
+  removeStudioFile: (rel: string) => Promise<void>
+  /** authoring chat: ask Claude to build/refine the skill (it edits the skill's files) */
+  authSend: (prompt: string) => Promise<void>
+  interruptAuth: () => void
+  handleAuthEvent: (e: AgentEvent) => void
+  /** commenting: capture a selection, write a note, send it into the authoring chat */
+  startComment: (file: string, quote: string) => void
+  cancelComment: () => void
+  submitComment: (note: string) => Promise<void>
+  removeComment: (id: string) => void
+  testSkill: (prompt: string) => Promise<void>
+  resetTest: () => Promise<void>
+  interruptTest: () => void
+  handleStudioEvent: (e: AgentEvent) => void
+}
+
 export type Store = DocSlice &
   CommentsSlice &
   ChatSlice &
   PermissionsSlice &
   SettingsSlice &
   HistorySlice &
-  ErrorsSlice
+  ErrorsSlice &
+  SkillStudioSlice

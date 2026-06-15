@@ -2,7 +2,7 @@ import type { ChatItem } from '@shared/types'
 import { isPrimaryDoc } from '@shared/doc'
 import { useStore } from '@/store'
 import DiffView from '@/components/DiffView'
-import { truncate } from '@/lib/format'
+import { truncate, usageLine } from '@/lib/format'
 
 // The chat transcript renderers, extracted from ChatPanel: message bubbles,
 // applied-edit cards, and the grouping of consecutive edits into one card.
@@ -39,6 +39,14 @@ export function EditGroupCard({ items }: { items: ChatItem[] }): React.JSX.Eleme
 }
 
 export function ChatBubble({ item }: { item: ChatItem }): React.JSX.Element {
+  if (item.usage) {
+    return (
+      <div className="usage-line" title="Token + cost for this run">
+        ▮ {usageLine(item.usage)}
+        {item.usage.numTurns != null ? ` · ${item.usage.numTurns} turns` : ''}
+      </div>
+    )
+  }
   if (item.edit) return <AppliedEditCard item={item} />
   if (item.role === 'user') {
     return (

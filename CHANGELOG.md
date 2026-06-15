@@ -6,6 +6,32 @@ All notable changes to Fabulist are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- **Skillulist**: a separate workspace for building and testing Claude skills, reached
+  from the ❡ wordmark dropdown at the top-left of the (collapsible) rail. Each skill is
+  its own real local Claude *plugin* under `~/Documents/Fabulist/.skill-studio/<slug>/` —
+  with its own `.claude-plugin/plugin.json`, `skills/<slug>/SKILL.md`, `agents/`, and
+  `.mcp.json`, listed in a top-level `marketplace.json` — kept entirely separate from the
+  documents library. Create a skill, edit its files (the file tree shows the whole plugin),
+  then **test it on the spot**: the **Test** panel runs the skill's plugin in a throwaway
+  sandbox (any sub-agents it bundles spin up too), streaming inline. Test runs auto-approve
+  inside the sandbox for fast iteration but stay confined to it — they can't touch your
+  files. "New test" starts a fresh thread that picks up your latest edits. The right
+  sidebar has three tabs: **Chat** — an authoring agent that reads and edits the skill's
+  files directly (its changes stream in as diffs and land in the editor); **Comments** —
+  highlight text in a file, click **Comment**, write a note, and it's sent into the Chat
+  where Claude responds; and **Test** — the sandbox run above. The file tree supports a
+  **right-click menu** to create a new file or folder *in the folder you clicked* (or at the
+  root from empty space), and to delete a file/folder — no need to type full paths. The rail
+  collapses with `⌘\`, mirroring the writing app, and the whole studio leaves the writing
+  side untouched. Every test and authoring run shows its **token + cost usage** (input /
+  output / cache and dollar cost) as a line in the thread plus a running session total at the
+  top — and logs it to the process console — so consumption stays visible. The `.md` editor has
+  an **Auto-format** button (next to Comment) that formats Markdown with **Prettier** (run
+  in-renderer via `prettier/standalone`), leaving fenced code untouched. The studio
+  wears a **white + neon** theme (neon borders, accents, and glows on white, scoped to the
+  studio only), and the skill editor is now a syntax-highlighting **Markdown editor** that
+  colors each element type — headings, bold, italics, inline/fenced code, links, lists,
+  blockquotes, rules — from a swappable per-element palette.
 - **Clone a document**: a clone button (⧉) on each library row copies the document's
   current text into a brand-new document — titled "<title> (copy)" — with chat,
   comments, history, and the agent session all starting fresh. Only the manuscript

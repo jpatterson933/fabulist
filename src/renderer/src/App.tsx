@@ -5,8 +5,10 @@ import Library from '@/components/Library'
 import Editor from '@/components/Editor'
 import Sidebar from '@/components/Sidebar'
 import VersionPreview from '@/components/VersionPreview'
+import SkillStudio from '@/studio/SkillStudio'
 
 export default function App(): React.JSX.Element {
+  const mode = useStore((s) => s.mode)
   const activeId = useStore((s) => s.activeId)
   const docs = useStore((s) => s.docs)
   const doc = docs.find((d) => d.id === activeId)
@@ -24,12 +26,16 @@ export default function App(): React.JSX.Element {
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === '\\' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault()
-        useStore.getState().toggleLibrary()
+        const s = useStore.getState()
+        if (s.mode === 'skillStudio') s.toggleStudioRail()
+        else s.toggleLibrary()
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
+
+  if (mode === 'skillStudio') return <SkillStudio />
 
   return (
     <div className={`app ${libraryOpen ? '' : 'library-closed'}`}>
@@ -44,7 +50,7 @@ export default function App(): React.JSX.Element {
             >
               <RailIcon />
             </button>
-            {doc ? (
+            {doc && (
               <>
                 <h1>{doc.title}</h1>
                 <span className="workspace-meta">
@@ -54,8 +60,6 @@ export default function App(): React.JSX.Element {
                   )}
                 </span>
               </>
-            ) : (
-              <h1 className="workspace-title-idle">Fabulist</h1>
             )}
           </div>
           {doc && (

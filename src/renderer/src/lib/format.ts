@@ -8,6 +8,22 @@ export function truncate(s: string, n: number): string {
   return s.length > n ? s.slice(0, n) + '…' : s
 }
 
+/** One-line token/cost summary for a run or running total. Cache tokens are folded together. */
+export function usageLine(u: {
+  inputTokens: number
+  outputTokens: number
+  cacheReadTokens: number
+  cacheCreationTokens: number
+  costUsd?: number
+}): string {
+  const n = (v: number): string => v.toLocaleString()
+  const cache = u.cacheReadTokens + u.cacheCreationTokens
+  const parts = [`${n(u.inputTokens)} in`, `${n(u.outputTokens)} out`]
+  if (cache > 0) parts.push(`${n(cache)} cache`)
+  if (u.costUsd != null) parts.push(`$${u.costUsd.toFixed(4)}`)
+  return parts.join(' · ')
+}
+
 /** Human "x ago" for a past timestamp (ms), falling back to a date past ~30 days. */
 export function relativeTime(ts: number): string {
   const diff = Date.now() - ts

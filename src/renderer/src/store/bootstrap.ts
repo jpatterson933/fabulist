@@ -19,6 +19,8 @@ export function bootstrap(): void {
   const store = useStore.getState()
 
   window.fabulist.agent.onEvent((e) => useStore.getState().handleAgentEvent(e))
+  window.fabulist.skillStudio.onEvent((e) => useStore.getState().handleStudioEvent(e))
+  window.fabulist.skillStudio.onAuthEvent((e) => useStore.getState().handleAuthEvent(e))
   window.fabulist.doc.onExternalChange((id, content) =>
     useStore.getState().handleExternalChange(id, content)
   )

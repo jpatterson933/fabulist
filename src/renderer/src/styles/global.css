@@ -209,7 +209,7 @@ input::placeholder {
   display: flex;
   align-items: baseline;
   gap: 9px;
-  padding: 2px 20px 14px;
+  padding: 2px 11px 12px;
   border-bottom: 1px solid var(--line-soft);
   -webkit-app-region: drag;
   flex-shrink: 0;
@@ -1904,4 +1904,555 @@ input::placeholder {
   color: var(--ink-soft);
   font-size: 13px;
   white-space: pre-wrap;
+}
+
+/* ─── workspace switcher (wordmark dropdown) ─── */
+
+.ws-switcher {
+  position: relative;
+  -webkit-app-region: no-drag;
+}
+.ws-switcher-btn {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 9px;
+  padding: 5px 9px;
+  border-radius: 8px;
+  transition: background 140ms ease;
+}
+.ws-switcher-btn:hover {
+  background: var(--paper-deeper);
+}
+.ws-switcher-glyph {
+  font-family: var(--font-display);
+  font-size: 17px;
+  color: var(--accent);
+  font-variation-settings: 'SOFT' 100;
+  transform: translateY(1px);
+}
+.ws-switcher-mark {
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+  color: var(--ink);
+  font-variation-settings: 'SOFT' 40, 'WONK' 0;
+}
+.ws-switcher-caret {
+  font-size: 10px;
+  color: var(--ink-faint);
+  align-self: center;
+}
+.ws-switcher-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  min-width: 210px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: var(--shadow-pop);
+  padding: 5px;
+}
+.ws-switcher-menu button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  text-align: left;
+  padding: 8px 11px;
+  border-radius: 7px;
+  transition: background 120ms ease;
+}
+.ws-switcher-menu button:hover {
+  background: var(--paper-deeper);
+}
+.ws-switcher-menu button.is-current {
+  background: var(--accent-wash);
+}
+.ws-switcher-name {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 540;
+  color: var(--ink);
+}
+.ws-switcher-sub {
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+
+/* ─── Skill Studio ─── */
+
+.studio {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr) 380px;
+  height: 100%;
+  background: var(--paper);
+  overflow: clip;
+  transition: grid-template-columns 280ms var(--ease-out);
+}
+.studio.rail-closed {
+  grid-template-columns: 0px minmax(0, 1fr) 380px;
+}
+.studio-main.full {
+  grid-column: 2 / -1;
+}
+
+.studio-rail {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper-deep);
+  border-right: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.studio-main {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.studio-main-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 196px minmax(0, 1fr);
+}
+
+.studio-files {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-right: 1px solid var(--line-soft);
+  overflow-y: auto;
+}
+.studio-files-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 16px 14px 6px;
+}
+.studio-files-create {
+  padding: 0 12px 8px;
+}
+.studio-files-create input {
+  width: 100%;
+  font-size: 12.5px;
+  font-family: var(--font-mono);
+}
+.studio-file-list {
+  list-style: none;
+  padding: 2px 8px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.studio-file {
+  position: relative;
+  border-radius: 7px;
+  transition: background 130ms ease;
+}
+.studio-file:hover {
+  background: var(--paper-deeper);
+}
+.studio-file.is-open {
+  background: var(--paper-deeper);
+}
+.studio-file-name {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 7px 26px 7px 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.studio-file.is-open .studio-file-name {
+  color: var(--ink);
+  font-weight: 520;
+}
+.studio-file-x {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--ink-faint);
+  opacity: 0;
+  transition: all 130ms ease;
+}
+.studio-file:hover .studio-file-x {
+  opacity: 1;
+}
+.studio-file-x:hover {
+  background: var(--bad);
+  color: #fff;
+}
+.studio-file.is-dir {
+  margin-top: 4px;
+}
+.studio-file-hint {
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-faint);
+}
+.studio-files-create-where {
+  font-size: 11px;
+  color: var(--ink-faint);
+  padding: 0 2px 4px;
+}
+.studio-files-create-where code {
+  font-family: var(--font-mono);
+  color: var(--ink-soft);
+}
+
+/* right-click context menu in the file tree */
+.ctx-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+}
+.ctx-menu {
+  position: fixed;
+  z-index: 71;
+  min-width: 170px;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  box-shadow: var(--shadow-pop);
+  padding: 4px;
+}
+.ctx-menu button {
+  text-align: left;
+  white-space: nowrap;
+  padding: 7px 10px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
+.ctx-menu button:hover {
+  background: var(--paper-deeper);
+  color: var(--ink);
+}
+.ctx-menu button.danger:hover {
+  background: var(--bad);
+  color: #fff;
+}
+
+/* ─── token/cost usage (Skill Studio) ─── */
+
+.usage-line {
+  align-self: stretch;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-faint);
+  padding: 2px 2px;
+  letter-spacing: 0.01em;
+}
+.studio-usage-bar {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-soft);
+  padding: 7px 14px;
+  border-bottom: 1px solid var(--line-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ─── Skillulist — Matrix neon theme (scoped to .studio only) ───────────────
+   Override the design-system custom properties inside the studio so every
+   reused component (rail, sidebar, chat, diffs, buttons) recolors at once;
+   the writing app outside .studio keeps the warm-paper palette. */
+
+.studio {
+  position: relative;
+  /* white surfaces */
+  --paper: oklch(0.99 0.004 200);
+  --paper-deep: oklch(0.975 0.006 200);
+  --paper-deeper: oklch(0.95 0.013 195);
+  --surface: oklch(1 0 0);
+  /* dark ink, readable on white */
+  --ink: oklch(0.27 0.03 235);
+  --ink-soft: oklch(0.46 0.03 232);
+  --ink-faint: oklch(0.62 0.03 230);
+  /* neon borders + accent */
+  --line: oklch(0.8 0.17 178);
+  --line-soft: oklch(0.88 0.1 180);
+  --accent: oklch(0.7 0.27 172);
+  --accent-deep: oklch(0.6 0.27 174);
+  --accent-wash: oklch(0.94 0.08 178);
+  --accent-ink: oklch(1 0 0);
+  --ok: oklch(0.68 0.2 150);
+  --bad: oklch(0.62 0.24 25);
+  --selection: oklch(0.9 0.12 182);
+  --shadow-soft: 0 0 0 1px var(--line), 0 0 14px -7px var(--accent);
+  --shadow-pop: 0 0 0 1px var(--accent), 0 0 24px -7px var(--accent);
+  /* per-Markdown-element neon palette — change these to restyle (see .cm-md-* below) */
+  --md-h1: oklch(0.58 0.28 350);
+  --md-h2: oklch(0.55 0.28 312);
+  --md-h3: oklch(0.55 0.26 268);
+  --md-h4: oklch(0.58 0.2 232);
+  --md-h5: oklch(0.6 0.16 215);
+  --md-h6: oklch(0.62 0.14 200);
+  --md-strong: oklch(0.58 0.27 18);
+  --md-em: oklch(0.62 0.21 60);
+  --md-strike: oklch(0.66 0.04 235);
+  --md-code: oklch(0.52 0.2 150);
+  --md-link: oklch(0.56 0.24 252);
+  --md-url: oklch(0.62 0.18 215);
+  --md-list: oklch(0.58 0.23 132);
+  --md-quote: oklch(0.55 0.13 195);
+  --md-hr: oklch(0.7 0.18 178);
+  --md-mark: oklch(0.72 0.13 200);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  background:
+    radial-gradient(130% 90% at 50% 0%, var(--accent-wash), transparent 60%),
+    var(--paper);
+}
+
+/* faint CRT scanlines over the whole studio (very subtle, non-interactive) */
+.studio::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 6;
+  background: repeating-linear-gradient(
+    0deg,
+    oklch(0.72 0.18 182 / 0.05) 0 1px,
+    transparent 1px 3px
+  );
+}
+
+.studio .ws-switcher-mark,
+.studio .workspace-title h1,
+.studio .studio-empty h2 {
+  color: var(--accent-deep);
+  text-shadow: 0 0 12px var(--accent-wash);
+}
+.studio .ws-switcher-mark {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.studio .ws-switcher-glyph,
+.studio .empty-state-glyph {
+  color: var(--accent);
+  text-shadow: 0 0 12px var(--accent);
+}
+.studio .library-label,
+.studio .studio-test-title {
+  color: var(--accent-deep);
+}
+.studio .library-item.is-active,
+.studio .studio-file.is-open {
+  box-shadow: inset 2px 0 0 var(--accent), 0 0 14px -8px var(--accent);
+}
+.studio .agent-dot.agent-working,
+.studio .agent-dot.agent-starting {
+  box-shadow: 0 0 8px var(--accent);
+}
+.studio .chat-send,
+.studio .btn-primary {
+  box-shadow: 0 0 16px -5px var(--accent);
+}
+.studio .studio-editor-area {
+  caret-color: var(--accent);
+}
+.studio textarea,
+.studio input {
+  background: var(--paper-deep);
+}
+.studio .bubble-error {
+  background: oklch(0.96 0.04 25);
+}
+/* diffs: light-on-white with neon-ish tint */
+.studio .diff ins,
+.studio .diff-row.diff-add {
+  background: oklch(0.9 0.12 150);
+  color: oklch(0.38 0.13 150);
+}
+.studio .diff del,
+.studio .diff-row.diff-del {
+  background: oklch(0.93 0.09 25);
+  color: oklch(0.45 0.15 25);
+}
+/* neon scrollbar thumb inside the studio (the global one is warm-tan) */
+.studio ::-webkit-scrollbar-thumb {
+  background: oklch(0.8 0.15 178);
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+.studio ::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.68 0.2 175);
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+/* ─── Markdown element styling (Skill Studio editor) ────────────────────────
+   The CodeMirror highlight (studio/markdownTheme.ts) only assigns these classes;
+   every color is a --md-* variable above, so the palette is swappable here alone. */
+.studio-cm {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.studio-cm .cm-editor {
+  height: 100%;
+}
+.studio-cm .cm-scroller {
+  overflow: auto;
+}
+.studio .cm-md-h1 { color: var(--md-h1); font-weight: 700; }
+.studio .cm-md-h2 { color: var(--md-h2); font-weight: 700; }
+.studio .cm-md-h3 { color: var(--md-h3); font-weight: 600; }
+.studio .cm-md-h4 { color: var(--md-h4); font-weight: 600; }
+.studio .cm-md-h5 { color: var(--md-h5); font-weight: 600; }
+.studio .cm-md-h6 { color: var(--md-h6); font-weight: 600; }
+.studio .cm-md-strong { color: var(--md-strong); font-weight: 700; }
+.studio .cm-md-em { color: var(--md-em); font-style: italic; }
+.studio .cm-md-strike { color: var(--md-strike); text-decoration: line-through; }
+.studio .cm-md-code { color: var(--md-code); }
+.studio .cm-md-link { color: var(--md-link); font-weight: 600; }
+.studio .cm-md-url { color: var(--md-url); text-decoration: underline; }
+.studio .cm-md-list { color: var(--md-list); font-weight: 700; }
+.studio .cm-md-quote { color: var(--md-quote); font-style: italic; }
+.studio .cm-md-hr { color: var(--md-hr); font-weight: 700; }
+.studio .cm-md-mark { color: var(--md-mark); }
+.studio .cm-md-label { color: var(--md-link); }
+.studio .cm-md-meta { color: var(--md-mark); }
+.studio-file-dir {
+  display: block;
+  padding: 3px 10px 2px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--ink-faint);
+}
+
+.studio-editor {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.studio-editor-head {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 20px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.studio-editor-path {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+.studio-editor-head-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.studio-editor-status {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--ink-faint);
+}
+.studio-editor-area {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  border: none;
+  border-radius: 0;
+  background: var(--paper);
+  padding: 20px 26px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.65;
+  resize: none;
+}
+.studio-editor-area:focus {
+  border: none;
+  box-shadow: none;
+}
+.studio-editor-empty {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  color: var(--ink-faint);
+  font-size: 13px;
+}
+
+.studio-test {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.studio-test-head {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px 9px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.studio-test-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--ink-faint);
+}
+
+.studio-empty {
+  grid-column: 2 / -1;
+  display: grid;
+  place-items: center;
+  padding: 40px;
+}
+.studio-empty .empty-state-glyph {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 40px;
+  color: var(--accent);
+  margin-bottom: 16px;
+}
+.studio-empty h2 {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 540;
+  line-height: 1.25;
+  margin-bottom: 12px;
+}
+.studio-empty p {
+  color: var(--ink-soft);
+  line-height: 1.6;
+}
+.studio-empty code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  color: var(--accent-deep);
 }
