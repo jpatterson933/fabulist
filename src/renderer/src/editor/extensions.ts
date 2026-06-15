@@ -129,6 +129,30 @@ export const suggestionField = StateField.define<DecorationSet>({
   provide: (f) => EditorView.decorations.from(f)
 })
 
+// ---------- transient reveal highlight ("Show in document") ----------
+
+// A self-contained, opt-in highlight: "Show in document" paints the edited span
+// so the eye lands on the new text, and the next click clears it. Deliberately
+// kept separate from threadField/suggestionField — it owns no anchors, persists
+// nothing, and the only way in is the setReveal effect.
+export const setReveal = StateEffect.define<{ from: number; to: number } | null>()
+
+export const revealField = StateField.define<DecorationSet>({
+  create: () => Decoration.none,
+  update(deco, tr) {
+    deco = deco.map(tr.changes)
+    for (const e of tr.effects) {
+      if (!e.is(setReveal)) continue
+      deco =
+        e.value && e.value.from < e.value.to && e.value.to <= tr.newDoc.length
+          ? Decoration.set(Decoration.mark({ class: 'cm-reveal' }).range(e.value.from, e.value.to))
+          : Decoration.none
+    }
+    return deco
+  },
+  provide: (f) => EditorView.decorations.from(f)
+})
+
 // ---------- markdown typography ----------
 
 const mdHighlight = HighlightStyle.define([
@@ -194,6 +218,7 @@ export function baseExtensions(): ReturnType<typeof markdown>[] {
     editorTheme,
     placeholder('Begin…'),
     threadField,
-    suggestionField
+    suggestionField,
+    revealField
   ] as ReturnType<typeof markdown>[]
 }

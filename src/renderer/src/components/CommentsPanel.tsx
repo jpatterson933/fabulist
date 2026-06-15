@@ -74,11 +74,12 @@ export default function CommentsPanel(): React.JSX.Element {
 
 function DraftCard(): React.JSX.Element {
   const draft = useStore((s) => s.draftComment)
+  const setText = useStore((s) => s.setDraftCommentText)
   const submit = useStore((s) => s.submitDraftComment)
   const cancel = useStore((s) => s.cancelDraftComment)
   const activeId = useStore((s) => s.activeId)
   const attachments = useAttachments(activeId)
-  const [text, setText] = useState('')
+  const text = draft?.text ?? ''
 
   const post = (): void => {
     if (!text.trim() && attachments.paths.length === 0) return

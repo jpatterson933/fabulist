@@ -11,6 +11,7 @@ import {
   baseExtensions,
   setThreadRanges,
   setSuggestion,
+  setReveal,
   currentThreadRanges,
   externalChange,
   type ThreadRange
@@ -192,12 +193,25 @@ export default function Editor({ docId }: { docId: string }): React.JSX.Element 
     return () => window.removeEventListener('keydown', onKey)
   }, [suggestion, respondPermission])
 
-  // scroll to an applied edit when the user asks ("Show in document")
+  // scroll to an applied edit when the user asks ("Show in document"), and
+  // briefly highlight the new text so the eye lands on it. The highlight is a
+  // temporary cue: the next click anywhere clears it.
   useEffect(() => {
     const view = viewRef.current
     if (!view || !revealPos) return
-    const pos = Math.min(revealPos.pos, view.state.doc.length)
-    view.dispatch({ effects: EditorView.scrollIntoView(pos, { y: 'center' }) })
+    const len = view.state.doc.length
+    const from = Math.min(revealPos.from, len)
+    const to = Math.min(revealPos.to, len)
+    view.dispatch({
+      effects: [
+        EditorView.scrollIntoView(from, { y: 'center' }),
+        ...(to > from ? [setReveal.of({ from, to })] : [])
+      ]
+    })
+    if (to <= from) return
+    const clear = (): void => viewRef.current?.dispatch({ effects: setReveal.of(null) })
+    window.addEventListener('pointerdown', clear, { once: true, capture: true })
+    return () => window.removeEventListener('pointerdown', clear, true)
   }, [revealPos])
 
   // scroll to a thread when asked

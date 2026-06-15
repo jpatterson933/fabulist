@@ -25,6 +25,12 @@ export const createDocSlice: StateCreator<Store, [], [], DocSlice> = (set, get) 
     await get().openDoc(meta.id)
   },
 
+  cloneDoc: async (id) => {
+    const meta = await window.fabulist.library.clone(id)
+    await get().loadDocs()
+    await get().openDoc(meta.id)
+  },
+
   deleteDoc: async (id) => {
     if (get().activeId === id) await get().closeDoc()
     await window.fabulist.library.remove(id)
@@ -123,7 +129,7 @@ export const createDocSlice: StateCreator<Store, [], [], DocSlice> = (set, get) 
       threads: reanchor(get().threads, content),
       draftComment:
         draft && draftLoc
-          ? { anchor: { ...draft.anchor, from: draftLoc.from, to: draftLoc.to } }
+          ? { ...draft, anchor: { ...draft.anchor, from: draftLoc.from, to: draftLoc.to } }
           : null
     })
   }

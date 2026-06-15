@@ -67,7 +67,11 @@ export const createCommentsSlice: StateCreator<Store, [], [], CommentsSlice> = (
   },
 
   startDraftComment: (anchor) =>
-    set({ draftComment: { anchor }, tab: 'comments', sidebarOpen: true }),
+    set({ draftComment: { anchor, text: '' }, tab: 'comments', sidebarOpen: true }),
+  setDraftCommentText: (text) => {
+    const draft = get().draftComment
+    if (draft) set({ draftComment: { ...draft, text } })
+  },
   cancelDraftComment: () => set({ draftComment: null }),
 
   submitDraftComment: async (text) => {

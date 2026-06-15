@@ -7,6 +7,7 @@ export default function Library(): React.JSX.Element {
   const activeId = useStore((s) => s.activeId)
   const openDoc = useStore((s) => s.openDoc)
   const createDoc = useStore((s) => s.createDoc)
+  const cloneDoc = useStore((s) => s.cloneDoc)
   const deleteDoc = useStore((s) => s.deleteDoc)
   const [creating, setCreating] = useState(false)
   const [title, setTitle] = useState('')
@@ -88,13 +89,22 @@ export default function Library(): React.JSX.Element {
                 <button onClick={() => setConfirmDelete(null)}>Keep</button>
               </div>
             ) : (
-              <button
-                className="library-item-x"
-                title="Delete document"
-                onClick={() => setConfirmDelete(d.id)}
-              >
-                ×
-              </button>
+              <>
+                <button
+                  className="library-item-clone"
+                  title="Clone document — copies the current text into a new document"
+                  onClick={() => void cloneDoc(d.id)}
+                >
+                  ⧉
+                </button>
+                <button
+                  className="library-item-x"
+                  title="Delete document"
+                  onClick={() => setConfirmDelete(d.id)}
+                >
+                  ×
+                </button>
+              </>
             )}
           </div>
         ))}
