@@ -181,7 +181,14 @@ export const useStore = create<FabulistStore>((set, get) => ({
   },
 
   openDoc: async (id) => {
-    await get().closeDoc()
+    // Persist the outgoing doc without blanking activeId — keeping the previous
+    // doc mounted until the new content loads avoids an empty-state flash. The
+    // watch(id) at the end of this fn supersedes the old doc's watch.
+    const prev = get().activeId
+    if (prev && prev !== id) {
+      await get().flushWrite()
+      await window.fabulist.doc.snapshot(prev, 'Edited').catch(() => {})
+    }
     const [content, rawThreads, agentThreads, activeThreadId, commits, model, font] =
       await Promise.all([
         window.fabulist.doc.read(id),

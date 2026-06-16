@@ -5,6 +5,11 @@ All notable changes to Fabulist are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+- Switching between documents no longer flashes the empty "new document" state. The
+  previous document now stays on screen until the next one's content has loaded, instead
+  of blanking out during the async load.
+
 ### Changed
 - The sidebar toggle in the workspace header is now an icon button (matching the library
   toggle) instead of a "Panel" text label.
