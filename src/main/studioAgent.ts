@@ -33,14 +33,14 @@ function logUsage(label: string, slug: string, run: ParsedRun): void {
 }
 
 const TEST_APPEND = `
-You are running inside Fabulist's Skill Studio, testing the skill(s) under development —
+You are running inside Fabulist's Plugin Studio, testing the skill(s) under development —
 loaded as a local plugin and enabled for this session. Behave as you would for any real
 user: let the relevant skill and its own instructions drive what you read and do; don't
 pre-read the whole skill folder. The working directory is a throwaway sandbox — you may
 create or edit files there freely. Keep chat replies focused on the result.`
 
 const AUTHOR_APPEND = (autoApprove: boolean): string => `
-You are helping the user AUTHOR a Claude skill inside Fabulist's Skill Studio. The working
+You are helping the user AUTHOR a Claude skill inside Fabulist's Plugin Studio. The working
 directory IS the skill's plugin folder; the deliverable is its files — primarily the
 skills/<name>/SKILL.md and any supporting materials. Read the files to understand the current
 state, then make focused edits with Write/Edit. ${

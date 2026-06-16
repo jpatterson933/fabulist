@@ -8,15 +8,15 @@ Markdown, git history, local attachments, anchored comments, and approval-gated 
 
 The app has two workspaces:
 
-- **Writing studio** for drafting, commenting, revising, and rewinding documents.
-- **Skill Studio** for building and testing Claude Code skills as real local plugins.
+- **Markdown Studio** for drafting, commenting, revising, and rewinding documents.
+- **Plugin Studio** for building and testing Claude Code skills as real local plugins.
 
 ![Fabulist writing workspace with document library, manuscript editor, comments, and history panel](docs/hero.png)
 
-_The writing workspace keeps the manuscript in the center, document library on the left, and
+_Markdown Studio keeps the manuscript in the center, document library on the left, and
 Claude, comments, history, or skills on the right._
 
-## Writing Flow
+## Markdown Studio
 
 ### 1. Write in a real document
 
@@ -59,16 +59,16 @@ Restoring an older version commits forward, so history stays intact instead of b
 
 _History is a timeline you can inspect and restore from, not a hidden backup folder._
 
-## Skill Studio
+## Plugin Studio
 
-Skill Studio is a separate workspace for authoring and testing Claude skills. Each skill is a
-real local plugin under `~/Documents/Fabulist/.skill-studio/<slug>/`, with its own
+Plugin Studio is a separate workspace for authoring and testing local Claude plugins. Each plugin
+lives under `~/Documents/Fabulist/.skill-studio/<slug>/`, with its own
 `.claude-plugin/plugin.json`, `skills/<slug>/SKILL.md`, optional agents, MCP config, authoring
 chat, and sandboxed test thread.
 
-![Skill Studio start screen for creating and testing a skill](docs/skillulist.png)
+![Plugin Studio start screen for creating and testing a plugin](docs/plugin-studio.png)
 
-_Build a skill, edit its files, test it in a jailed thread, then use it from Fabulist documents._
+_Build a plugin, edit its files, test it in a jailed thread, then use its skills from Fabulist documents._
 
 ## Where Work Lives
 
@@ -86,7 +86,7 @@ A document folder looks like this:
   .git/              # full version history
 ```
 
-Skill Studio lives beside documents, hidden from the document library:
+Plugin Studio lives beside documents, hidden from the document library:
 
 ```text
 ~/Documents/Fabulist/.skill-studio/
@@ -134,10 +134,10 @@ npm run dist
 | -------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | Shell          | Electron + electron-vite + React | The Claude Agent SDK is a Node library, so the main process can run it directly with no sidecar server.                   |
 | Editor         | CodeMirror 6                     | Decorations and range mapping power anchored comments, inline suggestions, and reveal highlights.                         |
-| Agent          | `@anthropic-ai/claude-agent-sdk` | Documents run with `cwd` set to the document folder; Skill Studio runs authoring and test sessions against local plugins. |
+| Agent          | `@anthropic-ai/claude-agent-sdk` | Documents run with `cwd` set to the document folder; Plugin Studio runs authoring and test sessions against local plugins. |
 | Versioning     | plain `git` CLI per folder       | History, snapshots, approved edits, and restores all become inspectable commits.                                          |
 | Approval gate  | SDK `canUseTool` callback        | Read-only tools pass through; edits and commands surface as approval requests unless auto-apply is on.                    |
-| Chat rendering | `react-markdown` + `remark-gfm`  | Skill Studio chat, test threads, and comments render Markdown safely without raw HTML.                                    |
+| Chat rendering | `react-markdown` + `remark-gfm`  | Plugin Studio chat, test threads, and comments render Markdown safely without raw HTML.                                  |
 
 ## Development
 
@@ -150,10 +150,10 @@ npm run dist
 Source map:
 
 ```text
-src/main/        Electron main process, IPC, git, library, agent, Skill Studio storage
+src/main/        Electron main process, IPC, git, library, agent, Plugin Studio storage
 src/preload/     typed contextBridge API exposed as window.fabulist
 src/shared/      shared types and IPC channel contract
-src/renderer/    React UI, CodeMirror editor, chat, comments, history, settings, Skill Studio
+src/renderer/    React UI, CodeMirror editor, chat, comments, history, settings, Plugin Studio
 ```
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) before opening a PR.

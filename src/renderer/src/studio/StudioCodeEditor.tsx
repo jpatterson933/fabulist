@@ -19,7 +19,7 @@ import { neonMarkdownHighlight, studioEditorTheme } from './markdownTheme'
 const scrollMemory = new Map<string, ReturnType<EditorView['scrollSnapshot']>>()
 
 /**
- * A lean CodeMirror editor for the Skill Studio. For `.md` files it adds Markdown
+ * A lean CodeMirror editor for the Plugin Studio. For `.md` files it adds Markdown
  * syntax highlighting whose per-element styling is entirely CSS-driven (see
  * markdownTheme.ts → `.studio .cm-md-*` in global.css), so the look is modular and
  * swappable without touching this component. Keyed by `path` upstream, so each file

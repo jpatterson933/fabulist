@@ -8,7 +8,7 @@ import { app } from 'electron'
  * Resolve the binary ourselves and point at the asar-unpacked copy. Returns
  * undefined in dev, where the SDK's own resolution works.
  *
- * Shared by both the document agent (agent.ts) and the Skill Studio agent
+ * Shared by both the document agent (agent.ts) and the Plugin Studio agent
  * (studioAgent.ts) so the resolution lives in exactly one place — neither agent
  * depends on the other, only on this util.
  */

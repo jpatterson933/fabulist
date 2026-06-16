@@ -16,7 +16,7 @@ import { search, searchKeymap, highlightSelectionMatches } from '@codemirror/sea
  * Deliberately UNBRAIDED from `extensions.ts` (threads / suggestions / reveal):
  * this file owns no document state, no anchors, and no app store. It's a pure,
  * self-contained CodeMirror feature pack that both editors (the writing app's
- * `Editor.tsx` and the Skill Studio's `StudioCodeEditor.tsx`) pull in with a
+ * `Editor.tsx` and the Plugin Studio's `StudioCodeEditor.tsx`) pull in with a
  * single spread. Add, remove, or retune a capability here and it changes in both
  * places at once — nothing else needs to know.
  *

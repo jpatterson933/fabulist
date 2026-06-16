@@ -11,7 +11,7 @@ const TEST_REF_PREAMBLE =
   'being run in a sandbox as a real user would invoke it. Use it to diagnose the behavior ' +
   'and propose changes to the skill’s files. The transcript:'
 
-// The Skill Studio slice — owns the `mode` switch, the authored-skill list + file
+// The Plugin Studio slice — owns the `mode` switch, the authored-skill list + file
 // editor buffer, and the per-skill test-thread transcript. Self-contained: no other
 // slice reads these fields, and this reducer never reaches into doc state.
 

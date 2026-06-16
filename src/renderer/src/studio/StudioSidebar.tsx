@@ -6,7 +6,7 @@ import StudioComments from '@/studio/StudioComments'
 import TestThread from '@/studio/TestThread'
 
 /**
- * The Skill Studio sidebar — mirrors the writing app's tabbed sidebar, but with
+ * The Plugin Studio sidebar — mirrors the writing app's tabbed sidebar, but with
  * Chat (the authoring agent) / Comments (highlight → note → into the chat) / Test
  * (the jailed sandbox run). Its left edge is a drag handle: pull it left to widen the
  * panel (it won't go narrower than the default); double-click to snap back.

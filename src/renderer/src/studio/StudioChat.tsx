@@ -16,7 +16,7 @@ const NO_ARCHIVED: ArchivedTest[] = []
 type TestRef = 'current' | { version: string }
 
 /**
- * The main chat with the skill — an authoring agent that reads and edits the skill's
+ * The main chat with the plugin — an authoring agent that reads and edits the plugin's
  * files directly. By default each edit arrives as an approval card (Apply / Decline)
  * with a diff; toggle "Auto-apply edits" to apply them immediately. Applied edits land
  * in the editor with a "Show in file" jump. Type "/" to reference a test run — the
@@ -158,7 +158,7 @@ export default function StudioChat({ slug }: { slug: string }): React.JSX.Elemen
         </button>
       </div>
       {usage && (
-        <div className="studio-usage-bar" title="Total tokens + cost spent building this skill">
+        <div className="studio-usage-bar" title="Total tokens + cost spent building this plugin">
           Σ {usageLine(usage)} · {usage.runs} run{usage.runs === 1 ? '' : 's'}
         </div>
       )}
@@ -166,8 +166,8 @@ export default function StudioChat({ slug }: { slug: string }): React.JSX.Elemen
         {chat.length === 0 && (
           <div className="chat-empty">
             <p>
-              Chat with Claude to build this skill. It reads and edits the skill's files directly —
-              changes show here as diffs and land in the editor.
+              Chat with Claude to build this plugin. It reads and edits the plugin's files
+              directly — changes show here as diffs and land in the editor.
             </p>
             <p className="chat-empty-hint">
               Type <code>/</code> to reference a test run (current or archived), or highlight text in

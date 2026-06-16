@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { freshStore, makeFabulist } from '../../helpers/store'
 
-// The Skill Studio slice owns the mode switch and routes its own streaming events
+// The Plugin Studio slice owns the mode switch and routes its own streaming events
 // into per-skill test threads — never into the document chat.
 
 afterEach(() => {

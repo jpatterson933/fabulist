@@ -3,7 +3,7 @@ import { promises as fs } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-// The Skill Studio scaffolds each skill as its OWN Claude plugin under
+// The Plugin Studio scaffolds each skill as its OWN Claude plugin under
 // .skill-studio/<slug>/ (manifest + skills/<slug>/SKILL.md + agents/ + .mcp.json),
 // listed in a top-level marketplace.json, and guards every write through resolveInside.
 

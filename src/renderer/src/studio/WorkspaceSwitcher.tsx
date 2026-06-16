@@ -3,13 +3,13 @@ import { useStore } from '@/store'
 
 /**
  * The app wordmark IS the workspace switcher: clicking the ❡ logo opens a menu to
- * move between the writing studio ("Fabulist") and the Skill Studio ("Skillulist
- * Studio"). Lives in the top-left brand slot of whichever rail is showing.
+ * move between Markdown Studio and Plugin Studio. Lives in the top-left brand
+ * slot of whichever rail is showing.
  */
 export default function WorkspaceSwitcher(): React.JSX.Element {
   const mode = useStore((s) => s.mode)
   const [open, setOpen] = useState(false)
-  const label = mode === 'skillStudio' ? 'Skillulist' : 'Fabulist'
+  const label = mode === 'skillStudio' ? 'Plugin Studio' : 'Markdown Studio'
 
   const choose = (target: 'doc' | 'skillStudio'): void => {
     setOpen(false)
@@ -43,8 +43,8 @@ export default function WorkspaceSwitcher(): React.JSX.Element {
               choose('doc')
             }}
           >
-            <span className="ws-switcher-name">Fabulist</span>
-            <span className="ws-switcher-sub">Writing</span>
+            <span className="ws-switcher-name">Markdown Studio</span>
+            <span className="ws-switcher-sub">Documents</span>
           </button>
           <button
             className={mode === 'skillStudio' ? 'is-current' : ''}
@@ -53,8 +53,8 @@ export default function WorkspaceSwitcher(): React.JSX.Element {
               choose('skillStudio')
             }}
           >
-            <span className="ws-switcher-name">Skillulist</span>
-            <span className="ws-switcher-sub">Skills</span>
+            <span className="ws-switcher-name">Plugin Studio</span>
+            <span className="ws-switcher-sub">Plugins</span>
           </button>
         </div>
       )}

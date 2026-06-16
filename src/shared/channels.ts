@@ -61,7 +61,7 @@ export interface InvokeChannels {
   'skills:read': (slug: string) => string
   'skills:reveal': () => void
 
-  // Skill Studio — author skills as a real local Claude plugin (.skill-studio/),
+  // Plugin Studio — author skills as a real local Claude plugin (.skill-studio/),
   // separate from the consume library above, and test them in a jailed sandbox.
   'skillStudio:list': () => StudioSkill[]
   'skillStudio:create': (name: string) => StudioSkill
@@ -138,7 +138,7 @@ export interface SendChannels {
     approved: boolean,
     answers?: Record<string, string>
   ) => void
-  /** Answer a Skill Studio approval/question (test or authoring) — routed by requestId. */
+  /** Answer a Plugin Studio approval/question (test or authoring) — routed by requestId. */
   'skillStudio:permission-response': (
     requestId: string,
     approved: boolean,
@@ -149,9 +149,9 @@ export interface SendChannels {
 /** Push channels main→renderer (`webContents.send` ↔ `ipcRenderer.on`). */
 export interface EventChannels {
   'agent:event': (event: AgentEvent) => void
-  /** Streaming for a Skill Studio test run; reuses AgentEvent with docId = the skill slug. */
+  /** Streaming for a Plugin Studio test run; reuses AgentEvent with docId = the skill slug. */
   'skillStudio:event': (event: AgentEvent) => void
-  /** Streaming for the Skill Studio authoring chat; reuses AgentEvent with docId = the skill slug. */
+  /** Streaming for the Plugin Studio authoring chat; reuses AgentEvent with docId = the skill slug. */
   'skillStudio:authEvent': (event: AgentEvent) => void
   'doc:external-change': (id: string, content: string) => void
   'comments:changed': (id: string) => void

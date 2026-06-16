@@ -127,7 +127,7 @@ export interface ChatItem {
   toolNotes?: { toolId: string; note: string; done?: boolean; ok?: boolean }[]
   /** an auto-applied edit, rendered as a collapsed diff card */
   edit?: { tool: string; filePath?: string; before: string; after: string }
-  /** a token/cost usage line for a finished run (Skill Studio test/authoring) */
+  /** a token/cost usage line for a finished run (Plugin Studio test/authoring) */
   usage?: RunUsage
   streaming?: boolean
   error?: string
@@ -209,7 +209,7 @@ export interface DocSkill {
   enabled: boolean
 }
 
-/** A skill being authored in the Skill Studio — read from its SKILL.md frontmatter. */
+/** A skill being authored in the Plugin Studio — read from its SKILL.md frontmatter. */
 export interface StudioSkill {
   /** folder name under the studio plugin's skills/ dir */
   slug: string

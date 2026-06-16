@@ -15,7 +15,7 @@ All notable changes to Fabulist are documented here. The format follows
   safe — only the conversation is reset; the skill's files (`SKILL.md`, agents, `.mcp.json`)
   are never touched.
 - **Code-editor power features in both editors — Find, multi-cursor, and Tab-to-indent.**
-  Editing a document (writing app) or a skill file (Skillulist) now has the shortcuts you'd
+  Editing a document (writing app) or a skill file (Plugin Studio) now has the shortcuts you'd
   expect from a real editor: **⌘F** opens a Find / Replace panel (**⌘G** / **⇧⌘G** for next /
   previous, esc to close); **⌘D** selects the next occurrence of the word or selection for
   VS Code-style multi-cursor editing (**⇧⌘L** selects every occurrence at once); **⌘⌥G** jumps
@@ -29,13 +29,18 @@ All notable changes to Fabulist are documented here. The format follows
   caret via the app's `--selection` / `--accent` colors instead of the browser defaults.)
 
 ### Changed
-- **Skillulist `/test` now sends the FULL test transcript.** Referencing a run (current or
+- **Workspace names and dark studio themes.** The app remains **Fabulist**, while the two
+  workspaces are now **Markdown Studio** and **Plugin Studio** in the switcher and docs. The
+  shared design tokens now define a soft dark Markdown Studio palette, and Plugin Studio
+  overrides the same tokens with a scoped dark-neon palette so future visual retuning stays
+  modular instead of braided through component styles.
+- **Plugin Studio `/test` now sends the FULL test transcript.** Referencing a run (current or
   archived) in the authoring chat previously serialized only the last ~12k characters
   (~3k tokens) of the transcript — so most runs were diagnosed from their tail. That cap is
   removed: the whole run is sent. Each run's token/cost/turns **and the model it actually ran
   on** are now woven in too (previously usage lines were dropped), so the authoring agent can
   reason about efficiency, not just correctness.
-- **Skillulist test transcripts are no longer capped at 200 messages.** The live test thread,
+- **Plugin Studio test transcripts are no longer capped at 200 messages.** The live test thread,
   the authoring chat, and each archived run were each silently clipped to their last 200
   items on save — losing the head of long runs even before `/test`. The full transcripts are
   now persisted. Archived runs are still capped by **count** at the **10** most recent (down
@@ -43,21 +48,21 @@ All notable changes to Fabulist are documented here. The format follows
   clear older runs aren't kept.
 - Reworked `README.md` into a clearer visual app flow using selected root-level
   screenshots from `docs/`.
-- **Skillulist edits now mirror the writing app.** When the authoring agent proposes an
+- **Plugin Studio edits now mirror the writing app.** When the authoring agent proposes an
   edit (auto-apply off), the diff is rendered **inline in the file editor** — deletions
   struck through in red, insertions in green — and the buffer locks while it's under review,
   with **Accept (⌘⏎) / Decline (esc)** in a bar over the editor (the chat card collapses to a
   compact "shown in the editor" note). Previously the diff only appeared in the chat. This
   reuses the document editor's exact suggestion overlay; the two pages stay unbraided.
-- **Applied Skillulist edits appear instantly.** Approving an edit (or having it auto-applied)
+- **Applied Plugin Studio edits appear instantly.** Approving an edit (or having it auto-applied)
   now lands the change in the editor immediately instead of after the whole turn finishes —
   the editor buffer is updated optimistically from the edit's own diff, with the end-of-turn
   disk re-read kept as a reconciling backstop.
-- **Skillulist auto-apply now behaves exactly like the writing app.** It's persisted per skill
+- **Plugin Studio auto-apply now behaves exactly like the writing app.** It's persisted per skill
   and **re-read on every edit**, so toggling "Auto-apply edits" takes effect immediately —
   even mid-run — instead of being fixed when the message was sent (it's no longer passed as a
   per-send argument; the gate reads it from the skill's settings, mirroring `agent.ts`).
-- **Skillulist editor scroll position is now actually restored** when you leave a file and come
+- **Plugin Studio editor scroll position is now actually restored** when you leave a file and come
   back — including the bottom of a long file. The position is captured **as you scroll** (while
   the editor is on-screen) instead of when it's torn down: React runs the teardown after it has
   already detached the old editor, and a detached element reports `scrollTop: 0`, so the old
@@ -65,14 +70,14 @@ All notable changes to Fabulist are documented here. The format follows
   `scrollTo`), which builds the first viewport around the saved position so it lands exactly.
 
 ### Added
-- **Skillulist model picker.** Choose the Claude model for a skill — used for both the
+- **Plugin Studio model picker.** Choose the Claude model for a skill — used for both the
   authoring chat and test runs — from a picker in the Chat and Test compose bars, mirroring
   the writing app's model picker. The choice is persisted per skill (alongside auto-apply)
   under `.skill-studio/.state/<slug>.json` and read by the engine when it launches a run, so
   it survives a restart.
 
 ### Added
-- **Skillulist**: a separate workspace for building and testing Claude skills, reached
+- **Plugin Studio**: a separate workspace for building and testing Claude skills, reached
   from the ❡ wordmark dropdown at the top-left of the (collapsible) rail. Each skill is
   its own real local Claude *plugin* under `~/Documents/Fabulist/.skill-studio/<slug>/` —
   with its own `.claude-plugin/plugin.json`, `skills/<slug>/SKILL.md`, `agents/`, and
@@ -94,16 +99,16 @@ All notable changes to Fabulist are documented here. The format follows
   top — and logs it to the process console — so consumption stays visible. The `.md` editor has
   an **Auto-format** button (next to Comment) that formats Markdown with **Prettier** (run
   in-renderer via `prettier/standalone`), leaving fenced code untouched. The studio
-  wears a **white + neon** theme (neon borders, accents, and glows on white, scoped to the
-  studio only), and the skill editor is now a syntax-highlighting **Markdown editor** that
+  wears a scoped **dark + neon** theme (soft borders, accents, and glows), and the skill
+  editor is now a syntax-highlighting **Markdown editor** that
   colors each element type — headings, bold, italics, inline/fenced code, links, lists,
   blockquotes, rules — from a swappable per-element palette.
-- **Resizable Skill Studio sidebar**: drag the chat/test/comments panel's left edge to widen
+- **Resizable Plugin Studio sidebar**: drag the chat/test/comments panel's left edge to widen
   it (it won't go narrower than the default); double-click the edge to snap back. The panel
   also **flexes with the window** — it grows as you enlarge the window (to ~32vw, capped at
   60vw) so chat/test/comment text and tables get more room instead of staying pinned at a
   fixed width; dragging still overrides the width on top of that.
-- **Versioned, archived test runs**: Skill Studio test threads are now numbered — the live
+- **Versioned, archived test runs**: Plugin Studio test threads are now numbered — the live
   thread shows **TEST v0.0.1** (an odometer that carries: `0.0.9`→`0.1.0`, `0.9.9`→`1.0.0`).
   **New test** now archives the current run instead of discarding it: the button arms to
   **"Archive current test?"** and a second click files the run under its version, bumps to
@@ -112,7 +117,7 @@ All notable changes to Fabulist are documented here. The format follows
   searchable list of past runs (most-recent-first, top 5, filter by version) you can weave
   into a message just like the live run. Archives (version + timestamp + transcript) persist
   across restarts, capped at the 50 most recent.
-- **Invoke a specific skill in a test, like a real user would**: the Skill Studio **Test**
+- **Invoke a specific skill in a test, like a real user would**: the Plugin Studio **Test**
   tab now enables the plugin's skills the way the engine does (the Agent SDK's `skills: 'all'`)
   and lets you type `/` to pick one by name. Picking a skill sends a "use the `<name>` skill"
   invocation (the natural-language equivalent of calling it) and then lets the skill's own
@@ -120,14 +125,14 @@ All notable changes to Fabulist are documented here. The format follows
   steering it to pre-read everything. Leave the picker alone to give a plain task and let the
   model select a skill by its description, as it would in the wild. The chat shows your task
   plus a short "Using the `<name>` skill" marker; the directive goes to the model, not the echo.
-- **Reference a test run from the authoring chat**: in the Skill Studio **Chat**, type
+- **Reference a test run from the authoring chat**: in the Plugin Studio **Chat**, type
   `/` to reference the latest **Test** run — its transcript (your prompt, the skill's
   replies, the tools it ran, files it touched, and any errors) is woven into the message
   Claude receives, so you can say *"the test did X but I expected Y — review and propose a
   fix"* and it can see exactly what happened. Your chat bubble shows just your note plus a
   short "Referenced the latest test run" marker; the full transcript goes to the model, not
   the visible echo. Oversized transcripts keep their most-recent turns.
-- **Skillulist authoring edits now follow the same approval flow as the writing app**:
+- **Plugin Studio authoring edits now follow the same approval flow as the writing app**:
   the authoring **Chat** no longer applies (and commits) the agent's file edits silently.
   By default each edit arrives as an **approval card** with a diff — **Apply** or
   **Decline** — and only approved edits are written and committed. An **Auto-apply edits**
@@ -169,21 +174,21 @@ All notable changes to Fabulist are documented here. The format follows
   work without warning.
 
 ### Fixed
-- **Stray highlight when switching Skill Studio files**: opening a file no longer carries
+- **Stray highlight when switching Plugin Studio files**: opening a file no longer carries
   over the "Show in file" highlight from a previous reveal (it bled onto longer files —
   usually Markdown — as a half-page accent wash). The highlight is cleared on every file
   open and re-applied only for the file a reveal actually targets.
-- **Auto-format no longer snaps the editor to the top**: formatting a Skill Studio file (and
+- **Auto-format no longer snaps the editor to the top**: formatting a Plugin Studio file (and
   agent edits to the open file) now apply as a minimal in-place change, so CodeMirror keeps
   your scroll position instead of jumping to line 1.
-- **Skill Studio chat renders Markdown** instead of showing raw `**asterisks**`, `###`
+- **Plugin Studio chat renders Markdown** instead of showing raw `**asterisks**`, `###`
   headings, and `|` tables. The authoring **Chat**, **Test** transcript, and **Comments**
   notes now display the LLM's output as formatted Markdown (GFM — headings, bold/italic,
   lists, fenced code, blockquotes, tables, links) so it's readable. Links open in your
-  system browser; raw HTML is not rendered (XSS-safe). Scoped to the Skill Studio chat
+  system browser; raw HTML is not rendered (XSS-safe). Scoped to the Plugin Studio chat
   surfaces only — the document chat and every file editor still show/edit raw source
   exactly as before.
-- **Skill Studio chats now survive an app restart**: the authoring and test transcripts
+- **Plugin Studio chats now survive an app restart**: the authoring and test transcripts
   used to live only in memory, so quitting and relaunching wiped them — unlike the
   document chat, which persists. Both threads (and the authoring session, so the
   conversation resumes) are now saved per skill under `.skill-studio/.state/<slug>.json`

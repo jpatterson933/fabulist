@@ -20,7 +20,7 @@ export function groupConsecutiveEdits(chat: ChatItem[]): (ChatItem | ChatItem[])
   return out
 }
 
-/** How an applied edit gets revealed in an editor — the Skill Studio passes its own. */
+/** How an applied edit gets revealed in an editor — the Plugin Studio passes its own. */
 type Reveal = (edit: NonNullable<ChatItem['edit']>) => void
 
 export function EditGroupCard({
@@ -55,7 +55,7 @@ export function ChatBubble({
 }: {
   item: ChatItem
   reveal?: Reveal
-  /** render prose as formatted Markdown (Skill Studio chat/test) instead of plain text */
+  /** render prose as formatted Markdown (Plugin Studio chat/test) instead of plain text */
   markdown?: boolean
 }): React.JSX.Element {
   if (item.usage) {

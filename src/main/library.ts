@@ -32,7 +32,7 @@ export { DOC_FILE, COMMENTS_FILE }
 
 const CLAUDE_MD = (title: string) => `# About this project
 
-This folder is a single document inside Fabulist, an AI-native writing studio.
+This folder is a single document inside Fabulist's Markdown Studio.
 You are the user's writing partner for the document titled "${title}".
 
 ## Ground rules

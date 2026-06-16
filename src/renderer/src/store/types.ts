@@ -16,10 +16,10 @@ import type { DocSettings } from '@shared/settings'
 
 export type SidebarTab = 'chat' | 'comments' | 'history'
 
-/** Which top-level workspace is showing — the writing studio or the Skill Studio. */
+/** Which top-level workspace is showing — Markdown Studio or Plugin Studio. */
 export type AppMode = 'doc' | 'skillStudio'
 
-/** Which Skill Studio sidebar tab is showing. */
+/** Which Plugin Studio sidebar tab is showing. */
 export type StudioTab = 'chat' | 'comments' | 'test'
 
 /** A note anchored to a quoted passage of a skill file (in-memory for now). */
@@ -206,7 +206,7 @@ export interface HistorySlice {
 }
 
 /**
- * Skill Studio — a self-contained second workspace for authoring skills (as a real
+ * Plugin Studio — a self-contained second workspace for authoring skills (as a real
  * Claude plugin) and testing them in a jailed sandbox. Owns the top-level `mode`
  * switch and all of its own state; nothing else in the store reads these fields.
  */

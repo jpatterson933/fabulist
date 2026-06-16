@@ -2,7 +2,7 @@ import type { PermissionRequest } from '@shared/types'
 import { inlineSegmentsFor, type SuggestSegment } from '@/lib/suggest'
 
 /**
- * The pending authoring edit to render inline in the Skill Studio editor: the first
+ * The pending authoring edit to render inline in the Plugin Studio editor: the first
  * permission request that targets the file currently open and whose diff can be
  * reconstructed against the buffer. This mirrors the document app's in-editor
  * suggestion (Editor.tsx → computeSuggestion), but keyed on the studio's openFilePath
