@@ -5,6 +5,21 @@ All notable changes to Fabulist are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- **Code-editor power features in both editors — Find, multi-cursor, and Tab-to-indent.**
+  Editing a document (writing app) or a skill file (Skillulist) now has the shortcuts you'd
+  expect from a real editor: **⌘F** opens a Find / Replace panel (**⌘G** / **⇧⌘G** for next /
+  previous, esc to close); **⌘D** selects the next occurrence of the word or selection for
+  VS Code-style multi-cursor editing (**⇧⌘L** selects every occurrence at once); **⌘⌥G** jumps
+  to a line; **Tab** / **⇧Tab** indent / dedent the current line(s) instead of moving focus out
+  of the editor; and Alt-drag makes a rectangular (column) selection. Other instances of the
+  current selection are highlighted live. This lives in one self-contained module
+  (`src/renderer/src/editor/powerEditing.ts`) that both editors pull in with a single spread —
+  unbraided from the comment / suggestion machinery, so it's easy to retune later — and the
+  Find panel is themed from the app's own CSS variables, so it matches whichever page hosts it.
+  (Multi-cursor needs CodeMirror to *draw* selections, so the editors now render selection and
+  caret via the app's `--selection` / `--accent` colors instead of the browser defaults.)
+
 ### Changed
 - **Skillulist `/test` now sends the FULL test transcript.** Referencing a run (current or
   archived) in the authoring chat previously serialized only the last ~12k characters

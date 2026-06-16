@@ -19,6 +19,7 @@ import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { syntaxHighlighting, HighlightStyle } from '@codemirror/language'
 import { tags } from '@lezer/highlight'
+import { editorPowerFeatures } from './powerEditing'
 
 // ---------- comment highlights ----------
 
@@ -219,6 +220,9 @@ export function baseExtensions(): ReturnType<typeof markdown>[] {
     placeholder('Begin…'),
     threadField,
     suggestionField,
-    revealField
+    revealField,
+    // Find (⌘F), multi-cursor (⌘D), column select, Tab-to-indent — kept in its
+    // own self-contained module so it's easy to retune independently.
+    ...editorPowerFeatures()
   ] as ReturnType<typeof markdown>[]
 }
