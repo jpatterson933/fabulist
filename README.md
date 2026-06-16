@@ -11,7 +11,7 @@ The app has two workspaces:
 - **Writing studio** for drafting, commenting, revising, and rewinding documents.
 - **Skill Studio** for building and testing Claude Code skills as real local plugins.
 
-![Fabulist writing workspace with document library, manuscript editor, comments, and history panel](./docs/hero.png)
+![Fabulist writing workspace with document library, manuscript editor, comments, and history panel](docs/hero.png)
 
 _The writing workspace keeps the manuscript in the center, document library on the left, and
 Claude, comments, history, or skills on the right._
@@ -29,7 +29,7 @@ Claude can read the document, answer questions, and propose edits. Document edit
 as suggested changes, while commands and non-document file changes appear as approval cards.
 Nothing lands unless you approve it, unless you intentionally enable auto-apply.
 
-![Claude suggested edit shown inline in the document with accept and decline controls](./docs/approval.png)
+![Claude suggested edit shown inline in the document with accept and decline controls](docs/approval.png)
 
 _Suggested edits are visible in the manuscript before they touch the file._
 
@@ -55,7 +55,7 @@ Enable skills once, then call the right one from the document conversation.
 Every save, snapshot, and approved Claude edit becomes a point in the document's git history.
 Restoring an older version commits forward, so history stays intact instead of being destroyed.
 
-![Document history timeline with Claude edits, manual edits, snapshots, and restores](./docs/history.png)
+![Document history timeline with Claude edits, manual edits, snapshots, and restores](docs/history.png)
 
 _History is a timeline you can inspect and restore from, not a hidden backup folder._
 
@@ -66,7 +66,7 @@ real local plugin under `~/Documents/Fabulist/.skill-studio/<slug>/`, with its o
 `.claude-plugin/plugin.json`, `skills/<slug>/SKILL.md`, optional agents, MCP config, authoring
 chat, and sandboxed test thread.
 
-![Skill Studio start screen for creating and testing a skill](./docs/skillulist.png)
+![Skill Studio start screen for creating and testing a skill](docs/skillulist.png)
 
 _Build a skill, edit its files, test it in a jailed thread, then use it from Fabulist documents._
 
