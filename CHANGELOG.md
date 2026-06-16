@@ -6,6 +6,18 @@ All notable changes to Fabulist are documented here. The format follows
 ## [Unreleased]
 
 ### Changed
+- **Skillulist `/test` now sends the FULL test transcript.** Referencing a run (current or
+  archived) in the authoring chat previously serialized only the last ~12k characters
+  (~3k tokens) of the transcript — so most runs were diagnosed from their tail. That cap is
+  removed: the whole run is sent. Each run's token/cost/turns **and the model it actually ran
+  on** are now woven in too (previously usage lines were dropped), so the authoring agent can
+  reason about efficiency, not just correctness.
+- **Skillulist test transcripts are no longer capped at 200 messages.** The live test thread,
+  the authoring chat, and each archived run were each silently clipped to their last 200
+  items on save — losing the head of long runs even before `/test`. The full transcripts are
+  now persisted. Archived runs are still capped by **count** at the **10** most recent (down
+  from 50), and the archived-run picker now shows a note once that cap is reached so it's
+  clear older runs aren't kept.
 - Reworked `README.md` into a clearer visual app flow using selected root-level
   screenshots from `docs/`.
 - **Skillulist edits now mirror the writing app.** When the authoring agent proposes an

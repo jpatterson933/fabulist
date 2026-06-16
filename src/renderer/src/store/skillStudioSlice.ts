@@ -563,8 +563,8 @@ export const createSkillStudioSlice: StateCreator<Store, [], [], SkillStudioSlic
       // persisted live thread; then drop the (unresumable) session + sandbox
       const { version, at, nextVersion } = await window.fabulist.skillStudio.archiveTest(slug, chat)
       await window.fabulist.skillStudio.resetTest(slug).catch(() => {})
-      // match the cap main applies on disk, so the in-session copy == the post-restart copy
-      const entry: ArchivedTest = { version, at, chat: chat.slice(-200) }
+      // main now archives the full transcript on disk, so mirror it whole in-session
+      const entry: ArchivedTest = { version, at, chat }
       const testUsage = { ...get().testUsage }
       delete testUsage[slug]
       set({
