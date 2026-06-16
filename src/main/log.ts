@@ -1,13 +1,49 @@
 import type { BrowserWindow } from 'electron'
 import { describeError } from '@shared/errors'
+import type { AgentEvent } from '@shared/types'
 
 // The single home for main-process error/diagnostics policy. `logError` is the
 // main-side equivalent of the renderer's reportError; `attachDiagnostics` pipes
-// renderer-side failures into this same terminal.
+// renderer-side failures into this same terminal; `toolActivityLogger` /
+// `logToolDenied` surface agent tool calls + their outcomes there too.
 
 /** Log a caught main-process error with context (replaces silent `.catch(() => {})`). */
 export function logError(context: string, e: unknown): void {
   console.error('[error]', describeError(context, e))
+}
+
+/**
+ * A per-run tool-activity logger for the server console: tag each agent's tool
+ * call with `scope` (e.g. "skill-test copywright") when it starts and again when
+ * it finishes — ✓ / ✗ — so a run's tool use, including silent failures, is
+ * visible where `npm run dev` runs. It reads the `tool-note` events the SDK
+ * stream already yields (start carries the human summary; the matching result
+ * carries only the tool id + ok flag), correlating the two by tool id so the
+ * outcome line still names what ran. Stateful, so create one per run.
+ */
+export function toolActivityLogger(scope: string): (event: AgentEvent) => void {
+  const summaries = new Map<string, string>()
+  return (event) => {
+    if (event.kind !== 'tool-note') return
+    if (!event.done) {
+      if (!event.note) return
+      summaries.set(event.toolId, event.note)
+      console.log(`[tool] ${scope} · ${event.note}`)
+    } else {
+      const summary = summaries.get(event.toolId) ?? event.toolId
+      summaries.delete(event.toolId)
+      console.log(`[tool] ${scope} · ${summary} → ${event.ok === false ? '✗ error' : '✓ ok'}`)
+    }
+  }
+}
+
+/**
+ * Log a tool call the approval gate refused, with the reason (path escape outside
+ * the project, an app-managed file, …). The stream only reports these as a generic
+ * error after the fact; the actual reason is known only here, at the gate.
+ */
+export function logToolDenied(scope: string, tool: string, reason: string): void {
+  console.log(`[tool] ${scope} · ${tool} ✗ denied: ${reason}`)
 }
 
 /**

@@ -102,6 +102,40 @@ describe('studio test gate', () => {
     expect(result.behavior).toBe('allow')
   })
 
+  it("lets a skill READ its own bundled files from the plugin folder, but not write them", async () => {
+    const { manager } = await loadManager()
+    const gate = (
+      manager as unknown as {
+        gate: (s: string, c: string, t: string, i: Record<string, unknown>, sig: AbortSignal) => Promise<{ behavior: string }>
+      }
+    ).gate.bind(manager)
+    // pluginPath('skill') is mocked to /tmp/studio/skill — a file the SKILL.md references
+    const bundled = path.join(path.sep, 'tmp', 'studio', 'skill', 'skills', 'skill', 'brand-voice.md')
+
+    const read = await gate('skill', cwd, 'Read', { file_path: bundled }, new AbortController().signal)
+    expect(read.behavior).toBe('allow')
+
+    // a test must never be able to mutate the skill it's exercising
+    const write = await gate(
+      'skill',
+      cwd,
+      'Write',
+      { file_path: bundled, content: 'x' },
+      new AbortController().signal
+    )
+    expect(write.behavior).toBe('deny')
+
+    // and a read of something outside both the sandbox and the plugin folder is still denied
+    const outside = await gate(
+      'skill',
+      cwd,
+      'Read',
+      { file_path: path.join(path.sep, 'etc', 'passwd') },
+      new AbortController().signal
+    )
+    expect(outside.behavior).toBe('deny')
+  })
+
   it('settles a request once even if an answer is followed by an abort', async () => {
     const { manager, events } = await loadManager()
     const gate = (

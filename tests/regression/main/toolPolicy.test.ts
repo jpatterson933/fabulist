@@ -71,3 +71,42 @@ describe('agent tool policy', () => {
     })
   })
 })
+
+describe('read roots (skill under test reads its own bundled files)', () => {
+  const pluginRoot = path.join(path.sep, 'tmp', 'studio', 'copywright')
+  const bundled = path.join(pluginRoot, 'skills', 'copywright', 'brand-voice.md')
+
+  it('allows a read-only tool to reach a declared read root outside cwd', () => {
+    expect(decideTool(cwd, 'Read', { file_path: bundled }, [pluginRoot])).toEqual({ kind: 'allow' })
+    expect(decideTool(cwd, 'Grep', { path: pluginRoot, pattern: 'voice' }, [pluginRoot])).toEqual({
+      kind: 'allow'
+    })
+  })
+
+  it('still denies WRITES to a read root — a test can never mutate the skill it exercises', () => {
+    expect(
+      decideTool(cwd, 'Write', { file_path: bundled, content: 'x' }, [pluginRoot])
+    ).toMatchObject({ kind: 'deny' })
+    expect(decideTool(cwd, 'Edit', { file_path: bundled }, [pluginRoot])).toMatchObject({
+      kind: 'deny'
+    })
+  })
+
+  it('denies reads that fall outside both cwd and every read root', () => {
+    const elsewhere = path.join(path.sep, 'tmp', 'elsewhere', 'secret.md')
+    expect(decideTool(cwd, 'Read', { file_path: elsewhere }, [pluginRoot])).toMatchObject({
+      kind: 'deny'
+    })
+  })
+
+  it('leaves in-cwd resolution unchanged when read roots are supplied', () => {
+    expect(decideTool(cwd, 'Read', { file_path: 'document.md' }, [pluginRoot])).toEqual({
+      kind: 'allow',
+      filePath: 'document.md'
+    })
+    expect(decideTool(cwd, 'Write', { file_path: 'document.md', content: 'x' }, [pluginRoot])).toEqual({
+      kind: 'ask',
+      filePath: 'document.md'
+    })
+  })
+})
