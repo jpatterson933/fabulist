@@ -5,6 +5,7 @@ import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
 import { markdown } from '@codemirror/lang-markdown'
 import { syntaxHighlighting } from '@codemirror/language'
 import { setReveal, revealField, setSuggestion, suggestionField, externalChange } from '@/editor/extensions'
+import { editorPowerFeatures } from '@/editor/powerEditing'
 import { minimalReplace } from '@/lib/externalMerge'
 import type { SuggestSegment } from '@/lib/suggest'
 import { neonMarkdownHighlight, studioEditorTheme } from './markdownTheme'
@@ -90,6 +91,9 @@ export default function StudioCodeEditor({
           lang,
           syntaxHighlighting(neonMarkdownHighlight),
           studioEditorTheme,
+          // Find (⌘F), multi-cursor (⌘D), column select, Tab-to-indent —
+          // the same self-contained pack the writing editor uses.
+          ...editorPowerFeatures(),
           revealField,
           suggestionField,
           editable.of([]),

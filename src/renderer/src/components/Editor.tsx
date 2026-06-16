@@ -181,6 +181,12 @@ export default function Editor({ docId }: { docId: string }): React.JSX.Element 
   useEffect(() => {
     if (!suggestion) return
     const onKey = (e: KeyboardEvent): void => {
+      // Defer to the editor: if a CodeMirror binding already handled this key it
+      // will have called preventDefault first (the keydown reaches window only by
+      // bubbling). In particular, esc that closed the Find panel must NOT also
+      // decline the suggestion — searchKeymap's Escape→closeSearchPanel doesn't
+      // stopPropagation, so without this guard dismissing Find would drop the edit.
+      if (e.defaultPrevented) return
       if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault()
         respondPermission(suggestion.requestId, true)
