@@ -383,12 +383,19 @@ export const useStore = create<FabulistStore>((set, get) => ({
   loadModels: async () => {
     const fromEngine = await window.fabulist.agent.models().catch(() => [])
     if (fromEngine.length === 0) return
-    // the engine lists its own "default" row; fold it into our '' sentinel
-    // ('' = omit the model option entirely, letting the CLI pick its default)
+    // The engine's "default" row is a real model (e.g. Opus 4.8), not a "no
+    // choice" — so label it with the actual model name rather than the word
+    // "Default". The name comes from the engine's own description (everything
+    // before the first "·"), so nothing here is hardcoded. We still store it as
+    // the '' sentinel, which omits the model option and lets the engine resolve it.
     const engineDefault = fromEngine.find((m) => m.value === 'default')
     const rest = fromEngine.filter((m) => m.value !== 'default')
     const defaultChoice = engineDefault
-      ? { value: '', label: engineDefault.label, hint: engineDefault.hint }
+      ? {
+          value: '',
+          label: engineDefault.hint.split('·')[0].trim() || engineDefault.label,
+          hint: engineDefault.hint
+        }
       : DEFAULT_MODEL_CHOICE
     set({ models: [defaultChoice, ...rest] })
   },

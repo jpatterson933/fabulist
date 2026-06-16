@@ -14,6 +14,10 @@ All notable changes to Fabulist are documented here. The format follows
   Fraunces, Plex Sans, Plex Mono — all bundled, offline), persisted per document.
 
 ### Changed
+- Model picker shows the real model name in use. The engine's default row (a concrete
+  model, e.g. "Opus 4.8 with 1M context") is now labelled with that model name — parsed
+  from the engine's own description — instead of the generic word "Default". The list
+  stays sourced live from the Claude Code engine's `supportedModels()`.
 - Comments always engage Claude: submitting a comment or thread reply automatically sends
   the highlighted passage and thread to Claude, whose reply lands in the thread (queued if
   the agent is mid-task). The separate "Ask Claude" selection action and chat quote-chip
