@@ -14,11 +14,20 @@ export function validateSkillSlug(slug: string): string {
   return slug
 }
 
+/**
+ * The path of `value` relative to `root` if it resolves *inside* `root`, else null.
+ * `root` itself counts as outside (a tool targeting the root, not a file under it).
+ * The non-throwing half of `resolveInside` — used to test membership across several
+ * candidate roots without try/catch noise.
+ */
+export function relativeIfInside(root: string, value: string): string | null {
+  const relative = path.relative(root, path.resolve(root, value))
+  if (relative === '' || relative.startsWith('..') || path.isAbsolute(relative)) return null
+  return relative
+}
+
 export function resolveInside(root: string, value: string): { absolute: string; relative: string } {
-  const absolute = path.resolve(root, value)
-  const relative = path.relative(root, absolute)
-  if (relative === '' || relative.startsWith('..') || path.isAbsolute(relative)) {
-    throw new Error(`Path escapes root: ${value}`)
-  }
-  return { absolute, relative }
+  const relative = relativeIfInside(root, value)
+  if (relative === null) throw new Error(`Path escapes root: ${value}`)
+  return { absolute: path.resolve(root, value), relative }
 }

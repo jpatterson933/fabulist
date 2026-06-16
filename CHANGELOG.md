@@ -6,6 +6,15 @@ All notable changes to Fabulist are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- **Agent tool calls are now logged to the server console.** Every tool an agent runs —
+  in the writing app, a skill test, or the authoring chat — prints a `[tool] <scope> · …`
+  line when it starts and again when it finishes (`✓ ok` / `✗ error`), so you can watch what
+  a run is doing (and which calls fail) where `npm run dev` runs. When the approval gate
+  *refuses* a call, the reason is logged too (`✗ denied: …`) — the stream only reports a
+  generic error for those, so the actual cause (e.g. a path outside the project) lived
+  nowhere visible before. The logger is one small module in `src/main/log.ts` that reads the
+  `tool-note` events the SDK stream already yields, so it adds no parsing and stays out of the
+  pure stream translator.
 - **Skillulist: reset the authoring conversation (`⟳ New conversation`).** The skill's
   Chat tab now has a `⟳ New conversation` button in its header (top-right, mirroring the
   Test tab's `⟳ New test`). Click once to arm, again to confirm, and the authoring chat
@@ -68,6 +77,18 @@ All notable changes to Fabulist are documented here. The format follows
   already detached the old editor, and a detached element reports `scrollTop: 0`, so the old
   code always "remembered" the top. Restoring now happens at editor construction (CodeMirror's
   `scrollTo`), which builds the first viewport around the saved position so it lands exactly.
+
+### Fixed
+- **Plugin Studio tests can now read a skill's own bundled files.** A skill under test runs in
+  a throwaway sandbox working directory, but its support files (e.g. `brand-voice.md`,
+  `style-guide.md` that its `SKILL.md` tells the model to read) live in the skill's plugin
+  folder *outside* that sandbox. The approval gate confined every path to the sandbox, so those
+  `Read`s were denied with "File path is outside this document project" — the model would fall
+  back to guessing from the skill's embedded summary or to `Bash` (`cat`/`grep`), which wasn't
+  path-scoped. The test gate now treats the skill's plugin folder as an additional **read-only**
+  root, so the skill reads its bundled files exactly as it would in a real session. Writes stay
+  confined to the sandbox, so a test still can never mutate the skill it's exercising. (The
+  "Reading …" line for such a file now shows its full path instead of a `../../../../` tangle.)
 
 ### Added
 - **Plugin Studio model picker.** Choose the Claude model for a skill — used for both the

@@ -137,7 +137,15 @@ export const TOOLS: Record<string, ToolSpec> = {
 
 /** Build a cwd-relative path formatter for tool summaries. */
 export function relPath(cwd: string): Rel {
-  return (p) => (typeof p === 'string' ? path.relative(cwd, path.resolve(cwd, p)) || '.' : '')
+  return (p) => {
+    if (typeof p !== 'string') return ''
+    const abs = path.resolve(cwd, p)
+    const rel = path.relative(cwd, abs)
+    // A path outside cwd (e.g. a skill under test reading its own bundled files
+    // from the plugin folder) would read as "../../../../Users/…" — show the
+    // absolute path instead, which is what the model actually targeted.
+    return rel === '' ? '.' : rel.startsWith('..') ? abs : rel
+  }
 }
 
 /** Human-readable one-liner for a tool invocation (falls back to the bare tool name). */

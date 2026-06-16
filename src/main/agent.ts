@@ -21,7 +21,7 @@ import { parseSdkMessages, type ParsedRun, type SdkMessage } from './sdkStream'
 import { PermissionBroker } from './permissionBroker'
 import { ENGINE_BINARY } from './engineBinary'
 import { emitEvent } from './ipcTyped'
-import { logError } from './log'
+import { logError, logToolDenied, toolActivityLogger } from './log'
 
 // Re-exported so existing importers (and tests) keep `agent.describeTool` working.
 export { describeTool }
@@ -173,11 +173,13 @@ export class AgentManager {
     // Translation of engine messages → AgentEvents is a pure generator (sdkStream);
     // send() just emits what it yields and acts on the run summary it returns.
     let run: ParsedRun = { ok: false, finalText: '' }
+    const logTool = toolActivityLogger(`doc ${docId}`)
     try {
       const events = parseSdkMessages(q as AsyncIterable<SdkMessage>, { docId, cwd, newId })
       let step = await events.next()
       while (!step.done) {
         emit(step.value)
+        logTool(step.value)
         step = await events.next()
       }
       run = step.value
@@ -241,6 +243,7 @@ export class AgentManager {
   ): Promise<PermissionResult> {
     const decision = decideTool(cwd, tool, input)
     if (decision.kind === 'deny') {
+      logToolDenied(`doc ${docId}`, tool, decision.message)
       return { behavior: 'deny', message: decision.message }
     }
     if (decision.kind === 'allow') {

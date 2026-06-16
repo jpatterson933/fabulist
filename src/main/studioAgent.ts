@@ -19,6 +19,7 @@ import { ENGINE_BINARY } from './engineBinary'
 import { emitEvent } from './ipcTyped'
 import { toModelArg } from '@shared/model'
 import { ensureStudio, pluginPath, readAuthSessionId, readSettings, saveAuthSessionId } from './skillStudio'
+import { logToolDenied, toolActivityLogger } from './log'
 
 /** Log token + cost consumption for a run — the client tracks this closely. */
 function logUsage(label: string, slug: string, run: ParsedRun): void {
@@ -175,11 +176,13 @@ export class StudioAgentManager {
     this.active.set(slug, { abort, q })
 
     let run: ParsedRun = { ok: false, finalText: '' }
+    const logTool = toolActivityLogger(`skill-test ${slug}`)
     try {
       const events = parseSdkMessages(q as AsyncIterable<SdkMessage>, { docId: slug, cwd, newId })
       let step = await events.next()
       while (!step.done) {
         this.emit(step.value)
+        logTool(step.value)
         step = await events.next()
       }
       run = step.value
@@ -220,8 +223,13 @@ export class StudioAgentManager {
     input: Record<string, unknown>,
     signal: AbortSignal
   ): Promise<PermissionResult> {
-    const decision = decideTool(cwd, tool, input)
-    if (decision.kind === 'deny') return { behavior: 'deny', message: decision.message }
+    // the skill's own plugin folder is a read-only root, so a skill under test can
+    // read its bundled files (its SKILL.md references them) from outside the sandbox
+    const decision = decideTool(cwd, tool, input, [pluginPath(slug)])
+    if (decision.kind === 'deny') {
+      logToolDenied(`skill-test ${slug}`, tool, decision.message)
+      return { behavior: 'deny', message: decision.message }
+    }
     if (tool === 'AskUserQuestion') {
       const request = await this.buildRequest(slug, cwd, tool, input)
       const { approved, answers } = await this.askHuman((e) => this.emit(e), slug, request, signal)
@@ -318,11 +326,13 @@ export class StudioAgentManager {
     this.authActive.set(slug, { abort, q })
 
     let run: ParsedRun = { ok: false, finalText: '' }
+    const logTool = toolActivityLogger(`skill-author ${slug}`)
     try {
       const events = parseSdkMessages(q as AsyncIterable<SdkMessage>, { docId: slug, cwd, newId })
       let step = await events.next()
       while (!step.done) {
         this.emitAuth(step.value)
+        logTool(step.value)
         step = await events.next()
       }
       run = step.value
@@ -371,7 +381,10 @@ export class StudioAgentManager {
     signal: AbortSignal
   ): Promise<PermissionResult> {
     const decision = decideTool(cwd, tool, input)
-    if (decision.kind === 'deny') return { behavior: 'deny', message: decision.message }
+    if (decision.kind === 'deny') {
+      logToolDenied(`skill-author ${slug}`, tool, decision.message)
+      return { behavior: 'deny', message: decision.message }
+    }
     if (decision.kind === 'allow') return { behavior: 'allow', updatedInput: input }
     if (isFileEditTool(tool) && decision.filePath) {
       // re-read auto-apply per call (not captured at send) so toggling it mid-run takes
@@ -394,7 +407,9 @@ export class StudioAgentManager {
       if (approved) return { behavior: 'allow', updatedInput: answers ? { ...input, answers } : input }
       return { behavior: 'deny', message: 'The author skipped the question. Proceed with your best judgment.' }
     }
-    return { behavior: 'deny', message: 'Only file edits are available while authoring a skill here.' }
+    const message = 'Only file edits are available while authoring a skill here.'
+    logToolDenied(`skill-author ${slug}`, tool, message)
+    return { behavior: 'deny', message }
   }
 
   private async buildRequest(
