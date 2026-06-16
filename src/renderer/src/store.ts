@@ -56,6 +56,8 @@ interface FabulistStore {
   /** comment prompts waiting for the agent to free up */
   queuedCommentSends: { commentId: string; prompt: string; quote: string }[]
   scrollTo: { threadId: string; seq: number } | null
+  /** auto-accept Claude's document edits without prompting (Bash still prompts) */
+  autoApprove: boolean
 
   loadDocs: () => Promise<void>
   createDoc: (title: string) => Promise<void>
@@ -93,6 +95,7 @@ interface FabulistStore {
   interrupt: () => void
   respondPermission: (requestId: string, approved: boolean) => void
   setInlineSuggestion: (requestId: string | null) => void
+  setAutoApprove: (on: boolean) => void
 
   loadHistory: () => Promise<void>
   openPreview: (commit: CommitInfo) => Promise<void>
@@ -145,6 +148,7 @@ export const useStore = create<FabulistStore>((set, get) => ({
   pendingCommentId: null,
   queuedCommentSends: [],
   scrollTo: null,
+  autoApprove: localStorage.getItem('fabulist:autoApprove') === '1',
 
   loadDocs: async () => {
     set({ docs: await window.fabulist.library.list() })
@@ -413,6 +417,11 @@ export const useStore = create<FabulistStore>((set, get) => ({
     if (get().inlineSuggestionId !== requestId) set({ inlineSuggestionId: requestId })
   },
 
+  setAutoApprove: (on) => {
+    localStorage.setItem('fabulist:autoApprove', on ? '1' : '0')
+    set({ autoApprove: on })
+  },
+
   loadHistory: async () => {
     const id = get().activeId
     if (!id) return
@@ -495,6 +504,12 @@ export const useStore = create<FabulistStore>((set, get) => ({
         })
         break
       case 'permission-request':
+        // auto-accept file edits when the author has opted in — Bash commands
+        // (carried as request.command) always prompt, no matter the setting
+        if (get().autoApprove && !e.request.command) {
+          get().respondPermission(e.request.requestId, true)
+          break
+        }
         if (e.docId === activeId && !get().permissions.some((p) => p.requestId === e.request.requestId)) {
           // document edits render inline in the editor — only pull the user to
           // the chat tab for requests that have nowhere else to appear

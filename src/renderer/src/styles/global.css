@@ -1065,11 +1065,43 @@ input::placeholder {
   cursor: default;
 }
 
+.compose-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+}
+
 .model-picker {
   display: flex;
   align-items: center;
   gap: 7px;
   margin-top: 8px;
+}
+
+.compose-footer .model-picker {
+  margin-top: 0;
+}
+
+.auto-approve {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.auto-approve input {
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+
+.auto-approve:hover {
+  color: var(--ink);
 }
 
 .model-picker label {

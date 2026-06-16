@@ -6,6 +6,9 @@ All notable changes to Fabulist are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- **Auto-accept edits** toggle below the chat composer: when checked, Claude's document
+  edits apply automatically without the per-change approval card. Bash commands still
+  prompt for approval regardless. The preference persists across sessions.
 - Markdown rendering for Claude's chat replies and comment-thread messages, via
   [Streamdown](https://github.com/vercel/streamdown): headings, lists, tables, links,
   blockquotes, inline code, and syntax-highlighted code blocks now render instead of raw
