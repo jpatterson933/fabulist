@@ -2,7 +2,7 @@ import { app } from 'electron'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
-import type { DocMeta } from '@shared/types'
+import type { AgentThread, ChatItem, DocMeta } from '@shared/types'
 import { initRepo, commitAll } from './git'
 
 export const LIBRARY_ROOT = path.join(app.getPath('documents'), 'Fabulist')
@@ -140,14 +140,31 @@ export async function writeDoc(id: string, content: string): Promise<void> {
 
 // --- per-doc app state (session ids, chat transcript) under .fabulist/ ---
 
+/** One agent conversation, with its own resumable SDK session and transcript. */
+interface StoredThread {
+  id: string
+  title: string
+  sessionId?: string
+  chat: ChatItem[]
+  createdAt: number
+  updatedAt: number
+}
+
 interface DocState {
+  /** legacy single-session fields, migrated into a thread on first read */
   sessionId?: string
   chat?: unknown[]
   /** Claude Code model alias/id for this doc's agent; undefined = CLI default */
   model?: string
   /** editor font choice for this document */
   font?: string
+  /** agent conversations for this document */
+  threads?: StoredThread[]
+  /** which thread new messages and the UI default to */
+  activeThreadId?: string
 }
+
+const DEFAULT_THREAD_TITLE = 'New thread'
 
 async function statePath(id: string): Promise<string> {
   const base = docPath(id)
@@ -174,11 +191,190 @@ export async function readState(id: string): Promise<DocState> {
   }
 }
 
-export async function patchState(id: string, patch: Partial<DocState>): Promise<void> {
+// Serialize per-doc state writes. state.json is one file holding several
+// independently-mutated fields (model, font, every thread's session id + chat),
+// and a single agent turn ends with two writes firing near-simultaneously — the
+// main process saving the resumed session id and the renderer saving the
+// transcript. Read-modify-write under one lock keeps either from clobbering the
+// other, and keeps the one-time legacy migration (which mints a random id) from
+// racing itself when openDoc reads the thread list and active id at once.
+const stateLocks = new Map<string, Promise<unknown>>()
+function withStateLock<T>(id: string, fn: () => Promise<T>): Promise<T> {
+  const prev = (stateLocks.get(id) ?? Promise.resolve()).catch(() => {})
+  const next = prev.then(fn)
+  stateLocks.set(
+    id,
+    next.catch(() => {})
+  )
+  return next
+}
+
+async function patchStateUnlocked(id: string, patch: Partial<DocState>): Promise<void> {
   const cur = await readState(id)
   await fs.writeFile(await statePath(id), JSON.stringify({ ...cur, ...patch }, null, 2))
+}
+
+export function patchState(id: string, patch: Partial<DocState>): Promise<void> {
+  return withStateLock(id, () => patchStateUnlocked(id, patch))
 }
 
 export function newId(): string {
   return randomUUID().slice(0, 8)
 }
+
+// --- agent threads (multiple conversations per document) ---
+
+function toMeta(t: StoredThread): AgentThread {
+  return {
+    id: t.id,
+    title: t.title,
+    createdAt: t.createdAt,
+    updatedAt: t.updatedAt,
+    messageCount: t.chat.length
+  }
+}
+
+/**
+ * Resolve a document's threads, migrating the pre-threads single-session shape
+ * (top-level `sessionId`/`chat`) into one thread the first time we see it.
+ * Always returns at least one thread and a valid `activeThreadId`; persists the
+ * migrated shape back to disk so subsequent reads are clean. Must run inside the
+ * doc's state lock — callers hold it so the read and any resulting write are atomic.
+ */
+async function resolveThreads(
+  id: string
+): Promise<{ threads: StoredThread[]; activeThreadId: string }> {
+  const state = await readState(id)
+
+  if (state.threads && state.threads.length > 0) {
+    const threads = state.threads
+    const activeThreadId =
+      state.activeThreadId && threads.some((t) => t.id === state.activeThreadId)
+        ? state.activeThreadId
+        : threads[0].id
+    if (activeThreadId !== state.activeThreadId) await patchStateUnlocked(id, { activeThreadId })
+    return { threads, activeThreadId }
+  }
+
+  // migrate: fold any legacy session/chat into a single thread
+  const now = Date.now()
+  const hadHistory = Boolean(state.sessionId) || ((state.chat as unknown[])?.length ?? 0) > 0
+  const thread: StoredThread = {
+    id: newId(),
+    title: hadHistory ? 'Conversation' : DEFAULT_THREAD_TITLE,
+    sessionId: state.sessionId,
+    chat: (state.chat as ChatItem[]) ?? [],
+    createdAt: now,
+    updatedAt: now
+  }
+  await patchStateUnlocked(id, {
+    threads: [thread],
+    activeThreadId: thread.id,
+    sessionId: undefined,
+    chat: undefined
+  })
+  return { threads: [thread], activeThreadId: thread.id }
+}
+
+export function listThreads(id: string): Promise<AgentThread[]> {
+  return withStateLock(id, async () => (await resolveThreads(id)).threads.map(toMeta))
+}
+
+export function getActiveThreadId(id: string): Promise<string> {
+  return withStateLock(id, async () => (await resolveThreads(id)).activeThreadId)
+}
+
+export function getThreadChat(id: string, threadId: string): Promise<ChatItem[]> {
+  return withStateLock(id, async () => {
+    const { threads } = await resolveThreads(id)
+    return threads.find((t) => t.id === threadId)?.chat ?? []
+  })
+}
+
+export function createThread(id: string, title?: string): Promise<AgentThread> {
+  return withStateLock(id, async () => {
+    const { threads } = await resolveThreads(id)
+    const now = Date.now()
+    const thread: StoredThread = {
+      id: newId(),
+      title: title?.trim() || DEFAULT_THREAD_TITLE,
+      chat: [],
+      createdAt: now,
+      updatedAt: now
+    }
+    await patchStateUnlocked(id, { threads: [...threads, thread], activeThreadId: thread.id })
+    return toMeta(thread)
+  })
+}
+
+export function setActiveThreadId(id: string, threadId: string): Promise<void> {
+  return withStateLock(id, async () => {
+    const { threads } = await resolveThreads(id)
+    if (threads.some((t) => t.id === threadId)) {
+      await patchStateUnlocked(id, { activeThreadId: threadId })
+    }
+  })
+}
+
+export function renameThread(id: string, threadId: string, title: string): Promise<void> {
+  return withStateLock(id, async () => {
+    const clean = title.trim()
+    if (!clean) return
+    const { threads } = await resolveThreads(id)
+    await patchStateUnlocked(id, {
+      threads: threads.map((t) => (t.id === threadId ? { ...t, title: clean } : t))
+    })
+  })
+}
+
+/** Delete a thread; never leaves a document with zero threads. Returns the (possibly new) active id. */
+export function deleteThread(id: string, threadId: string): Promise<{ activeThreadId: string }> {
+  return withStateLock(id, async () => {
+    const { threads, activeThreadId } = await resolveThreads(id)
+    let next = threads.filter((t) => t.id !== threadId)
+    let active = activeThreadId
+    if (next.length === 0) {
+      const now = Date.now()
+      const fresh: StoredThread = {
+        id: newId(),
+        title: DEFAULT_THREAD_TITLE,
+        chat: [],
+        createdAt: now,
+        updatedAt: now
+      }
+      next = [fresh]
+      active = fresh.id
+    } else if (active === threadId) {
+      active = next[next.length - 1].id
+    }
+    await patchStateUnlocked(id, { threads: next, activeThreadId: active })
+    return { activeThreadId: active }
+  })
+}
+
+/** The resumable SDK session id for a thread, if it has been started. */
+export function getThreadSession(id: string, threadId: string): Promise<string | undefined> {
+  return withStateLock(id, async () => {
+    const { threads } = await resolveThreads(id)
+    return threads.find((t) => t.id === threadId)?.sessionId
+  })
+}
+
+/** Patch a single thread's mutable fields (session id, chat, title), bumping updatedAt. */
+export function updateThread(
+  id: string,
+  threadId: string,
+  patch: Partial<Pick<StoredThread, 'sessionId' | 'chat' | 'title'>>
+): Promise<void> {
+  return withStateLock(id, async () => {
+    const { threads } = await resolveThreads(id)
+    if (!threads.some((t) => t.id === threadId)) return
+    await patchStateUnlocked(id, {
+      threads: threads.map((t) =>
+        t.id === threadId ? { ...t, ...patch, updatedAt: Date.now() } : t
+      )
+    })
+  })
+}
+
+export { DEFAULT_THREAD_TITLE }

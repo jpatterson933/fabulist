@@ -6,6 +6,12 @@ All notable changes to Fabulist are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- **Multiple conversations per document**: a thread switcher above the chat lets you start
+  a fresh conversation with Claude (＋), switch between existing ones, and rename or delete
+  them. Each thread keeps its own transcript and resumable Claude session, so context stays
+  separate between, say, drafting a scene and researching background. New threads are named
+  after their opening message; the active thread is remembered per document. Existing
+  single-session documents are migrated automatically into one "Conversation" thread.
 - **Auto-accept edits** toggle below the chat composer: when checked, Claude's document
   edits apply automatically without the per-change approval card. Bash commands still
   prompt for approval regardless. The preference persists across sessions.

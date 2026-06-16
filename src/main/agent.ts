@@ -10,8 +10,11 @@ import {
   docPath,
   DOC_FILE,
   COMMENTS_FILE,
+  DEFAULT_THREAD_TITLE,
   readState,
-  patchState,
+  listThreads,
+  getThreadSession,
+  updateThread,
   newId
 } from './library'
 import { commitAll } from './git'
@@ -143,16 +146,22 @@ export class AgentManager {
     }
   }
 
-  async send(docId: string, prompt: string, opts: SendOptions = {}): Promise<void> {
+  async send(docId: string, threadId: string, prompt: string, opts: SendOptions = {}): Promise<void> {
     if (this.active.has(docId)) throw new Error('Claude is already working on this document')
     const cwd = docPath(docId)
     const emit: Emitter = (e) => this.emit(e)
 
     const userItemId = newId()
-    emit({ kind: 'user-echo', docId, itemId: userItemId, text: prompt, quote: opts.quote })
+    emit({ kind: 'user-echo', docId, threadId, itemId: userItemId, text: prompt, quote: opts.quote })
     emit({ kind: 'status', docId, status: 'starting' })
 
     const state = await readState(docId)
+    const priorSession = await getThreadSession(docId, threadId)
+    // name a still-untitled, still-empty thread after its opening message
+    const meta = (await listThreads(docId)).find((t) => t.id === threadId)
+    if (meta && meta.messageCount === 0 && meta.title === DEFAULT_THREAD_TITLE) {
+      await updateThread(docId, threadId, { title: titleFromPrompt(prompt) }).catch(() => {})
+    }
     const abort = new AbortController()
     let editsApplied = 0
 
@@ -171,7 +180,7 @@ export class AgentManager {
       cwd,
       model: state.model || undefined,
       pathToClaudeCodeExecutable: ENGINE_BINARY,
-      resume: state.sessionId,
+      resume: priorSession,
       abortController: abort,
       includePartialMessages: true,
       settingSources: ['project'],
@@ -210,7 +219,7 @@ export class AgentManager {
             }
             if (ev.type === 'content_block_delta' && ev.delta?.type === 'text_delta' && ev.delta.text) {
               streamedText += ev.delta.text
-              emit({ kind: 'text-delta', docId, itemId: currentItemId, delta: ev.delta.text })
+              emit({ kind: 'text-delta', docId, threadId, itemId: currentItemId, delta: ev.delta.text })
               emit({ kind: 'status', docId, status: 'working' })
             }
             break
@@ -229,7 +238,7 @@ export class AgentManager {
               .map((b) => b.text ?? '')
               .join('\n')
             if (text.trim()) {
-              emit({ kind: 'assistant-text', docId, itemId: currentItemId, text })
+              emit({ kind: 'assistant-text', docId, threadId, itemId: currentItemId, text })
               finalText = text
               streamedText = ''
             }
@@ -238,6 +247,7 @@ export class AgentManager {
                 emit({
                   kind: 'tool-note',
                   docId,
+                  threadId,
                   itemId: currentItemId,
                   toolId: b.id,
                   note: describeTool(b.name, b.input as Record<string, unknown>, cwd)
@@ -256,6 +266,7 @@ export class AgentManager {
                   emit({
                     kind: 'tool-note',
                     docId,
+                    threadId,
                     itemId: currentItemId,
                     toolId: b.tool_use_id,
                     note: '',
@@ -293,7 +304,7 @@ export class AgentManager {
       this.pendingPermissions.clear()
     }
 
-    if (sessionId) await patchState(docId, { sessionId }).catch(() => {})
+    if (sessionId) await updateThread(docId, threadId, { sessionId }).catch(() => {})
 
     if (editsApplied > 0) {
       const label = prompt.replace(/\s+/g, ' ').slice(0, 64)
@@ -307,6 +318,7 @@ export class AgentManager {
     emit({
       kind: 'result',
       docId,
+      threadId,
       ok: resultOk,
       text: finalText,
       error: resultError,
@@ -420,6 +432,13 @@ export class AgentManager {
       }
     }
   }
+}
+
+/** A short thread title derived from its opening message. */
+function titleFromPrompt(prompt: string): string {
+  const clean = prompt.replace(/\s+/g, ' ').trim()
+  if (!clean) return DEFAULT_THREAD_TITLE
+  return clean.length > 48 ? clean.slice(0, 47).trimEnd() + '…' : clean
 }
 
 function buildPrompt(prompt: string, opts: SendOptions): string {

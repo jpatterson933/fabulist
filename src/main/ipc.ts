@@ -2,7 +2,7 @@ import { ipcMain, shell, type BrowserWindow } from 'electron'
 import { watch, promises as fs, type FSWatcher } from 'node:fs'
 import { createHash } from 'node:crypto'
 import path from 'node:path'
-import type { CommentThread, SendOptions } from '@shared/types'
+import type { ChatItem, CommentThread, SendOptions } from '@shared/types'
 import * as library from './library'
 import * as git from './git'
 import * as comments from './comments'
@@ -40,7 +40,6 @@ export function registerIpc(win: BrowserWindow): void {
     return git.commitAll(library.docPath(id), label?.trim() || 'Snapshot')
   })
 
-  ipcMain.handle('doc:chat', async (_e, id: string) => (await library.readState(id)).chat ?? [])
   ipcMain.handle('doc:getModel', async (_e, id: string) => (await library.readState(id)).model ?? '')
   ipcMain.handle('doc:setModel', (_e, id: string, model: string) =>
     library.patchState(id, { model: model || undefined })
@@ -49,8 +48,27 @@ export function registerIpc(win: BrowserWindow): void {
   ipcMain.handle('doc:setFont', (_e, id: string, font: string) =>
     library.patchState(id, { font: font || undefined })
   )
-  ipcMain.handle('doc:saveChat', (_e, id: string, chat: unknown[]) =>
-    library.patchState(id, { chat })
+
+  // --- agent threads (multiple conversations per doc) ---
+  ipcMain.handle('agent:threads', (_e, id: string) => library.listThreads(id))
+  ipcMain.handle('agent:activeThread', (_e, id: string) => library.getActiveThreadId(id))
+  ipcMain.handle('agent:thread:chat', (_e, id: string, threadId: string) =>
+    library.getThreadChat(id, threadId)
+  )
+  ipcMain.handle('agent:thread:create', (_e, id: string, title?: string) =>
+    library.createThread(id, title)
+  )
+  ipcMain.handle('agent:thread:rename', (_e, id: string, threadId: string, title: string) =>
+    library.renameThread(id, threadId, title)
+  )
+  ipcMain.handle('agent:thread:delete', (_e, id: string, threadId: string) =>
+    library.deleteThread(id, threadId)
+  )
+  ipcMain.handle('agent:thread:activate', (_e, id: string, threadId: string) =>
+    library.setActiveThreadId(id, threadId)
+  )
+  ipcMain.handle('agent:thread:saveChat', (_e, id: string, threadId: string, chat: ChatItem[]) =>
+    library.updateThread(id, threadId, { chat })
   )
 
   // --- history ---
@@ -89,9 +107,9 @@ export function registerIpc(win: BrowserWindow): void {
   )
 
   // --- agent ---
-  ipcMain.handle('agent:send', (_e, id: string, prompt: string, opts: SendOptions) => {
+  ipcMain.handle('agent:send', (_e, id: string, threadId: string, prompt: string, opts: SendOptions) => {
     // fire and forget; progress flows back over agent:event
-    agentManager.send(id, prompt, opts).catch((err) => {
+    agentManager.send(id, threadId, prompt, opts).catch((err) => {
       win.webContents.send('agent:event', {
         kind: 'status',
         docId: id,

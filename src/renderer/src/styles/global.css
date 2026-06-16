@@ -750,6 +750,195 @@ input::placeholder {
   height: 100%;
 }
 
+/* ─── conversation (thread) switcher ─── */
+
+.thread-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line-soft);
+  flex-shrink: 0;
+}
+
+.thread-current {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 5px 8px;
+  border-radius: 7px;
+  color: var(--ink);
+  transition: background 130ms ease;
+}
+.thread-current:hover {
+  background: var(--paper-deeper);
+}
+
+.thread-current-title {
+  font-size: 13px;
+  font-weight: 560;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.thread-count {
+  font-size: 10.5px;
+  font-weight: 600;
+  background: var(--accent-wash);
+  color: var(--accent-deep);
+  padding: 1px 6px;
+  border-radius: 99px;
+}
+
+.thread-caret {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--ink-faint);
+}
+
+.thread-new {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  font-size: 15px;
+  color: var(--ink-soft);
+  transition: background 130ms ease, color 130ms ease;
+}
+.thread-new:hover:not(:disabled) {
+  background: var(--paper-deeper);
+  color: var(--ink);
+}
+.thread-new:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.thread-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+}
+
+.thread-menu {
+  position: absolute;
+  top: calc(100% - 2px);
+  left: 12px;
+  right: 12px;
+  z-index: 31;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 5px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: var(--shadow-soft);
+  animation: rise 160ms var(--ease-out);
+}
+
+.thread-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 7px;
+  padding-right: 4px;
+}
+.thread-row:hover {
+  background: var(--paper-deeper);
+}
+.thread-row.is-active {
+  background: var(--accent-wash);
+}
+
+.thread-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 7px 9px;
+  text-align: left;
+}
+
+.thread-row-title {
+  font-size: 12.5px;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.thread-row-meta {
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+
+.thread-row-actions {
+  display: flex;
+  gap: 1px;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.thread-row:hover .thread-row-actions {
+  opacity: 1;
+}
+
+.thread-row-icon {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 5px;
+  font-size: 13px;
+  color: var(--ink-faint);
+}
+.thread-row-icon:hover:not(:disabled) {
+  background: var(--paper-deep);
+  color: var(--ink);
+}
+.thread-row-icon:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.thread-row-confirm {
+  display: flex;
+  gap: 4px;
+  padding: 4px 6px 4px 0;
+}
+.thread-row-confirm button {
+  font-size: 11.5px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  color: var(--ink-soft);
+}
+.thread-row-confirm button:hover {
+  background: var(--paper-deep);
+}
+.thread-row-confirm .danger {
+  color: var(--bad);
+}
+
+.thread-rename-input {
+  flex: 1;
+  min-width: 0;
+  margin: 4px;
+  padding: 6px 8px;
+  font-size: 12.5px;
+  font-family: var(--font-ui);
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  outline: none;
+}
+
 .chat-scroll {
   flex: 1;
   overflow-y: auto;

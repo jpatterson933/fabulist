@@ -4,6 +4,7 @@ import {
   DEFAULT_MODEL_CHOICE,
   FALLBACK_MODEL_CHOICES,
   type AgentEvent,
+  type AgentThread,
   type ChatItem,
   type CommentAnchor,
   type CommentThread,
@@ -36,7 +37,12 @@ interface FabulistStore {
   content: string
   external: ExternalUpdate | null
   threads: CommentThread[]
+  /** chat transcripts keyed by agent thread id */
   chats: Record<string, ChatItem[]>
+  /** agent conversation list keyed by doc id */
+  agentThreads: Record<string, AgentThread[]>
+  /** active agent thread id keyed by doc id */
+  activeThread: Record<string, string>
   permissions: PermissionRequest[]
   agent: Record<string, AgentState>
   tab: SidebarTab
@@ -86,6 +92,12 @@ interface FabulistStore {
   setActiveThread: (threadId: string | null) => void
   jumpToThread: (threadId: string) => void
 
+  loadAgentThreads: () => Promise<void>
+  createAgentThread: () => Promise<void>
+  selectAgentThread: (threadId: string) => Promise<void>
+  renameAgentThread: (threadId: string, title: string) => Promise<void>
+  deleteAgentThread: (threadId: string) => Promise<void>
+
   askClaude: (prompt: string, opts?: { quote?: string; commentId?: string }) => void
   /** send a comment thread to Claude now, or queue it if the agent is busy */
   engageClaudeOnThread: (thread: CommentThread) => void
@@ -132,6 +144,8 @@ export const useStore = create<FabulistStore>((set, get) => ({
   external: null,
   threads: [],
   chats: {},
+  agentThreads: {},
+  activeThread: {},
   permissions: [],
   agent: {},
   tab: 'chat',
@@ -168,14 +182,17 @@ export const useStore = create<FabulistStore>((set, get) => ({
 
   openDoc: async (id) => {
     await get().closeDoc()
-    const [content, rawThreads, chat, commits, model, font] = await Promise.all([
-      window.fabulist.doc.read(id),
-      window.fabulist.comments.list(id),
-      window.fabulist.doc.chat(id),
-      window.fabulist.history.log(id),
-      window.fabulist.doc.getModel(id),
-      window.fabulist.doc.getFont(id)
-    ])
+    const [content, rawThreads, agentThreads, activeThreadId, commits, model, font] =
+      await Promise.all([
+        window.fabulist.doc.read(id),
+        window.fabulist.comments.list(id),
+        window.fabulist.agent.threads(id),
+        window.fabulist.agent.activeThread(id),
+        window.fabulist.history.log(id),
+        window.fabulist.doc.getModel(id),
+        window.fabulist.doc.getFont(id)
+      ])
+    const chat = await window.fabulist.agent.threadChat(id, activeThreadId)
     const threads = reanchor(rawThreads, content)
     set({
       activeId: id,
@@ -192,7 +209,9 @@ export const useStore = create<FabulistStore>((set, get) => ({
       inlineSuggestionId: null,
       pendingCommentId: null,
       queuedCommentSends: [],
-      chats: { ...get().chats, [id]: chat ?? [] }
+      agentThreads: { ...get().agentThreads, [id]: agentThreads },
+      activeThread: { ...get().activeThread, [id]: activeThreadId },
+      chats: { ...get().chats, [activeThreadId]: chat ?? [] }
     })
     // watching also re-emits any permission requests pending for this doc
     await window.fabulist.doc.watch(id)
@@ -360,14 +379,68 @@ export const useStore = create<FabulistStore>((set, get) => ({
     })
   },
 
+  loadAgentThreads: async () => {
+    const id = get().activeId
+    if (!id) return
+    const threads = await window.fabulist.agent.threads(id)
+    set({ agentThreads: { ...get().agentThreads, [id]: threads } })
+  },
+
+  createAgentThread: async () => {
+    const id = get().activeId
+    if (!id) return
+    const thread = await window.fabulist.agent.createThread(id)
+    set({
+      agentThreads: { ...get().agentThreads, [id]: [...(get().agentThreads[id] ?? []), thread] },
+      activeThread: { ...get().activeThread, [id]: thread.id },
+      chats: { ...get().chats, [thread.id]: [] },
+      tab: 'chat',
+      sidebarOpen: true
+    })
+  },
+
+  selectAgentThread: async (threadId) => {
+    const id = get().activeId
+    if (!id || get().activeThread[id] === threadId) return
+    await window.fabulist.agent.activateThread(id, threadId)
+    let chats = get().chats
+    if (!chats[threadId]) {
+      const chat = await window.fabulist.agent.threadChat(id, threadId)
+      chats = { ...chats, [threadId]: chat ?? [] }
+    }
+    set({ activeThread: { ...get().activeThread, [id]: threadId }, chats, tab: 'chat', sidebarOpen: true })
+  },
+
+  renameAgentThread: async (threadId, title) => {
+    const id = get().activeId
+    if (!id || !title.trim()) return
+    await window.fabulist.agent.renameThread(id, threadId, title.trim())
+    await get().loadAgentThreads()
+  },
+
+  deleteAgentThread: async (threadId) => {
+    const id = get().activeId
+    if (!id) return
+    const { activeThreadId } = await window.fabulist.agent.deleteThread(id, threadId)
+    let chats = get().chats
+    if (!chats[activeThreadId]) {
+      const chat = await window.fabulist.agent.threadChat(id, activeThreadId)
+      chats = { ...chats, [activeThreadId]: chat ?? [] }
+    }
+    set({ activeThread: { ...get().activeThread, [id]: activeThreadId }, chats })
+    await get().loadAgentThreads()
+  },
+
   askClaude: (prompt, opts = {}) => {
     const id = get().activeId
     if (!id || !prompt.trim()) return
+    const threadId = get().activeThread[id]
+    if (!threadId) return
     // comment-initiated prompts reply into the thread — stay where the user is
     if (opts.commentId) set({ pendingCommentId: opts.commentId, sidebarOpen: true })
     else set({ tab: 'chat', sidebarOpen: true })
     void get().flushWrite()
-    window.fabulist.agent.send(id, prompt.trim(), opts)
+    window.fabulist.agent.send(id, threadId, prompt.trim(), opts)
   },
 
   setModel: (model) => {
@@ -454,16 +527,16 @@ export const useStore = create<FabulistStore>((set, get) => ({
 
   handleAgentEvent: (e) => {
     const { activeId } = get()
-    const updateChat = (docId: string, fn: (items: ChatItem[]) => ChatItem[]): void => {
+    const updateChat = (threadId: string, fn: (items: ChatItem[]) => ChatItem[]): void => {
       const chats = get().chats
-      set({ chats: { ...chats, [docId]: fn(chats[docId] ?? []) } })
+      set({ chats: { ...chats, [threadId]: fn(chats[threadId] ?? []) } })
     }
     const upsertAssistant = (
-      docId: string,
+      threadId: string,
       itemId: string,
       fn: (item: ChatItem) => ChatItem
     ): void => {
-      updateChat(docId, (items) => {
+      updateChat(threadId, (items) => {
         const idx = items.findIndex((i) => i.id === itemId)
         if (idx === -1) {
           return [...items, fn({ id: itemId, role: 'assistant', text: '', at: Date.now(), toolNotes: [] })]
@@ -479,23 +552,23 @@ export const useStore = create<FabulistStore>((set, get) => ({
         set({ agent: { ...get().agent, [e.docId]: { status: e.status, detail: e.detail } } })
         break
       case 'user-echo':
-        updateChat(e.docId, (items) => [
+        updateChat(e.threadId, (items) => [
           ...items,
           { id: e.itemId, role: 'user', text: e.text, quote: e.quote, at: Date.now() }
         ])
         break
       case 'text-delta':
-        upsertAssistant(e.docId, e.itemId, (item) => ({
+        upsertAssistant(e.threadId, e.itemId, (item) => ({
           ...item,
           text: item.streaming ? item.text + e.delta : e.delta,
           streaming: true
         }))
         break
       case 'assistant-text':
-        upsertAssistant(e.docId, e.itemId, (item) => ({ ...item, text: e.text, streaming: false }))
+        upsertAssistant(e.threadId, e.itemId, (item) => ({ ...item, text: e.text, streaming: false }))
         break
       case 'tool-note':
-        upsertAssistant(e.docId, e.itemId, (item) => {
+        upsertAssistant(e.threadId, e.itemId, (item) => {
           const notes = [...(item.toolNotes ?? [])]
           const idx = notes.findIndex((n) => n.toolId === e.toolId)
           if (idx === -1 && !e.done) notes.push({ toolId: e.toolId, note: e.note })
@@ -526,17 +599,18 @@ export const useStore = create<FabulistStore>((set, get) => ({
         break
       case 'result': {
         if (!e.ok && e.error) {
-          updateChat(e.docId, (items) => [
+          updateChat(e.threadId, (items) => [
             ...items,
             { id: `err-${Date.now()}`, role: 'assistant', text: '', at: Date.now(), error: e.error }
           ])
         }
-        const chat = get().chats[e.docId]
-        if (chat) window.fabulist.doc.saveChat(e.docId, chat.slice(-200)).catch(() => {})
+        const chat = get().chats[e.threadId]
+        if (chat) window.fabulist.agent.saveChat(e.docId, e.threadId, chat.slice(-200)).catch(() => {})
         if (e.commentId === get().pendingCommentId) set({ pendingCommentId: null })
         if (e.docId === activeId) {
           get().loadHistory()
           get().loadDocs()
+          get().loadAgentThreads()
           if (e.commentId) get().reloadThreads()
           // a comment may have queued while Claude was busy — send it now
           const [next, ...rest] = get().queuedCommentSends

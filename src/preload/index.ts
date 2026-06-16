@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type {
   AgentEvent,
+  AgentThread,
   ChatItem,
   CommentThread,
   CommitInfo,
@@ -23,15 +24,12 @@ const api = {
     snapshot: (id: string, label?: string): Promise<boolean> =>
       ipcRenderer.invoke('doc:snapshot', id, label),
     watch: (id: string | null): Promise<void> => ipcRenderer.invoke('doc:watch', id),
-    chat: (id: string): Promise<ChatItem[]> => ipcRenderer.invoke('doc:chat', id),
     getModel: (id: string): Promise<string> => ipcRenderer.invoke('doc:getModel', id),
     setModel: (id: string, model: string): Promise<void> =>
       ipcRenderer.invoke('doc:setModel', id, model),
     getFont: (id: string): Promise<string> => ipcRenderer.invoke('doc:getFont', id),
     setFont: (id: string, font: string): Promise<void> =>
       ipcRenderer.invoke('doc:setFont', id, font),
-    saveChat: (id: string, chat: ChatItem[]): Promise<void> =>
-      ipcRenderer.invoke('doc:saveChat', id, chat),
     onExternalChange: (cb: (id: string, content: string) => void): (() => void) => {
       const listener = (_e: unknown, id: string, content: string): void => cb(id, content)
       ipcRenderer.on('doc:external-change', listener)
@@ -65,11 +63,25 @@ const api = {
     }
   },
   agent: {
-    send: (id: string, prompt: string, opts?: SendOptions): Promise<void> =>
-      ipcRenderer.invoke('agent:send', id, prompt, opts ?? {}),
+    send: (id: string, threadId: string, prompt: string, opts?: SendOptions): Promise<void> =>
+      ipcRenderer.invoke('agent:send', id, threadId, prompt, opts ?? {}),
     interrupt: (id: string): Promise<void> => ipcRenderer.invoke('agent:interrupt', id),
     busy: (id: string): Promise<boolean> => ipcRenderer.invoke('agent:busy', id),
     models: (): Promise<ModelChoice[]> => ipcRenderer.invoke('agent:models'),
+    threads: (id: string): Promise<AgentThread[]> => ipcRenderer.invoke('agent:threads', id),
+    activeThread: (id: string): Promise<string> => ipcRenderer.invoke('agent:activeThread', id),
+    threadChat: (id: string, threadId: string): Promise<ChatItem[]> =>
+      ipcRenderer.invoke('agent:thread:chat', id, threadId),
+    createThread: (id: string, title?: string): Promise<AgentThread> =>
+      ipcRenderer.invoke('agent:thread:create', id, title),
+    renameThread: (id: string, threadId: string, title: string): Promise<void> =>
+      ipcRenderer.invoke('agent:thread:rename', id, threadId, title),
+    deleteThread: (id: string, threadId: string): Promise<{ activeThreadId: string }> =>
+      ipcRenderer.invoke('agent:thread:delete', id, threadId),
+    activateThread: (id: string, threadId: string): Promise<void> =>
+      ipcRenderer.invoke('agent:thread:activate', id, threadId),
+    saveChat: (id: string, threadId: string, chat: ChatItem[]): Promise<void> =>
+      ipcRenderer.invoke('agent:thread:saveChat', id, threadId, chat),
     respondPermission: (requestId: string, approved: boolean): void => {
       ipcRenderer.send('agent:permission-response', requestId, approved)
     },

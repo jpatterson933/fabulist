@@ -66,15 +66,25 @@ export interface PermissionRequest {
 
 export type AgentEvent =
   | { kind: 'status'; docId: string; status: 'idle' | 'starting' | 'working' | 'done' | 'error'; detail?: string }
-  | { kind: 'user-echo'; docId: string; itemId: string; text: string; quote?: string }
-  | { kind: 'text-delta'; docId: string; itemId: string; delta: string }
-  | { kind: 'assistant-text'; docId: string; itemId: string; text: string }
-  | { kind: 'tool-note'; docId: string; itemId: string; toolId: string; note: string; done?: boolean; ok?: boolean }
+  | { kind: 'user-echo'; docId: string; threadId: string; itemId: string; text: string; quote?: string }
+  | { kind: 'text-delta'; docId: string; threadId: string; itemId: string; delta: string }
+  | { kind: 'assistant-text'; docId: string; threadId: string; itemId: string; text: string }
+  | {
+      kind: 'tool-note'
+      docId: string
+      threadId: string
+      itemId: string
+      toolId: string
+      note: string
+      done?: boolean
+      ok?: boolean
+    }
   | { kind: 'permission-request'; docId: string; request: PermissionRequest }
   | { kind: 'permission-resolved'; docId: string; requestId: string; approved: boolean }
   | {
       kind: 'result'
       docId: string
+      threadId: string
       ok: boolean
       text?: string
       error?: string
@@ -82,6 +92,16 @@ export type AgentEvent =
       durationMs?: number
       commentId?: string
     }
+
+/** A named conversation with the agent, scoped to one document. */
+export interface AgentThread {
+  id: string
+  title: string
+  createdAt: number
+  updatedAt: number
+  /** number of chat items in the thread */
+  messageCount: number
+}
 
 export interface ChatItem {
   id: string

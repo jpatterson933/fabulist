@@ -3,9 +3,11 @@ import type { ChatItem, PermissionRequest } from '@shared/types'
 import { useStore } from '@/store'
 import DiffView from '@/components/DiffView'
 import Markdown from '@/components/Markdown'
+import { relativeTime } from '@/components/Library'
 
 export default function ChatPanel({ docId }: { docId: string }): React.JSX.Element {
-  const chat = useStore((s) => s.chats[docId] ?? [])
+  const threadId = useStore((s) => s.activeThread[docId])
+  const chat = useStore((s) => (threadId ? s.chats[threadId] ?? [] : []))
   const allPermissions = useStore((s) => s.permissions)
   const permissions = useMemo(
     () => allPermissions.filter((p) => p.docId === docId),
@@ -34,6 +36,7 @@ export default function ChatPanel({ docId }: { docId: string }): React.JSX.Eleme
 
   return (
     <div className="chat">
+      <ThreadBar docId={docId} busy={busy} />
       <div className="chat-scroll" ref={scrollRef}>
         {chat.length === 0 && (
           <div className="chat-empty">
@@ -89,6 +92,143 @@ export default function ChatPanel({ docId }: { docId: string }): React.JSX.Eleme
           <AutoApproveToggle />
         </div>
       </div>
+    </div>
+  )
+}
+
+function ThreadBar({ docId, busy }: { docId: string; busy: boolean }): React.JSX.Element {
+  const threads = useStore((s) => s.agentThreads[docId] ?? [])
+  const activeThreadId = useStore((s) => s.activeThread[docId])
+  const createThread = useStore((s) => s.createAgentThread)
+  const selectThread = useStore((s) => s.selectAgentThread)
+  const renameThread = useStore((s) => s.renameAgentThread)
+  const deleteThread = useStore((s) => s.deleteAgentThread)
+
+  const [open, setOpen] = useState(false)
+  const [renaming, setRenaming] = useState<string | null>(null)
+  const [draft, setDraft] = useState('')
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+
+  const active = threads.find((t) => t.id === activeThreadId)
+  const ordered = useMemo(() => [...threads].sort((a, b) => b.updatedAt - a.updatedAt), [threads])
+
+  useEffect(() => {
+    if (!open) {
+      setRenaming(null)
+      setConfirmDelete(null)
+    }
+  }, [open])
+
+  const commitRename = (id: string): void => {
+    const t = draft.trim()
+    setRenaming(null)
+    if (t) void renameThread(id, t)
+  }
+
+  return (
+    <div className="thread-bar">
+      <button
+        className="thread-current"
+        onClick={() => setOpen((o) => !o)}
+        title="Switch conversation"
+      >
+        <span className="thread-current-title">{active?.title ?? 'Conversation'}</span>
+        {threads.length > 1 && <span className="thread-count">{threads.length}</span>}
+        <svg className="thread-caret" width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden>
+          <path d="M3 4.5 6 7.5 9 4.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      <button
+        className="thread-new"
+        title="New conversation"
+        disabled={busy}
+        onClick={() => void createThread()}
+      >
+        ＋
+      </button>
+
+      {open && (
+        <>
+          <div className="thread-scrim" onClick={() => setOpen(false)} />
+          <div className="thread-menu">
+            {ordered.map((t) => (
+              <div
+                key={t.id}
+                className={`thread-row ${t.id === activeThreadId ? 'is-active' : ''}`}
+              >
+                {renaming === t.id ? (
+                  <input
+                    className="thread-rename-input"
+                    autoFocus
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    onBlur={() => commitRename(t.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') commitRename(t.id)
+                      if (e.key === 'Escape') setRenaming(null)
+                    }}
+                  />
+                ) : (
+                  <button
+                    className="thread-row-main"
+                    onClick={() => {
+                      void selectThread(t.id)
+                      setOpen(false)
+                    }}
+                    onDoubleClick={() => {
+                      setDraft(t.title)
+                      setRenaming(t.id)
+                    }}
+                  >
+                    <span className="thread-row-title">{t.title}</span>
+                    <span className="thread-row-meta">
+                      {relativeTime(t.updatedAt)}
+                      {t.messageCount > 0 && ` · ${t.messageCount} msg`}
+                    </span>
+                  </button>
+                )}
+
+                {renaming !== t.id &&
+                  (confirmDelete === t.id ? (
+                    <div className="thread-row-confirm">
+                      <button
+                        className="danger"
+                        onClick={() => {
+                          setConfirmDelete(null)
+                          void deleteThread(t.id)
+                        }}
+                      >
+                        Delete
+                      </button>
+                      <button onClick={() => setConfirmDelete(null)}>Keep</button>
+                    </div>
+                  ) : (
+                    <div className="thread-row-actions">
+                      <button
+                        className="thread-row-icon"
+                        title="Rename"
+                        onClick={() => {
+                          setDraft(t.title)
+                          setRenaming(t.id)
+                        }}
+                      >
+                        ✎
+                      </button>
+                      <button
+                        className="thread-row-icon"
+                        title="Delete conversation"
+                        disabled={busy}
+                        onClick={() => setConfirmDelete(t.id)}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   )
 }
