@@ -18,6 +18,9 @@ All notable changes to Fabulist are documented here. The format follows
   toggle) instead of a "Panel" text label.
 
 ### Added
+- **Working indicator in the sidebar**: documents where Claude is currently working show a
+  pulsing dot next to their title in the library list, so you can tell at a glance which
+  documents have an agent running — even when that document isn't the one on screen.
 - **Attach files to a chat message**: a 📎 button (and drag-and-drop onto the chat panel)
   lets you attach one or more files to a message for Claude. Images and PDFs are sent inline
   so Claude sees them directly; other files (text, code, data, …) are copied into the

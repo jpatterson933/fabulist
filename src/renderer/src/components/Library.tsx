@@ -3,6 +3,7 @@ import { useStore } from '@/store'
 
 export default function Library(): React.JSX.Element {
   const docs = useStore((s) => s.docs)
+  const agent = useStore((s) => s.agent)
   const activeId = useStore((s) => s.activeId)
   const openDoc = useStore((s) => s.openDoc)
   const createDoc = useStore((s) => s.createDoc)
@@ -64,10 +65,22 @@ export default function Library(): React.JSX.Element {
         {docs.length === 0 && !creating && (
           <p className="library-empty">No documents yet. Start one with +</p>
         )}
-        {docs.map((d) => (
+        {docs.map((d) => {
+          const status = agent[d.id]?.status
+          const working = status === 'starting' || status === 'working'
+          return (
           <div key={d.id} className={`library-item ${d.id === activeId ? 'is-active' : ''}`}>
             <button className="library-item-main" onClick={() => void openDoc(d.id)}>
-              <span className="library-item-title">{d.title}</span>
+              <span className="library-item-titlerow">
+                {working && (
+                  <span
+                    className={`agent-dot agent-${status}`}
+                    title="Claude is working"
+                    aria-label="Claude is working"
+                  />
+                )}
+                <span className="library-item-title">{d.title}</span>
+              </span>
               <span className="library-item-preview">{d.preview || 'Empty'}</span>
               <span className="library-item-meta">
                 {relativeTime(d.updatedAt)} · {d.wordCount.toLocaleString()} words
@@ -96,7 +109,8 @@ export default function Library(): React.JSX.Element {
               </button>
             )}
           </div>
-        ))}
+          )
+        })}
       </nav>
 
         <footer className="library-foot">
