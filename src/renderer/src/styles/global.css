@@ -2589,6 +2589,17 @@ body.is-col-resizing .studio {
   padding: 12px 14px 9px;
   border-bottom: 1px solid var(--line-soft);
 }
+/* the authoring chat's reset lives in the same top-right corner as the Test tab's
+   reset, so the action stays put as you switch tabs — here the button is the only
+   child, so it right-aligns on its own */
+.studio-chat-head {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 12px 14px 9px;
+  border-bottom: 1px solid var(--line-soft);
+}
 .studio-test-title {
   font-size: 11px;
   font-weight: 600;

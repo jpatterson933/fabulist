@@ -111,6 +111,8 @@ export interface InvokeChannels {
   'skillStudio:authSend': (slug: string, prompt: string, display?: DisplayOptions) => void
   'skillStudio:authInterrupt': (slug: string) => void
   'skillStudio:authBusy': (slug: string) => boolean
+  /** start a fresh authoring conversation: clears the transcript + rotates the SDK resume session, leaving the skill's files intact */
+  'skillStudio:resetAuth': (slug: string) => void
 
   'history:log': (id: string) => CommitInfo[]
   'history:show': (id: string, rev: string) => string

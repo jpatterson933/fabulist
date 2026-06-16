@@ -6,6 +6,14 @@ All notable changes to Fabulist are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- **Skillulist: reset the authoring conversation (`⟳ New conversation`).** The skill's
+  Chat tab now has a `⟳ New conversation` button in its header (top-right, mirroring the
+  Test tab's `⟳ New test`). Click once to arm, again to confirm, and the authoring chat
+  starts from a clean slate — useful when a conversation gets long or drags in stale
+  context. This is a *true* reset: it clears the visible transcript **and** rotates the
+  underlying SDK session, so the agent doesn't silently resume what you wiped. Your work is
+  safe — only the conversation is reset; the skill's files (`SKILL.md`, agents, `.mcp.json`)
+  are never touched.
 - **Code-editor power features in both editors — Find, multi-cursor, and Tab-to-indent.**
   Editing a document (writing app) or a skill file (Skillulist) now has the shortcuts you'd
   expect from a real editor: **⌘F** opens a Find / Replace panel (**⌘G** / **⇧⌘G** for next /

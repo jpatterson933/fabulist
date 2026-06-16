@@ -232,6 +232,15 @@ export async function saveAuthSessionId(slug: string, sessionId: string): Promis
   await patchStudioState(slug, { authSessionId: sessionId })
 }
 
+/**
+ * Wipe the authoring conversation from disk — both the transcript and the now-stale
+ * resume id — so a reset survives a restart and the next send can't resume the old SDK
+ * session. The skill's actual files (the real output) are deliberately left untouched.
+ */
+export async function resetAuthChat(slug: string): Promise<void> {
+  await patchStudioState(slug, { authChat: [], authSessionId: undefined })
+}
+
 /** Per-skill settings (model + auto-apply), defaulted on read — mirrors library.readSettings. */
 export async function readSettings(slug: string): Promise<StudioSettings> {
   const s = await readStudioState(slug)
