@@ -2108,18 +2108,27 @@ button.slash-item:hover {
 
 .studio {
   display: grid;
-  grid-template-columns: 240px minmax(0, 1fr) var(--studio-sidebar-w, 380px);
+  /* The sidebar flexes with the window: it's at least the dragged width (or 380px) AND
+     at least 32vw, so it grows as the window does, capped at 60vw. The drag handle still
+     widens it past the auto size (raising --studio-sidebar-w). The editor (1fr) takes the
+     rest. min()/max()/clamp keep one responsive track instead of a pinned px column. */
+  --studio-sidebar-track: clamp(380px, max(var(--studio-sidebar-w, 380px), 32vw), 60vw);
+  grid-template-columns: 240px minmax(0, 1fr) var(--studio-sidebar-track);
   height: 100%;
   background: var(--paper);
   overflow: clip;
   transition: grid-template-columns 280ms var(--ease-out);
 }
 .studio.rail-closed {
-  grid-template-columns: 0px minmax(0, 1fr) var(--studio-sidebar-w, 380px);
+  grid-template-columns: 0px minmax(0, 1fr) var(--studio-sidebar-track);
 }
 /* the sidebar's left edge is a drag handle (StudioSidebar) */
 .studio .sidebar {
   position: relative;
+  /* the base .sidebar pins width:380px for the document app; in the studio grid the
+     track governs width, so fill it — otherwise the content stays 380px in a wider track */
+  width: auto;
+  min-width: 0;
 }
 .sidebar-resize {
   position: absolute;
@@ -2506,10 +2515,16 @@ body.is-col-resizing .studio {
 }
 
 .studio-editor {
+  position: relative; /* anchor for the absolute .suggest-bar (Claude's pending edit) */
   min-width: 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
+}
+/* clear the editor's header bar — the doc app's editor has no such bar, so its
+   suggest-bar sits at top:14px; here it floats just below the file path/toolbar */
+.studio .suggest-bar {
+  top: 56px;
 }
 .studio-editor-head {
   flex-shrink: 0;

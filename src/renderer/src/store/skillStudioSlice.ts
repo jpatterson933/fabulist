@@ -3,6 +3,7 @@ import type { AgentEvent, AgentStatus, ArchivedTest, ChatItem, PermissionRequest
 import type { SkillStudioSlice, Store, UsageTotals } from './types'
 import { findEditSpan, nextSeq } from './shared'
 import { formatTestTranscript } from '@/lib/transcript'
+import { buildProposed } from '@/lib/suggest'
 
 /** Frames a referenced test transcript for the authoring agent. */
 const TEST_REF_PREAMBLE =
@@ -65,6 +66,8 @@ interface StudioEventTarget {
   persist: (slug: string, chat: ChatItem[]) => void
   /** extra side-effects when a run finishes (authoring refreshes the edited files) */
   onResult?: (slug: string) => void
+  /** apply an edit to the open buffer the instant it's approved/auto-applied (authoring only) */
+  applyEdit?: (slug: string, request: PermissionRequest) => void
 }
 
 /**
@@ -127,6 +130,9 @@ function makeStudioEventReducer(t: StudioEventTarget): (e: AgentEvent) => void {
             }
           }
         ])
+        // land the change in the editor at once (the card already carries the new
+        // text) instead of waiting for the whole turn to finish and re-read disk
+        t.applyEdit?.(slug, e.request)
         break
       case 'permission-request': {
         const cur = t.getPermissions()[slug] ?? []
@@ -184,6 +190,7 @@ export const createSkillStudioSlice: StateCreator<Store, [], [], SkillStudioSlic
   authUsage: {},
   testUsage: {},
   studioAutoApprove: false,
+  studioModel: '',
   authPermissions: {},
   testPermissions: {},
   testVersion: {},
@@ -241,6 +248,11 @@ export const createSkillStudioSlice: StateCreator<Store, [], [], SkillStudioSlic
   openStudioSkill: async (slug) => {
     await get().flushStudioFile()
     set({ activeSkill: slug, openFilePath: null, fileContent: '', fileDirty: false, studioDraft: null })
+    // load this skill's persisted model + auto-apply (mirrors the doc app's loadSettings)
+    const settings = await window.fabulist.skillStudio
+      .getSettings(slug)
+      .catch(() => ({ model: '', autoApprove: false }))
+    set({ studioModel: settings.model, studioAutoApprove: settings.autoApprove })
     await get().loadStudioFiles(slug)
     // Restore persisted transcripts the first time a skill is opened this session, so
     // they survive an app restart. Re-opening keeps the in-memory threads (which may
@@ -385,8 +397,10 @@ export const createSkillStudioSlice: StateCreator<Store, [], [], SkillStudioSlic
       }
     }
 
+    // auto-apply is read from the skill's persisted settings by main (mirrors the doc app),
+    // so it isn't passed here — toggling it even mid-run is honored by the gate
     await window.fabulist.skillStudio
-      .authSend(slug, fullPrompt, get().studioAutoApprove, display)
+      .authSend(slug, fullPrompt, display)
       .catch((e) => get().reportError(e, 'Couldn’t reach Claude'))
   },
 
@@ -395,7 +409,18 @@ export const createSkillStudioSlice: StateCreator<Store, [], [], SkillStudioSlic
     if (slug) void window.fabulist.skillStudio.authInterrupt(slug)
   },
 
-  setStudioAutoApprove: (on) => set({ studioAutoApprove: on }),
+  setStudioAutoApprove: (on) => {
+    set({ studioAutoApprove: on })
+    const slug = get().activeSkill
+    if (slug) window.fabulist.skillStudio.setSetting(slug, 'autoApprove', on).catch(() => {})
+  },
+
+  setStudioModel: (model) => {
+    const slug = get().activeSkill
+    if (!slug) return
+    set({ studioModel: model })
+    window.fabulist.skillStudio.setSetting(slug, 'model', model).catch(() => {})
+  },
 
   respondStudioPermission: (requestId, approved, answers) => {
     window.fabulist.skillStudio.respondPermission(requestId, approved, answers)
@@ -428,6 +453,17 @@ export const createSkillStudioSlice: StateCreator<Store, [], [], SkillStudioSlic
     accumulateUsage: (slug, usage) =>
       set({ authUsage: { ...get().authUsage, [slug]: addUsage(get().authUsage[slug], usage) } }),
     persist: (slug, chat) => void window.fabulist.skillStudio.saveAuthChat(slug, chat).catch(() => {}),
+    // Optimistic apply: an approved (or auto-applied) edit lands in the open buffer the
+    // instant the edit-applied event fires, instead of only when the whole turn ends and
+    // onResult re-reads disk. The card already carries the new text, so we rebuild the
+    // proposed content the same way the inline suggestion does. onResult stays as the
+    // backstop that reconciles against disk. Skip if the file isn't open or has unsaved edits.
+    applyEdit: (slug, request) => {
+      if (get().activeSkill !== slug) return
+      if (request.filePath !== get().openFilePath || get().fileDirty) return
+      const proposed = buildProposed(get().fileContent, request)
+      if (proposed !== null) set({ fileContent: proposed })
+    },
     // Claude may have edited the skill's files — refresh the tree + open file (without
     // clobbering unsaved local edits)
     onResult: (slug) => {

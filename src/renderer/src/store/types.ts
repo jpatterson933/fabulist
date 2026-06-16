@@ -243,6 +243,8 @@ export interface SkillStudioSlice {
   testUsage: Record<string, UsageTotals>
   /** apply the authoring agent's file edits without an approval card (mirrors the doc app) */
   studioAutoApprove: boolean
+  /** model for the active skill's authoring + test runs ('' = CLI default); persisted per-skill */
+  studioModel: string
   /** pending approval/question requests for the authoring chat, keyed by skill slug */
   authPermissions: Record<string, PermissionRequest[]>
   /** pending question requests during a test run, keyed by skill slug */
@@ -284,6 +286,8 @@ export interface SkillStudioSlice {
   handleAuthEvent: (e: AgentEvent) => void
   /** toggle whether the authoring agent's edits auto-apply or wait for approval */
   setStudioAutoApprove: (on: boolean) => void
+  /** set the active skill's model (persisted per-skill; used for authoring + test runs) */
+  setStudioModel: (model: string) => void
   /** answer a studio approval/question card (test or authoring) */
   respondStudioPermission: (
     requestId: string,

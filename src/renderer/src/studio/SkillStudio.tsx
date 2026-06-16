@@ -1,9 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import type { PermissionRequest } from '@shared/types'
 import { useStore } from '@/store'
 import { formatMarkdown } from '@/lib/markdown'
+import { studioInlineEdit } from '@/studio/inlineEdit'
 import WorkspaceSwitcher from '@/studio/WorkspaceSwitcher'
 import StudioSidebar from '@/studio/StudioSidebar'
 import StudioCodeEditor from '@/studio/StudioCodeEditor'
+
+const NO_PERMISSIONS: PermissionRequest[] = []
 
 /**
  * The Skill Studio surface — a separate top-level workspace (mode === 'skillStudio'),
@@ -170,14 +174,39 @@ function SkillEditor({ slug }: { slug: string }): React.JSX.Element {
   const fileContent = useStore((s) => s.fileContent)
   const fileDirty = useStore((s) => s.fileDirty)
   const studioRevealPos = useStore((s) => s.studioRevealPos)
+  const authPermissions = useStore((s) => s.authPermissions[slug]) ?? NO_PERMISSIONS
   const openStudioFile = useStore((s) => s.openStudioFile)
   const setFileContent = useStore((s) => s.setFileContent)
   const addStudioFile = useStore((s) => s.addStudioFile)
   const addStudioFolder = useStore((s) => s.addStudioFolder)
   const removeStudioFile = useStore((s) => s.removeStudioFile)
   const startComment = useStore((s) => s.startComment)
+  const respondStudioPermission = useStore((s) => s.respondStudioPermission)
   const reportError = useStore((s) => s.reportError)
   const [selText, setSelText] = useState('')
+
+  // Claude's pending edit to the open file, rendered inline (green/red strike-through)
+  // exactly like the document editor; null when nothing is awaiting review for this file
+  const inline = useMemo(
+    () => studioInlineEdit(fileContent, openFilePath, authPermissions),
+    [fileContent, openFilePath, authPermissions]
+  )
+
+  // ⌘⏎ accepts, esc declines the pending suggestion (mirrors the document editor)
+  useEffect(() => {
+    if (!inline) return
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault()
+        respondStudioPermission(inline.requestId, true)
+      } else if (e.key === 'Escape') {
+        e.preventDefault()
+        respondStudioPermission(inline.requestId, false)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [inline, respondStudioPermission])
 
   // right-click menu (create here / delete) and the inline name input it opens
   const [menu, setMenu] = useState<{
@@ -347,6 +376,28 @@ function SkillEditor({ slug }: { slug: string }): React.JSX.Element {
       <div className="studio-editor">
         {openFilePath ? (
           <>
+            {inline && (
+              <div className="suggest-bar">
+                <span className="suggest-bar-glyph" aria-hidden>
+                  ✦
+                </span>
+                <span className="suggest-bar-label">Claude suggests an edit</span>
+                <button
+                  className="btn-primary btn-small"
+                  onClick={() => respondStudioPermission(inline.requestId, true)}
+                  title="Accept  ⌘⏎"
+                >
+                  Accept
+                </button>
+                <button
+                  className="btn-ghost btn-small"
+                  onClick={() => respondStudioPermission(inline.requestId, false)}
+                  title="Decline  esc"
+                >
+                  Decline
+                </button>
+              </div>
+            )}
             <div className="studio-editor-head">
               <span className="studio-editor-path">{openFilePath}</span>
               <div className="studio-editor-head-right">
@@ -381,6 +432,7 @@ function SkillEditor({ slug }: { slug: string }): React.JSX.Element {
               scrollKey={`${slug}/${openFilePath}`}
               value={fileContent}
               revealPos={studioRevealPos}
+              suggestion={inline?.segments ?? null}
               onChange={setFileContent}
               onSelect={setSelText}
             />

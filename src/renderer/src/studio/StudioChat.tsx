@@ -3,7 +3,8 @@ import { useStore } from '@/store'
 import { selectAuthChat, selectTestChat } from '@/store/selectors'
 import { ChatBubble } from '@/components/chat/Messages'
 import { ApprovalCard } from '@/components/chat/ApprovalCard'
-import { StudioAutoApproveToggle } from '@/components/chat/ComposeOptions'
+import { StudioAutoApproveToggle, StudioModelPicker } from '@/components/chat/ComposeOptions'
+import { studioInlineEdit } from '@/studio/inlineEdit'
 import { useStickToBottom } from '@/lib/useStickToBottom'
 import { slashTokenAt, removeSlashToken } from '@/lib/slash'
 import { usageLine } from '@/lib/format'
@@ -29,10 +30,19 @@ export default function StudioChat({ slug }: { slug: string }): React.JSX.Elemen
   const permissions = useStore((s) => s.authPermissions[slug]) ?? NO_PERMISSIONS
   const usage = useStore((s) => s.authUsage[slug])
   const status = useStore((s) => s.authAgent[slug])
+  const fileContent = useStore((s) => s.fileContent)
+  const openFilePath = useStore((s) => s.openFilePath)
   const authSend = useStore((s) => s.authSend)
   const interruptAuth = useStore((s) => s.interruptAuth)
   const respond = useStore((s) => s.respondStudioPermission)
   const reveal = useStore((s) => s.revealStudioEdit)
+
+  // the pending edit shown inline in the editor (if any) — its chat card collapses to a
+  // compact "shown in the editor" form, matching the document app
+  const inlineId = useMemo(
+    () => studioInlineEdit(fileContent, openFilePath, permissions)?.requestId ?? null,
+    [fileContent, openFilePath, permissions]
+  )
   const [input, setInput] = useState('')
   const [testRef, setTestRef] = useState<TestRef | null>(null)
   const [slash, setSlash] = useState<{ start: number; query: string } | null>(null)
@@ -130,7 +140,12 @@ export default function StudioChat({ slug }: { slug: string }): React.JSX.Elemen
           <ChatBubble key={item.id} item={item} reveal={reveal} markdown />
         ))}
         {permissions.map((p) => (
-          <ApprovalCard key={p.requestId} request={p} respond={respond} />
+          <ApprovalCard
+            key={p.requestId}
+            request={p}
+            respond={respond}
+            inline={p.requestId === inlineId}
+          />
         ))}
         {busy && (
           <div className="chat-working">
@@ -250,6 +265,7 @@ export default function StudioChat({ slug }: { slug: string }): React.JSX.Elemen
           </button>
         </div>
         <div className="chat-options">
+          <StudioModelPicker disabled={busy} />
           <StudioAutoApproveToggle />
         </div>
       </div>

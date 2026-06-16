@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { ModelChoice } from '@shared/types'
 import { useStore } from '@/store'
 
 // The compose bar's option controls, extracted from ChatPanel: the model picker,
@@ -82,11 +83,22 @@ export function StudioAutoApproveToggle(): React.JSX.Element {
   )
 }
 
-export function ModelPicker({ disabled }: { disabled: boolean }): React.JSX.Element {
-  const model = useStore((s) => s.model)
-  const models = useStore((s) => s.models)
-  const setModel = useStore((s) => s.setModel)
-
+// The presentational picker, shared by the document and studio wrappers below. Each
+// wrapper binds its own store slice (the document's per-doc model vs the studio's
+// per-skill model), so the two pages stay unbraided while the control is defined once.
+function ModelSelect({
+  id,
+  model,
+  models,
+  setModel,
+  disabled
+}: {
+  id: string
+  model: string
+  models: ModelChoice[]
+  setModel: (value: string) => void
+  disabled: boolean
+}): React.JSX.Element {
   // a stored value the engine no longer lists (e.g. saved before a CLI update)
   // still renders, so the selection isn't silently misrepresented
   const options = models.some((m) => m.value === model)
@@ -96,9 +108,9 @@ export function ModelPicker({ disabled }: { disabled: boolean }): React.JSX.Elem
 
   return (
     <div className="model-picker">
-      <label htmlFor="model-select">Model</label>
+      <label htmlFor={id}>Model</label>
       <select
-        id="model-select"
+        id={id}
         value={current.value}
         disabled={disabled}
         title={disabled ? 'Takes effect on the next message' : current.hint}
@@ -111,5 +123,26 @@ export function ModelPicker({ disabled }: { disabled: boolean }): React.JSX.Elem
         ))}
       </select>
     </div>
+  )
+}
+
+export function ModelPicker({ disabled }: { disabled: boolean }): React.JSX.Element {
+  const model = useStore((s) => s.model)
+  const models = useStore((s) => s.models)
+  const setModel = useStore((s) => s.setModel)
+  return <ModelSelect id="model-select" model={model} models={models} setModel={setModel} disabled={disabled} />
+}
+
+/**
+ * The Skill Studio's model picker — the same control as the document app's, bound to
+ * the active skill's persisted model. One model per skill drives both the authoring
+ * chat and the test runs, mirroring how the document app uses one model per document.
+ */
+export function StudioModelPicker({ disabled }: { disabled: boolean }): React.JSX.Element {
+  const model = useStore((s) => s.studioModel)
+  const models = useStore((s) => s.models)
+  const setModel = useStore((s) => s.setStudioModel)
+  return (
+    <ModelSelect id="studio-model-select" model={model} models={models} setModel={setModel} disabled={disabled} />
   )
 }

@@ -17,7 +17,8 @@ import { parseSdkMessages, type ParsedRun, type SdkMessage } from './sdkStream'
 import { PermissionBroker } from './permissionBroker'
 import { ENGINE_BINARY } from './engineBinary'
 import { emitEvent } from './ipcTyped'
-import { ensureStudio, pluginPath, readAuthSessionId, saveAuthSessionId } from './skillStudio'
+import { toModelArg } from '@shared/model'
+import { ensureStudio, pluginPath, readAuthSessionId, readSettings, saveAuthSessionId } from './skillStudio'
 
 /** Log token + cost consumption for a run — the client tracks this closely. */
 function logUsage(label: string, slug: string, run: ParsedRun): void {
@@ -125,6 +126,7 @@ export class StudioAgentManager {
     if (this.active.has(slug)) throw new Error('A test is already running for this skill')
     await ensureStudio()
     const cwd = await this.ensureSandbox(slug)
+    const { model } = await readSettings(slug)
 
     // `prompt` is what the model receives (may carry a "use the <skill>" directive);
     // the chat echoes `display.echo` + a short marker when provided
@@ -149,6 +151,7 @@ export class StudioAgentManager {
 
     const options: Options = {
       cwd,
+      model: toModelArg(model),
       pathToClaudeCodeExecutable: ENGINE_BINARY,
       resume: this.sessions.get(slug),
       abortController: abort,
@@ -244,15 +247,13 @@ export class StudioAgentManager {
     }
   }
 
-  async authSend(
-    slug: string,
-    prompt: string,
-    autoApprove = false,
-    display?: DisplayOptions
-  ): Promise<void> {
+  async authSend(slug: string, prompt: string, display?: DisplayOptions): Promise<void> {
     if (this.authActive.has(slug)) throw new Error('Claude is already working on this skill')
     await ensureStudio()
     const cwd = pluginPath(slug)
+    // read once at send for the system-prompt wording; the gate re-reads per call so a
+    // mid-run toggle still takes effect (mirrors agent.ts: state for the prompt + the gate)
+    const { model, autoApprove } = await readSettings(slug)
 
     // `prompt` is what the model receives (may carry a woven-in test transcript);
     // the chat echoes `display.echo` + a short quote marker when provided
@@ -285,6 +286,7 @@ export class StudioAgentManager {
 
     const options: Options = {
       cwd,
+      model: toModelArg(model),
       pathToClaudeCodeExecutable: ENGINE_BINARY,
       resume: this.authSessions.get(slug),
       abortController: abort,
@@ -293,7 +295,7 @@ export class StudioAgentManager {
       systemPrompt: { type: 'preset', preset: 'claude_code', append: AUTHOR_APPEND(autoApprove) },
       permissionMode: 'default',
       canUseTool: (tool, ti, { signal }) =>
-        this.authGate(slug, cwd, tool, ti as Record<string, unknown>, edits, autoApprove, signal),
+        this.authGate(slug, cwd, tool, ti as Record<string, unknown>, edits, signal),
       stderr: (line) => {
         if (process.env.FABULIST_DEBUG) console.error('[studio:author]', line)
       }
@@ -353,13 +355,15 @@ export class StudioAgentManager {
     tool: string,
     input: Record<string, unknown>,
     edits: { count: number },
-    autoApprove: boolean,
     signal: AbortSignal
   ): Promise<PermissionResult> {
     const decision = decideTool(cwd, tool, input)
     if (decision.kind === 'deny') return { behavior: 'deny', message: decision.message }
     if (decision.kind === 'allow') return { behavior: 'allow', updatedInput: input }
     if (isFileEditTool(tool) && decision.filePath) {
+      // re-read auto-apply per call (not captured at send) so toggling it mid-run takes
+      // effect immediately — exactly like the document app's gateTool (src/main/agent.ts)
+      const { autoApprove } = await readSettings(slug)
       const request = await this.buildRequest(slug, cwd, tool, input, decision.filePath)
       if (!autoApprove) {
         const { approved } = await this.askHuman((e) => this.emitAuth(e), slug, request, signal)

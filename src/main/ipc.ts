@@ -128,6 +128,10 @@ function registerSkillStudio(win: BrowserWindow): void {
   handle('skillStudio:createFile', (_e, slug, rel) => skillStudio.createFile(slug, rel))
   handle('skillStudio:createFolder', (_e, slug, rel) => skillStudio.createFolder(slug, rel))
   handle('skillStudio:deleteFile', (_e, slug, rel) => skillStudio.deleteFile(slug, rel))
+  handle('skillStudio:getSettings', (_e, slug) => skillStudio.readSettings(slug))
+  handle('skillStudio:setSetting', (_e, slug, key, value) =>
+    skillStudio.writeSetting(slug, key, value)
+  )
   handle('skillStudio:readChats', (_e, slug) => skillStudio.readChats(slug))
   handle('skillStudio:saveAuthChat', (_e, slug, chat) => skillStudio.saveAuthChat(slug, chat))
   handle('skillStudio:saveTestChat', (_e, slug, chat) => skillStudio.saveTestChat(slug, chat))
@@ -148,8 +152,8 @@ function registerSkillStudio(win: BrowserWindow): void {
   handle('skillStudio:interruptTest', (_e, slug) => studioAgent.interrupt(slug))
   handle('skillStudio:testBusy', (_e, slug) => studioAgent.isBusy(slug))
 
-  handle('skillStudio:authSend', (_e, slug, prompt, autoApprove, display) => {
-    studioAgent.authSend(slug, prompt, autoApprove, display).catch((err) => {
+  handle('skillStudio:authSend', (_e, slug, prompt, display) => {
+    studioAgent.authSend(slug, prompt, display).catch((err) => {
       emitEvent(win.webContents, 'skillStudio:authEvent', {
         kind: 'status',
         docId: slug,

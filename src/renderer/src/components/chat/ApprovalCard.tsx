@@ -87,14 +87,19 @@ function QuestionCard({
 
 export function ApprovalCard({
   request,
-  respond
+  respond,
+  inline
 }: {
   request: PermissionRequest
   respond?: Responder
+  /** force the compact "shown inline" form (the Skill Studio computes this itself);
+   *  the document app omits it and falls back to the store's inlineSuggestionId */
+  inline?: boolean
 }): React.JSX.Element {
   const storeRespond = useStore((s) => s.respondPermission)
   const doRespond = respond ?? storeRespond
-  const shownInline = useStore((s) => s.inlineSuggestionId === request.requestId)
+  const storeInline = useStore((s) => s.inlineSuggestionId === request.requestId)
+  const shownInline = inline ?? storeInline
 
   if (request.kind === 'question' || request.questions)
     return <QuestionCard request={request} respond={doRespond} />
@@ -106,7 +111,7 @@ export function ApprovalCard({
     return (
       <div className="approval approval-inline">
         <div className="approval-head">
-          <span className="approval-kind">Suggested edit — shown in the document</span>
+          <span className="approval-kind">Suggested edit — shown in the editor</span>
           <span className="approval-tool">{request.tool}</span>
         </div>
         <div className="approval-actions">

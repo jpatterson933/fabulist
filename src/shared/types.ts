@@ -214,6 +214,21 @@ export interface StudioFile {
   isDir: boolean
 }
 
+/**
+ * Per-skill Studio settings — the studio analogue of DocSettings. Persisted under
+ * .skill-studio/.state/<slug>.json and read by the main process when it launches the
+ * authoring or test agent, so the choice survives a restart exactly like the document
+ * app's per-document model + auto-apply.
+ */
+export interface StudioSettings {
+  /** Claude Code model alias/id used for both authoring + test runs; '' = CLI default */
+  model: string
+  /** apply the authoring agent's edits without an approval card */
+  autoApprove: boolean
+}
+
+export type StudioSettingKey = keyof StudioSettings
+
 export interface SendOptions {
   /** When set, Claude's final reply is also appended to this comment thread */
   commentId?: string

@@ -17,7 +17,7 @@ afterEach(() => {
 
 const cwd = path.join(path.sep, 'tmp', 'fabulist-skill-test')
 
-async function loadManager(): Promise<{
+async function loadManager(autoApprove = false): Promise<{
   manager: import('../../../src/main/studioAgent').StudioAgentManager
   events: { channel: string; event: AgentEvent }[]
 }> {
@@ -27,7 +27,9 @@ async function loadManager(): Promise<{
   vi.doMock('../../../src/main/git', () => ({ commitAll: vi.fn() }))
   vi.doMock('../../../src/main/skillStudio', () => ({
     ensureStudio: vi.fn(),
-    pluginPath: (slug: string) => path.join(path.sep, 'tmp', 'studio', slug)
+    pluginPath: (slug: string) => path.join(path.sep, 'tmp', 'studio', slug),
+    // the authoring gate reads auto-apply from persisted settings per call (not a param)
+    readSettings: vi.fn(async () => ({ model: '', autoApprove }))
   }))
 
   const { StudioAgentManager } = await import('../../../src/main/studioAgent')
@@ -126,12 +128,11 @@ describe('studio authoring gate', () => {
     tool: string,
     input: Record<string, unknown>,
     edits: { count: number },
-    autoApprove: boolean,
     signal: AbortSignal
   ) => Promise<{ behavior: string }>
 
   it('auto-applies an edit when auto-apply is on and records it', async () => {
-    const { manager, events } = await loadManager()
+    const { manager, events } = await loadManager(true)
     const authGate = (manager as unknown as { authGate: AuthGate }).authGate.bind(manager)
     const edits = { count: 0 }
     const result = await authGate(
@@ -140,7 +141,6 @@ describe('studio authoring gate', () => {
       'Edit',
       { file_path: 'skills/skill/SKILL.md', old_string: 'a', new_string: 'b' },
       edits,
-      true,
       new AbortController().signal
     )
     expect(result.behavior).toBe('allow')
@@ -158,7 +158,6 @@ describe('studio authoring gate', () => {
       'Edit',
       { file_path: 'skills/skill/SKILL.md', old_string: 'a', new_string: 'b' },
       edits,
-      false,
       new AbortController().signal
     )
     await flush()
@@ -174,7 +173,7 @@ describe('studio authoring gate', () => {
   })
 
   it('declining an edit denies it and applies nothing', async () => {
-    const { manager } = await loadManager()
+    const { manager, events } = await loadManager()
     const authGate = (manager as unknown as { authGate: AuthGate }).authGate.bind(manager)
     const edits = { count: 0 }
     const p = authGate(
@@ -183,10 +182,13 @@ describe('studio authoring gate', () => {
       'Write',
       { file_path: 'skills/skill/SKILL.md', content: 'x' },
       edits,
-      false,
       new AbortController().signal
     )
-    await flush()
+    // the Write payload reads the file before surfacing the card, so a single tick isn't
+    // enough — wait until the approval request actually appears before answering it
+    for (let i = 0; i < 50 && !events.some((e) => e.event.kind === 'permission-request'); i++) {
+      await flush()
+    }
     manager.resolvePermission('req', false)
     expect((await p).behavior).toBe('deny')
     expect(edits.count).toBe(0)
@@ -201,7 +203,6 @@ describe('studio authoring gate', () => {
       'Bash',
       { command: 'rm -rf /' },
       { count: 0 },
-      false,
       new AbortController().signal
     )
     expect(result.behavior).toBe('deny')

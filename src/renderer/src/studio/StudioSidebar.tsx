@@ -22,7 +22,10 @@ export default function StudioSidebar({ slug }: { slug: string }): React.JSX.Ele
   const startResize = (e: React.MouseEvent): void => {
     e.preventDefault()
     const startX = e.clientX
-    const startW = useStore.getState().studioSidebarWidth
+    // start from the ACTUAL rendered width — the track flexes with the window, so it can be
+    // wider than the stored value; measuring keeps the edge under the cursor (no jump)
+    const aside = (e.currentTarget as HTMLElement).parentElement
+    const startW = aside?.getBoundingClientRect().width ?? useStore.getState().studioSidebarWidth
     const onMove = (ev: MouseEvent): void => setWidth(startW + (startX - ev.clientX))
     const onUp = (): void => {
       window.removeEventListener('mousemove', onMove)

@@ -3,6 +3,7 @@ import { useStore } from '@/store'
 import { selectTestChat } from '@/store/selectors'
 import { ChatBubble } from '@/components/chat/Messages'
 import { ApprovalCard } from '@/components/chat/ApprovalCard'
+import { StudioModelPicker } from '@/components/chat/ComposeOptions'
 import { useStickToBottom } from '@/lib/useStickToBottom'
 import { slashTokenAt, removeSlashToken } from '@/lib/slash'
 import { usageLine } from '@/lib/format'
@@ -237,6 +238,9 @@ export default function TestThread({ slug }: { slug: string }): React.JSX.Elemen
           >
             ↑
           </button>
+        </div>
+        <div className="chat-options">
+          <StudioModelPicker disabled={busy} />
         </div>
       </div>
     </section>
