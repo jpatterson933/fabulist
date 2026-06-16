@@ -5,6 +5,10 @@ All notable changes to Fabulist are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+- Reworked `README.md` into a clearer visual app flow using selected root-level
+  screenshots from `docs/`.
+
 ### Added
 - **Skillulist**: a separate workspace for building and testing Claude skills, reached
   from the ❡ wordmark dropdown at the top-left of the (collapsible) rail. Each skill is
