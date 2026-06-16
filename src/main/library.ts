@@ -307,7 +307,7 @@ export async function writeSetting<K extends SettingKey>(
 
 // --- agent transcript (validated on read; main never re-trusts on-disk JSON) ---
 
-function sanitizeChat(chat: unknown): ChatItem[] {
+export function sanitizeChat(chat: unknown): ChatItem[] {
   if (!Array.isArray(chat)) return []
   return chat.filter(
     (c): c is ChatItem =>

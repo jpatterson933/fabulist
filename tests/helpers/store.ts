@@ -68,6 +68,11 @@ export function makeFabulist(
       createFile: vi.fn(async () => {}),
       createFolder: vi.fn(async () => {}),
       deleteFile: vi.fn(async () => {}),
+      listPluginSkills: vi.fn(async () => []),
+      readChats: vi.fn(async () => ({ authChat: [], testChat: [], testVersion: 1, archivedTests: [] })),
+      saveAuthChat: vi.fn(async () => {}),
+      saveTestChat: vi.fn(async () => {}),
+      archiveTest: vi.fn(async () => ({ version: '0.0.1', at: 0, nextVersion: 2 })),
       test: vi.fn(async () => {}),
       resetTest: vi.fn(async () => {}),
       interruptTest: vi.fn(async () => {}),
@@ -76,7 +81,8 @@ export function makeFabulist(
       authSend: vi.fn(async () => {}),
       authInterrupt: vi.fn(async () => {}),
       authBusy: vi.fn(async () => false),
-      onAuthEvent: vi.fn(() => () => {})
+      onAuthEvent: vi.fn(() => () => {}),
+      respondPermission: vi.fn(() => {})
     }
   }
   for (const ns of Object.keys(overrides)) {

@@ -5,10 +5,19 @@ import { useStore } from '@/store'
 import DiffView from '@/components/DiffView'
 
 // The approval surface, extracted from ChatPanel: a command/diff approval card
-// and the AskUserQuestion card. ApprovalCard dispatches on request.kind.
+// and the AskUserQuestion card. ApprovalCard dispatches on request.kind. The
+// optional `respond` lets a second agent (the Skill Studio) route answers to its
+// own IPC channel; it defaults to the document agent's respondPermission.
 
-function QuestionCard({ request }: { request: PermissionRequest }): React.JSX.Element {
-  const respond = useStore((s) => s.respondPermission)
+type Responder = (requestId: string, approved: boolean, answers?: Record<string, string>) => void
+
+function QuestionCard({
+  request,
+  respond
+}: {
+  request: PermissionRequest
+  respond: Responder
+}): React.JSX.Element {
   const questions = request.questions!
   const [picked, setPicked] = useState<Record<string, string[]>>({})
 
@@ -76,11 +85,19 @@ function QuestionCard({ request }: { request: PermissionRequest }): React.JSX.El
   )
 }
 
-export function ApprovalCard({ request }: { request: PermissionRequest }): React.JSX.Element {
-  const respond = useStore((s) => s.respondPermission)
+export function ApprovalCard({
+  request,
+  respond
+}: {
+  request: PermissionRequest
+  respond?: Responder
+}): React.JSX.Element {
+  const storeRespond = useStore((s) => s.respondPermission)
+  const doRespond = respond ?? storeRespond
   const shownInline = useStore((s) => s.inlineSuggestionId === request.requestId)
 
-  if (request.kind === 'question' || request.questions) return <QuestionCard request={request} />
+  if (request.kind === 'question' || request.questions)
+    return <QuestionCard request={request} respond={doRespond} />
   const isDocEdit = isPrimaryDoc(request.filePath)
   const isWholeFile = request.tool === 'Write'
 
@@ -93,10 +110,10 @@ export function ApprovalCard({ request }: { request: PermissionRequest }): React
           <span className="approval-tool">{request.tool}</span>
         </div>
         <div className="approval-actions">
-          <button className="btn-primary" onClick={() => respond(request.requestId, true)}>
+          <button className="btn-primary" onClick={() => doRespond(request.requestId, true)}>
             Accept
           </button>
-          <button className="btn-ghost" onClick={() => respond(request.requestId, false)}>
+          <button className="btn-ghost" onClick={() => doRespond(request.requestId, false)}>
             Decline
           </button>
         </div>
@@ -128,10 +145,10 @@ export function ApprovalCard({ request }: { request: PermissionRequest }): React
       )}
 
       <div className="approval-actions">
-        <button className="btn-primary" onClick={() => respond(request.requestId, true)}>
+        <button className="btn-primary" onClick={() => doRespond(request.requestId, true)}>
           Apply
         </button>
-        <button className="btn-ghost" onClick={() => respond(request.requestId, false)}>
+        <button className="btn-ghost" onClick={() => doRespond(request.requestId, false)}>
           Decline
         </button>
       </div>

@@ -14,6 +14,7 @@ import StudioCodeEditor from '@/studio/StudioCodeEditor'
 export default function SkillStudio(): React.JSX.Element {
   const activeSkill = useStore((s) => s.activeSkill)
   const railOpen = useStore((s) => s.studioRailOpen)
+  const sidebarWidth = useStore((s) => s.studioSidebarWidth)
   const toggleStudioRail = useStore((s) => s.toggleStudioRail)
   const loadStudioSkills = useStore((s) => s.loadStudioSkills)
 
@@ -22,7 +23,10 @@ export default function SkillStudio(): React.JSX.Element {
   }, [loadStudioSkills])
 
   return (
-    <div className={`studio ${railOpen ? '' : 'rail-closed'}`}>
+    <div
+      className={`studio ${railOpen ? '' : 'rail-closed'}`}
+      style={{ '--studio-sidebar-w': `${sidebarWidth}px` } as React.CSSProperties}
+    >
       <SkillRail />
       <main className={`studio-main ${activeSkill ? '' : 'full'}`}>
         <header className={`workspace-header ${railOpen ? '' : 'with-lights'}`}>
@@ -161,11 +165,11 @@ function SkillRail(): React.JSX.Element {
 }
 
 function SkillEditor({ slug }: { slug: string }): React.JSX.Element {
-  void slug
   const files = useStore((s) => s.studioFiles)
   const openFilePath = useStore((s) => s.openFilePath)
   const fileContent = useStore((s) => s.fileContent)
   const fileDirty = useStore((s) => s.fileDirty)
+  const studioRevealPos = useStore((s) => s.studioRevealPos)
   const openStudioFile = useStore((s) => s.openStudioFile)
   const setFileContent = useStore((s) => s.setFileContent)
   const addStudioFile = useStore((s) => s.addStudioFile)
@@ -374,7 +378,9 @@ function SkillEditor({ slug }: { slug: string }): React.JSX.Element {
             <StudioCodeEditor
               key={openFilePath}
               path={openFilePath}
+              scrollKey={`${slug}/${openFilePath}`}
               value={fileContent}
+              revealPos={studioRevealPos}
               onChange={setFileContent}
               onSelect={setSelText}
             />

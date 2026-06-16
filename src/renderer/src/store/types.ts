@@ -1,6 +1,7 @@
 import type {
   AgentEvent,
   AgentStatus,
+  ArchivedTest,
   ChatItem,
   CommentAnchor,
   CommentThread,
@@ -213,6 +214,8 @@ export interface SkillStudioSlice {
   mode: AppMode
   /** left skill rail open (collapsible, mirrors the library rail) */
   studioRailOpen: boolean
+  /** width (px) of the right sidebar (chat/comments/test) — resizable wider than the default */
+  studioSidebarWidth: number
   /** which sidebar tab (chat / comments / test) is showing */
   studioTab: StudioTab
   /** skills in the studio (each is its own plugin) */
@@ -238,10 +241,24 @@ export interface SkillStudioSlice {
   /** cumulative token/cost totals per skill — authoring and test runs (client tracks this) */
   authUsage: Record<string, UsageTotals>
   testUsage: Record<string, UsageTotals>
+  /** apply the authoring agent's file edits without an approval card (mirrors the doc app) */
+  studioAutoApprove: boolean
+  /** pending approval/question requests for the authoring chat, keyed by skill slug */
+  authPermissions: Record<string, PermissionRequest[]>
+  /** pending question requests during a test run, keyed by skill slug */
+  testPermissions: Record<string, PermissionRequest[]>
+  /** version index of the CURRENT live test, keyed by skill slug (1 = the first) */
+  testVersion: Record<string, number>
+  /** archived test runs (most-recent-first), read-only, keyed by skill slug */
+  archivedTests: Record<string, ArchivedTest[]>
+  /** opt-in request to scroll to + transiently highlight an applied edit in the file editor */
+  studioRevealPos: { from: number; to: number; seq: number } | null
 
   openStudio: () => Promise<void>
   closeStudio: () => void
   toggleStudioRail: () => void
+  /** set the sidebar width (clamped between the default and a sane max) */
+  setStudioSidebarWidth: (w: number) => void
   setStudioTab: (tab: StudioTab) => void
   loadStudioSkills: () => Promise<void>
   createStudioSkill: (name: string) => Promise<void>
@@ -254,17 +271,42 @@ export interface SkillStudioSlice {
   addStudioFile: (rel: string) => Promise<void>
   addStudioFolder: (rel: string) => Promise<void>
   removeStudioFile: (rel: string) => Promise<void>
-  /** authoring chat: ask Claude to build/refine the skill (it edits the skill's files) */
-  authSend: (prompt: string) => Promise<void>
+  /**
+   * Authoring chat: ask Claude to build/refine the skill (it edits the skill's files).
+   * With `{ testRef: true }`, the current test thread's transcript is woven into the
+   * prompt as context, so you can say "the test did X, fix it" and Claude can see the run.
+   */
+  authSend: (
+    prompt: string,
+    opts?: { testRef?: 'current' | { version: string } }
+  ) => Promise<void>
   interruptAuth: () => void
   handleAuthEvent: (e: AgentEvent) => void
+  /** toggle whether the authoring agent's edits auto-apply or wait for approval */
+  setStudioAutoApprove: (on: boolean) => void
+  /** answer a studio approval/question card (test or authoring) */
+  respondStudioPermission: (
+    requestId: string,
+    approved: boolean,
+    answers?: Record<string, string>
+  ) => void
+  /** open the edited file and scroll to + briefly highlight where an applied edit landed */
+  revealStudioEdit: (edit: NonNullable<ChatItem['edit']>) => Promise<void>
   /** commenting: capture a selection, write a note, send it into the authoring chat */
   startComment: (file: string, quote: string) => void
   cancelComment: () => void
   submitComment: (note: string) => Promise<void>
   removeComment: (id: string) => void
-  testSkill: (prompt: string) => Promise<void>
+  /**
+   * Run the skill against a task. With `{ skill }`, the prompt the model receives is
+   * prefixed with a "Use the <name> skill" directive (mirroring an explicit invocation),
+   * while the chat shows the task plus a short marker.
+   */
+  testSkill: (prompt: string, opts?: { skill?: string }) => Promise<void>
+  /** clear the live test thread to a fresh one (no archive) — used for an empty thread */
   resetTest: () => Promise<void>
+  /** archive the current test under its version, bump the version, open a fresh thread */
+  archiveAndResetTest: () => Promise<void>
   interruptTest: () => void
   handleStudioEvent: (e: AgentEvent) => void
 }

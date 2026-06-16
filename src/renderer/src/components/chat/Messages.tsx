@@ -2,6 +2,7 @@ import type { ChatItem } from '@shared/types'
 import { isPrimaryDoc } from '@shared/doc'
 import { useStore } from '@/store'
 import DiffView from '@/components/DiffView'
+import Markdown from '@/components/Markdown'
 import { truncate, usageLine } from '@/lib/format'
 
 // The chat transcript renderers, extracted from ChatPanel: message bubbles,
@@ -19,7 +20,16 @@ export function groupConsecutiveEdits(chat: ChatItem[]): (ChatItem | ChatItem[])
   return out
 }
 
-export function EditGroupCard({ items }: { items: ChatItem[] }): React.JSX.Element {
+/** How an applied edit gets revealed in an editor — the Skill Studio passes its own. */
+type Reveal = (edit: NonNullable<ChatItem['edit']>) => void
+
+export function EditGroupCard({
+  items,
+  reveal
+}: {
+  items: ChatItem[]
+  reveal?: Reveal
+}): React.JSX.Element {
   const files = [...new Set(items.map((i) => i.edit!.filePath ?? 'files'))]
   const label = files.length === 1 ? files[0] : `${files.length} files`
   return (
@@ -31,14 +41,23 @@ export function EditGroupCard({ items }: { items: ChatItem[] }): React.JSX.Eleme
       </summary>
       <div className="applied-edit-group-items">
         {items.map((item) => (
-          <AppliedEditCard key={item.id} item={item} />
+          <AppliedEditCard key={item.id} item={item} reveal={reveal} />
         ))}
       </div>
     </details>
   )
 }
 
-export function ChatBubble({ item }: { item: ChatItem }): React.JSX.Element {
+export function ChatBubble({
+  item,
+  reveal,
+  markdown
+}: {
+  item: ChatItem
+  reveal?: Reveal
+  /** render prose as formatted Markdown (Skill Studio chat/test) instead of plain text */
+  markdown?: boolean
+}): React.JSX.Element {
   if (item.usage) {
     return (
       <div className="usage-line" title="Token + cost for this run">
@@ -47,12 +66,12 @@ export function ChatBubble({ item }: { item: ChatItem }): React.JSX.Element {
       </div>
     )
   }
-  if (item.edit) return <AppliedEditCard item={item} />
+  if (item.edit) return <AppliedEditCard item={item} reveal={reveal} />
   if (item.role === 'user') {
     return (
       <div className="bubble bubble-user">
         {item.quote && <div className="bubble-quote">“{truncate(item.quote, 160)}”</div>}
-        <div className="bubble-text">{item.text}</div>
+        <div className="bubble-text">{markdown ? <Markdown text={item.text} /> : item.text}</div>
       </div>
     )
   }
@@ -73,7 +92,7 @@ export function ChatBubble({ item }: { item: ChatItem }): React.JSX.Element {
       ) : (
         item.text && (
           <div className="bubble-text">
-            {item.text}
+            {markdown ? <Markdown text={item.text} /> : item.text}
             {item.streaming && <span className="caret-blink">▍</span>}
           </div>
         )
@@ -82,23 +101,26 @@ export function ChatBubble({ item }: { item: ChatItem }): React.JSX.Element {
   )
 }
 
-function AppliedEditCard({ item }: { item: ChatItem }): React.JSX.Element {
+function AppliedEditCard({ item, reveal }: { item: ChatItem; reveal?: Reveal }): React.JSX.Element {
   const revealEdit = useStore((s) => s.revealEdit)
   const edit = item.edit!
-  const isDoc = isPrimaryDoc(edit.filePath)
+  // doc app: only the primary document can be revealed in the editor. Studio:
+  // a `reveal` override is supplied and works for any of the skill's files.
+  const onReveal = reveal ?? revealEdit
+  const canReveal = reveal ? Boolean(edit.filePath) : isPrimaryDoc(edit.filePath)
   return (
     <details className="applied-edit">
       <summary>
         <span className="applied-edit-label">✦ Edited {edit.filePath ?? 'files'}</span>
-        {isDoc && (
+        {canReveal && (
           <button
             className="btn-ghost btn-small"
             onClick={(e) => {
               e.preventDefault()
-              revealEdit(edit)
+              onReveal(edit)
             }}
           >
-            Show in document
+            {reveal ? 'Show in file' : 'Show in document'}
           </button>
         )}
       </summary>

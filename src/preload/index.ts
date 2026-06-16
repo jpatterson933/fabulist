@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { EventChannels, InvokeChannels } from '@shared/channels'
-import type { AgentEvent, AnchorUpdate, ChatItem, CommentAnchor, CommentThread, SendOptions } from '@shared/types'
+import type { AgentEvent, AnchorUpdate, ChatItem, CommentAnchor, CommentThread, DisplayOptions, SendOptions } from '@shared/types'
 import type { DocSettings, SettingKey } from '@shared/settings'
 
 /** Typed `ipcRenderer.invoke`: name, args, and return type checked against the channel map. */
@@ -20,6 +20,8 @@ function subscribe<C extends keyof EventChannels>(channel: C, cb: EventChannels[
 }
 
 const api = {
+  /** open a web/mailto link (rendered markdown in chat) in the system browser */
+  openExternal: (url: string) => invoke('app:openExternal', url),
   library: {
     list: () => invoke('library:list'),
     create: (title: string) => invoke('library:create', title),
@@ -75,21 +77,31 @@ const api = {
     remove: (slug: string) => invoke('skillStudio:delete', slug),
     reveal: (slug?: string) => invoke('skillStudio:reveal', slug),
     listFiles: (slug: string) => invoke('skillStudio:listFiles', slug),
+    listPluginSkills: (slug: string) => invoke('skillStudio:listPluginSkills', slug),
     readFile: (slug: string, rel: string) => invoke('skillStudio:readFile', slug, rel),
     writeFile: (slug: string, rel: string, content: string) =>
       invoke('skillStudio:writeFile', slug, rel, content),
     createFile: (slug: string, rel: string) => invoke('skillStudio:createFile', slug, rel),
     createFolder: (slug: string, rel: string) => invoke('skillStudio:createFolder', slug, rel),
     deleteFile: (slug: string, rel: string) => invoke('skillStudio:deleteFile', slug, rel),
-    test: (slug: string, prompt: string) => invoke('skillStudio:test', slug, prompt),
+    readChats: (slug: string) => invoke('skillStudio:readChats', slug),
+    saveAuthChat: (slug: string, chat: ChatItem[]) => invoke('skillStudio:saveAuthChat', slug, chat),
+    saveTestChat: (slug: string, chat: ChatItem[]) => invoke('skillStudio:saveTestChat', slug, chat),
+    archiveTest: (slug: string, chat: ChatItem[]) => invoke('skillStudio:archiveTest', slug, chat),
+    test: (slug: string, prompt: string, display?: DisplayOptions) =>
+      invoke('skillStudio:test', slug, prompt, display),
     resetTest: (slug: string) => invoke('skillStudio:resetTest', slug),
     interruptTest: (slug: string) => invoke('skillStudio:interruptTest', slug),
     testBusy: (slug: string) => invoke('skillStudio:testBusy', slug),
     onEvent: (cb: (event: AgentEvent) => void) => subscribe('skillStudio:event', cb),
-    authSend: (slug: string, prompt: string) => invoke('skillStudio:authSend', slug, prompt),
+    authSend: (slug: string, prompt: string, autoApprove: boolean, display?: DisplayOptions) =>
+      invoke('skillStudio:authSend', slug, prompt, autoApprove, display),
     authInterrupt: (slug: string) => invoke('skillStudio:authInterrupt', slug),
     authBusy: (slug: string) => invoke('skillStudio:authBusy', slug),
-    onAuthEvent: (cb: (event: AgentEvent) => void) => subscribe('skillStudio:authEvent', cb)
+    onAuthEvent: (cb: (event: AgentEvent) => void) => subscribe('skillStudio:authEvent', cb),
+    respondPermission: (requestId: string, approved: boolean, answers?: Record<string, string>): void => {
+      ipcRenderer.send('skillStudio:permission-response', requestId, approved, answers)
+    }
   },
   agent: {
     send: (id: string, prompt: string, opts?: SendOptions) =>

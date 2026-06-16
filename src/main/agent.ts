@@ -1,8 +1,7 @@
 import { query, type Options, type PermissionResult, type SDKUserMessage } from '@anthropic-ai/claude-agent-sdk'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
-import { createRequire } from 'node:module'
-import { app, type WebContents } from 'electron'
+import { type WebContents } from 'electron'
 import type { AgentEvent, ModelChoice, PermissionRequest, SendOptions } from '@shared/types'
 import { toModelArg } from '@shared/model'
 import {
@@ -20,6 +19,7 @@ import { decideTool, isFileEditTool } from './toolPolicy'
 import { describeTool, buildToolPayload } from './toolRegistry'
 import { parseSdkMessages, type ParsedRun, type SdkMessage } from './sdkStream'
 import { PermissionBroker } from './permissionBroker'
+import { ENGINE_BINARY } from './engineBinary'
 import { emitEvent } from './ipcTyped'
 import { logError } from './log'
 
@@ -36,30 +36,6 @@ ${
 }
 so make edits confidently but keep them minimal and well-scoped. Keep chat replies short —
 the document is the deliverable, not the conversation.`
-
-/**
- * In packaged builds the SDK resolves its native engine binary inside app.asar,
- * which child_process.spawn cannot execute (spawn gets no asar translation).
- * Resolve the binary ourselves and point at the asar-unpacked copy.
- * Returns undefined in dev, where the SDK's own resolution works.
- */
-function resolveEngineBinary(): string | undefined {
-  if (!app.isPackaged) return undefined
-  try {
-    const req = createRequire(import.meta.url)
-    const pkg = `@anthropic-ai/claude-agent-sdk-${process.platform}-${process.arch}`
-    const bin = path.join(
-      path.dirname(req.resolve(`${pkg}/package.json`)),
-      process.platform === 'win32' ? 'claude.exe' : 'claude'
-    )
-    return bin.replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`)
-  } catch (err) {
-    console.error('[fabulist:engine] could not resolve native engine binary', err)
-    return undefined
-  }
-}
-
-const ENGINE_BINARY = resolveEngineBinary()
 
 interface ActiveRun {
   abort: AbortController

@@ -9,10 +9,12 @@
 import type {
   AgentEvent,
   AnchorUpdate,
+  ArchivedTest,
   ChatItem,
   CommentAnchor,
   CommentThread,
   CommitInfo,
+  DisplayOptions,
   DocMeta,
   DocSkill,
   ModelChoice,
@@ -28,6 +30,9 @@ import type { DocSettings, SettingKey } from './settings'
  * value type is the RESOLVED result; the helpers wrap it in a Promise.
  */
 export interface InvokeChannels {
+  /** Open a web/mailto URL in the system browser (markdown links in chat) — never navigates the app window. */
+  'app:openExternal': (url: string) => void
+
   'library:list': () => DocMeta[]
   'library:create': (title: string) => DocMeta
   'library:clone': (id: string) => DocMeta
@@ -61,17 +66,44 @@ export interface InvokeChannels {
   'skillStudio:delete': (slug: string) => void
   'skillStudio:reveal': (slug?: string) => void
   'skillStudio:listFiles': (slug: string) => StudioFile[]
+  /** the skills the plugin ships (name + description) — for the Test tab "/" picker */
+  'skillStudio:listPluginSkills': (slug: string) => { name: string; description: string }[]
   'skillStudio:readFile': (slug: string, rel: string) => string
   'skillStudio:writeFile': (slug: string, rel: string, content: string) => void
   'skillStudio:createFile': (slug: string, rel: string) => void
   'skillStudio:createFolder': (slug: string, rel: string) => void
   'skillStudio:deleteFile': (slug: string, rel: string) => void
-  'skillStudio:test': (slug: string, prompt: string) => void
+  // persisted authoring + test transcripts (+ live test version + archive), so they
+  // survive an app restart
+  'skillStudio:readChats': (slug: string) => {
+    authChat: ChatItem[]
+    testChat: ChatItem[]
+    testVersion: number
+    archivedTests: ArchivedTest[]
+  }
+  'skillStudio:saveAuthChat': (slug: string, chat: ChatItem[]) => void
+  'skillStudio:saveTestChat': (slug: string, chat: ChatItem[]) => void
+  /** archive the current test under its version, bump to the next, clear the live thread */
+  'skillStudio:archiveTest': (
+    slug: string,
+    chat: ChatItem[]
+  ) => { version: string; at: number; nextVersion: number }
+  // `display` separates the chat echo (the user's task + a short "Using the X skill"
+  // marker) from the full prompt the model receives (which carries the invocation directive)
+  'skillStudio:test': (slug: string, prompt: string, display?: DisplayOptions) => void
   'skillStudio:resetTest': (slug: string) => void
   'skillStudio:interruptTest': (slug: string) => void
   'skillStudio:testBusy': (slug: string) => boolean
-  // the authoring chat — an agent that reads/edits the skill IN its own folder
-  'skillStudio:authSend': (slug: string, prompt: string) => void
+  // the authoring chat — an agent that reads/edits the skill IN its own folder.
+  // autoApprove mirrors the document app: off (default) shows each edit for approval.
+  // `display` separates what the chat shows (echo + a short quote marker) from the
+  // full prompt the model receives — used when a test transcript is woven in.
+  'skillStudio:authSend': (
+    slug: string,
+    prompt: string,
+    autoApprove: boolean,
+    display?: DisplayOptions
+  ) => void
   'skillStudio:authInterrupt': (slug: string) => void
   'skillStudio:authBusy': (slug: string) => boolean
 
@@ -95,6 +127,12 @@ export interface InvokeChannels {
 /** Fire-and-forget renderer→main messages (`ipcRenderer.send` ↔ `ipcMain.on`). */
 export interface SendChannels {
   'agent:permission-response': (
+    requestId: string,
+    approved: boolean,
+    answers?: Record<string, string>
+  ) => void
+  /** Answer a Skill Studio approval/question (test or authoring) — routed by requestId. */
+  'skillStudio:permission-response': (
     requestId: string,
     approved: boolean,
     answers?: Record<string, string>

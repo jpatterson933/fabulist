@@ -18,6 +18,11 @@ const DOC_FILE = library.DOC_FILE
  * 179-line god-function with the file watcher and restore logic baked in.
  */
 export function registerIpc(win: BrowserWindow): void {
+  // open web/mailto links (rendered markdown in chat) in the system browser, guarded to
+  // safe schemes so a link can't launch a file/custom-protocol handler
+  handle('app:openExternal', (_e, url) => {
+    if (/^(https?:|mailto:)/i.test(url)) void shell.openExternal(url)
+  })
   registerLibrary()
   registerDocContent(win)
   registerVersioning()
@@ -115,6 +120,7 @@ function registerSkillStudio(win: BrowserWindow): void {
   handle('skillStudio:delete', (_e, slug) => skillStudio.deleteSkill(slug))
   handle('skillStudio:reveal', (_e, slug) => skillStudio.reveal(slug))
   handle('skillStudio:listFiles', (_e, slug) => skillStudio.listFiles(slug))
+  handle('skillStudio:listPluginSkills', (_e, slug) => skillStudio.listPluginSkills(slug))
   handle('skillStudio:readFile', (_e, slug, rel) => skillStudio.readFile(slug, rel))
   handle('skillStudio:writeFile', (_e, slug, rel, content) =>
     skillStudio.writeFile(slug, rel, content)
@@ -122,10 +128,14 @@ function registerSkillStudio(win: BrowserWindow): void {
   handle('skillStudio:createFile', (_e, slug, rel) => skillStudio.createFile(slug, rel))
   handle('skillStudio:createFolder', (_e, slug, rel) => skillStudio.createFolder(slug, rel))
   handle('skillStudio:deleteFile', (_e, slug, rel) => skillStudio.deleteFile(slug, rel))
+  handle('skillStudio:readChats', (_e, slug) => skillStudio.readChats(slug))
+  handle('skillStudio:saveAuthChat', (_e, slug, chat) => skillStudio.saveAuthChat(slug, chat))
+  handle('skillStudio:saveTestChat', (_e, slug, chat) => skillStudio.saveTestChat(slug, chat))
+  handle('skillStudio:archiveTest', (_e, slug, chat) => skillStudio.archiveTest(slug, chat))
 
   // fire and forget; progress streams back over skillStudio:event
-  handle('skillStudio:test', (_e, slug, prompt) => {
-    studioAgent.test(slug, prompt).catch((err) => {
+  handle('skillStudio:test', (_e, slug, prompt, display) => {
+    studioAgent.test(slug, prompt, display).catch((err) => {
       emitEvent(win.webContents, 'skillStudio:event', {
         kind: 'status',
         docId: slug,
@@ -138,8 +148,8 @@ function registerSkillStudio(win: BrowserWindow): void {
   handle('skillStudio:interruptTest', (_e, slug) => studioAgent.interrupt(slug))
   handle('skillStudio:testBusy', (_e, slug) => studioAgent.isBusy(slug))
 
-  handle('skillStudio:authSend', (_e, slug, prompt) => {
-    studioAgent.authSend(slug, prompt).catch((err) => {
+  handle('skillStudio:authSend', (_e, slug, prompt, autoApprove, display) => {
+    studioAgent.authSend(slug, prompt, autoApprove, display).catch((err) => {
       emitEvent(win.webContents, 'skillStudio:authEvent', {
         kind: 'status',
         docId: slug,
@@ -150,6 +160,10 @@ function registerSkillStudio(win: BrowserWindow): void {
   })
   handle('skillStudio:authInterrupt', (_e, slug) => studioAgent.authInterrupt(slug))
   handle('skillStudio:authBusy', (_e, slug) => studioAgent.authBusy(slug))
+
+  onSend('skillStudio:permission-response', (_e, requestId, approved, answers) => {
+    studioAgent.resolvePermission(requestId, approved, answers)
+  })
 }
 
 function registerAgent(win: BrowserWindow): void {
