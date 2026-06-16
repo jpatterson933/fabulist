@@ -6,6 +6,9 @@ All notable changes to Fabulist are documented here. The format follows
 ## [Unreleased]
 
 ### Fixed
+- Editing a document's title (or content) now updates its sidebar entry — title, preview,
+  and word count — instead of leaving the library list stale until the next create/delete or
+  agent edit.
 - Switching between documents no longer flashes the empty "new document" state. The
   previous document now stays on screen until the next one's content has loaded, instead
   of blanking out during the async load.

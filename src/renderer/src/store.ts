@@ -238,9 +238,11 @@ export const useStore = create<FabulistStore>((set, get) => ({
     if (!id) return
     set({ content })
     if (writeTimer) clearTimeout(writeTimer)
-    writeTimer = setTimeout(() => {
+    writeTimer = setTimeout(async () => {
       writeTimer = null
-      window.fabulist.doc.write(id, get().content).catch(() => {})
+      await window.fabulist.doc.write(id, get().content).catch(() => {})
+      // Refresh the library so the sidebar title/preview track edits
+      get().loadDocs()
     }, 400)
     if (idleCommitTimer) clearTimeout(idleCommitTimer)
     idleCommitTimer = setTimeout(async () => {
@@ -259,6 +261,7 @@ export const useStore = create<FabulistStore>((set, get) => ({
       clearTimeout(writeTimer)
       writeTimer = null
       await window.fabulist.doc.write(id, get().content).catch(() => {})
+      get().loadDocs()
     }
   },
 
