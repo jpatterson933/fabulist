@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { CommentThread } from '@shared/types'
 import { useStore } from '@/store'
 import { relativeTime } from '@/components/Library'
+import Markdown from '@/components/Markdown'
 
 export default function CommentsPanel(): React.JSX.Element {
   const threads = useStore((s) => s.threads)
@@ -135,7 +136,7 @@ function ThreadCard({ thread }: { thread: CommentThread }): React.JSX.Element {
           <div key={m.id} className={`thread-msg ${m.author === 'claude' ? 'from-claude' : ''}`}>
             <span className="thread-msg-author">{m.author === 'claude' ? 'Claude' : 'You'}</span>
             <span className="thread-msg-time">{relativeTime(m.at)}</span>
-            <p>{m.text}</p>
+            <Markdown text={m.text} />
           </div>
         ))}
       </div>

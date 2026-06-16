@@ -6,6 +6,10 @@ All notable changes to Fabulist are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- Markdown rendering for Claude's chat replies and comment-thread messages, via
+  [Streamdown](https://github.com/vercel/streamdown): headings, lists, tables, links,
+  blockquotes, inline code, and syntax-highlighted code blocks now render instead of raw
+  text, and partial markdown stays readable while a reply streams in.
 - Per-document editor typeface: an **Aa** picker in the header (Newsreader, Literata,
   Fraunces, Plex Sans, Plex Mono — all bundled, offline), persisted per document.
 

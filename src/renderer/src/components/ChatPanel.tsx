@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ChatItem, PermissionRequest } from '@shared/types'
 import { useStore } from '@/store'
 import DiffView from '@/components/DiffView'
+import Markdown from '@/components/Markdown'
 
 export default function ChatPanel({ docId }: { docId: string }): React.JSX.Element {
   const chat = useStore((s) => s.chats[docId] ?? [])
@@ -147,7 +148,7 @@ function ChatBubble({ item }: { item: ChatItem }): React.JSX.Element {
       ) : (
         item.text && (
           <div className="bubble-text">
-            {item.text}
+            <Markdown text={item.text} streaming={item.streaming} />
             {item.streaming && <span className="caret-blink">▍</span>}
           </div>
         )

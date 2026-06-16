@@ -48,6 +48,7 @@
     "diff": "^9.0.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
+    "streamdown": "^2.5.0",
     "zustand": "^5.0.14"
   },
   "devDependencies": {

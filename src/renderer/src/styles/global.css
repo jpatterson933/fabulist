@@ -797,12 +797,142 @@ input::placeholder {
 
 .bubble-text {
   line-height: 1.55;
-  white-space: pre-wrap;
   word-break: break-word;
+}
+
+/* user bubbles are plain text; keep their hard line breaks */
+.bubble-user .bubble-text {
+  white-space: pre-wrap;
 }
 
 .bubble-claude .bubble-text {
   font-size: 13.5px;
+}
+
+/* --- streamdown markdown output ---
+   The app ships no Tailwind, so streamdown's utility classes are inert; these
+   rules style the plain semantic HTML it emits. Shiki applies its own inline
+   colors to code blocks, so syntax highlighting works without extra CSS. */
+.md {
+  word-break: break-word;
+}
+.md > :first-child {
+  margin-top: 0;
+}
+.md > :last-child {
+  margin-bottom: 0;
+}
+.md p {
+  margin: 0 0 0.6em;
+}
+.md h1,
+.md h2,
+.md h3,
+.md h4 {
+  font-family: var(--font-ui);
+  font-weight: 640;
+  line-height: 1.3;
+  margin: 1em 0 0.4em;
+  color: var(--ink);
+}
+.md h1 {
+  font-size: 1.3em;
+}
+.md h2 {
+  font-size: 1.18em;
+}
+.md h3 {
+  font-size: 1.06em;
+}
+.md h4 {
+  font-size: 1em;
+}
+.md ul,
+.md ol {
+  margin: 0 0 0.6em;
+  padding-left: 1.4em;
+}
+.md li {
+  margin: 0.15em 0;
+}
+.md li::marker {
+  color: var(--ink-faint);
+}
+.md a {
+  color: var(--accent-deep);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.md strong {
+  font-weight: 650;
+}
+.md blockquote {
+  margin: 0.6em 0;
+  padding-left: 0.8em;
+  border-left: 2px solid var(--thread-edge);
+  color: var(--ink-soft);
+}
+.md hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 1em 0;
+}
+.md code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+}
+/* inline code only — code blocks carry shiki's own styling */
+.md :not(pre) > code {
+  background: var(--paper-deep);
+  border: 1px solid var(--line-soft);
+  border-radius: 4px;
+  padding: 0.08em 0.34em;
+}
+.md pre {
+  margin: 0.6em 0;
+  padding: 0.7em 0.85em;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow-x: auto;
+  font-size: 0.86em;
+  line-height: 1.45;
+}
+.md [data-streamdown='code-block'] {
+  margin: 0.6em 0;
+}
+.md [data-streamdown='code-block'] pre {
+  margin: 0;
+}
+.md [data-streamdown='code-block-header'] {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-faint);
+  padding: 0 0 0.3em;
+}
+.md table {
+  border-collapse: collapse;
+  margin: 0.6em 0;
+  font-size: 0.92em;
+  width: 100%;
+}
+.md th,
+.md td {
+  border: 1px solid var(--line);
+  padding: 0.3em 0.55em;
+  text-align: left;
+}
+.md th {
+  background: var(--paper-deep);
+  font-weight: 620;
+}
+.md img {
+  max-width: 100%;
+  border-radius: 6px;
 }
 
 .bubble-error {
@@ -1179,10 +1309,9 @@ input::placeholder {
   margin-bottom: 10px;
 }
 
-.thread-msg p {
+.thread-msg .md {
   font-size: 13px;
   line-height: 1.5;
-  white-space: pre-wrap;
   margin-top: 2px;
 }
 
