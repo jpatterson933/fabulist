@@ -27,7 +27,9 @@ export interface SdkMessage {
   type: string
   session_id?: string
   event?: StreamEvent
-  message?: { content?: ContentBlock[] | unknown }
+  /** the `system`/`init` message reports the resolved model at top level */
+  model?: string
+  message?: { content?: ContentBlock[] | unknown; model?: string }
   subtype?: string
   result?: string
   total_cost_usd?: number
@@ -70,10 +72,14 @@ export async function* parseSdkMessages(
   let currentItemId = newId()
   let streamedText = ''
   let finalText = ''
+  // the model the run actually resolved to — reported on the init message and on each
+  // assistant message; we attach it to the run's usage so the studio can show it
+  let model: string | undefined
   const run: ParsedRun = { ok: false, finalText: '' }
 
   for await (const msg of messages) {
     if (msg.session_id) run.sessionId = msg.session_id
+    if (typeof msg.model === 'string' && msg.model) model = msg.model
 
     switch (msg.type) {
       case 'stream_event': {
@@ -91,6 +97,7 @@ export async function* parseSdkMessages(
         break
       }
       case 'assistant': {
+        if (typeof msg.message?.model === 'string' && msg.message.model) model = msg.message.model
         const blocks = (Array.isArray(msg.message?.content) ? msg.message!.content : []) as ContentBlock[]
         const text = blocks
           .filter((b) => b.type === 'text')
@@ -151,7 +158,8 @@ export async function* parseSdkMessages(
             cacheReadTokens: msg.usage.cache_read_input_tokens ?? 0,
             cacheCreationTokens: msg.usage.cache_creation_input_tokens ?? 0,
             costUsd: msg.total_cost_usd,
-            numTurns: msg.num_turns
+            numTurns: msg.num_turns,
+            model
           }
         }
         break

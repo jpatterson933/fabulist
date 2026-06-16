@@ -1,13 +1,14 @@
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { shell } from 'electron'
-import type {
-  ArchivedTest,
-  ChatItem,
-  StudioFile,
-  StudioSettings,
-  StudioSettingKey,
-  StudioSkill
+import {
+  MAX_ARCHIVED_TESTS,
+  type ArchivedTest,
+  type ChatItem,
+  type StudioFile,
+  type StudioSettings,
+  type StudioSettingKey,
+  type StudioSkill
 } from '@shared/types'
 import { formatTestVersion } from '@shared/testVersion'
 import { LIBRARY_ROOT, sanitizeChat } from './library'
@@ -144,8 +145,6 @@ interface StudioState {
   autoApprove?: boolean
 }
 
-const MAX_ARCHIVED = 50
-
 /** Validate archived-test entries read off disk (never trust on-disk JSON). */
 function sanitizeArchived(v: unknown): ArchivedTest[] {
   if (!Array.isArray(v)) return []
@@ -207,20 +206,21 @@ export async function archiveTest(
   const cur = typeof s.testVersion === 'number' ? s.testVersion : 1
   const version = formatTestVersion(cur)
   const at = Date.now()
-  const entry: ArchivedTest = { version, at, chat: sanitizeChat(chat).slice(-200) }
-  // most-recent-first, capped
-  const archivedTests = [entry, ...(s.archivedTests ?? [])].slice(0, MAX_ARCHIVED)
+  // keep the FULL transcript — a partial run can't be diagnosed (see formatTestTranscript)
+  const entry: ArchivedTest = { version, at, chat: sanitizeChat(chat) }
+  // most-recent-first, capped to the last MAX_ARCHIVED_TESTS runs
+  const archivedTests = [entry, ...(s.archivedTests ?? [])].slice(0, MAX_ARCHIVED_TESTS)
   const nextVersion = cur + 1
   await patchStudioState(slug, { archivedTests, testChat: [], testVersion: nextVersion })
   return { version, at, nextVersion }
 }
 
 export async function saveAuthChat(slug: string, chat: ChatItem[]): Promise<void> {
-  await patchStudioState(slug, { authChat: sanitizeChat(chat).slice(-200) })
+  await patchStudioState(slug, { authChat: sanitizeChat(chat) })
 }
 
 export async function saveTestChat(slug: string, chat: ChatItem[]): Promise<void> {
-  await patchStudioState(slug, { testChat: sanitizeChat(chat).slice(-200) })
+  await patchStudioState(slug, { testChat: sanitizeChat(chat) })
 }
 
 /** Authoring session resume id (the test session isn't resumable — its sandbox is ephemeral). */

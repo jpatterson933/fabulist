@@ -8,7 +8,7 @@ import { studioInlineEdit } from '@/studio/inlineEdit'
 import { useStickToBottom } from '@/lib/useStickToBottom'
 import { slashTokenAt, removeSlashToken } from '@/lib/slash'
 import { usageLine } from '@/lib/format'
-import type { ArchivedTest } from '@shared/types'
+import { MAX_ARCHIVED_TESTS, type ArchivedTest } from '@shared/types'
 
 const NO_PERMISSIONS: never[] = []
 const NO_ARCHIVED: ArchivedTest[] = []
@@ -225,6 +225,12 @@ export default function StudioChat({ slug }: { slug: string }): React.JSX.Elemen
                     <span className="slash-item-desc">{new Date(a.at).toLocaleString()}</span>
                   </button>
                 ))
+              )}
+              {archived.length >= MAX_ARCHIVED_TESTS && (
+                <div className="slash-item slash-item-manage" aria-disabled>
+                  Keeping the {MAX_ARCHIVED_TESTS} most recent runs — older runs are dropped when you
+                  start a new test.
+                </div>
               )}
             </div>
           )}

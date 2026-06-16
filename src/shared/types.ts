@@ -88,6 +88,8 @@ export interface RunUsage {
   cacheCreationTokens: number
   costUsd?: number
   numTurns?: number
+  /** The model the run actually resolved to (full SDK id), captured off the stream. */
+  model?: string
 }
 
 /** Lifecycle state of an agent run, shared by the wire event and the store. */
@@ -130,6 +132,13 @@ export interface ChatItem {
   streaming?: boolean
   error?: string
 }
+
+/**
+ * How many archived test runs we keep per skill. Oldest are dropped past this; the
+ * studio surfaces a note in the archived-run picker once the cap is reached so it's
+ * clear older runs aren't retained. Single source of truth for main + renderer.
+ */
+export const MAX_ARCHIVED_TESTS = 10
 
 /** A test thread archived when the user started a new one — read-only history, versioned. */
 export interface ArchivedTest {

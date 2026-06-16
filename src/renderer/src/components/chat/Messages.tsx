@@ -63,6 +63,7 @@ export function ChatBubble({
       <div className="usage-line" title="Token + cost for this run">
         ▮ {usageLine(item.usage)}
         {item.usage.numTurns != null ? ` · ${item.usage.numTurns} turns` : ''}
+        {item.usage.model ? ` · ${item.usage.model}` : ''}
       </div>
     )
   }
