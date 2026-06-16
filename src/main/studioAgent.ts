@@ -247,6 +247,19 @@ export class StudioAgentManager {
     }
   }
 
+  /**
+   * Forget the authoring conversation's SDK session so the NEXT message starts cold
+   * instead of resuming. Without rotating this, clearing the visible transcript alone
+   * would leave `resume` pointing at the old session — the agent would silently
+   * "remember" everything the user meant to wipe. Aborts any in-flight run first; the
+   * on-disk transcript + resume id are cleared separately (skillStudio.resetAuthChat),
+   * and the skill's own files are untouched.
+   */
+  async resetAuth(slug: string): Promise<void> {
+    await this.authInterrupt(slug)
+    this.authSessions.delete(slug)
+  }
+
   async authSend(slug: string, prompt: string, display?: DisplayOptions): Promise<void> {
     if (this.authActive.has(slug)) throw new Error('Claude is already working on this skill')
     await ensureStudio()

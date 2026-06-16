@@ -83,6 +83,7 @@ export function makeFabulist(
       authSend: vi.fn(async () => {}),
       authInterrupt: vi.fn(async () => {}),
       authBusy: vi.fn(async () => false),
+      resetAuth: vi.fn(async () => {}),
       onAuthEvent: vi.fn(() => () => {}),
       respondPermission: vi.fn(() => {})
     }

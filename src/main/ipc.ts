@@ -164,6 +164,12 @@ function registerSkillStudio(win: BrowserWindow): void {
   })
   handle('skillStudio:authInterrupt', (_e, slug) => studioAgent.authInterrupt(slug))
   handle('skillStudio:authBusy', (_e, slug) => studioAgent.authBusy(slug))
+  // a real reset is two writes: rotate the SDK session (main) AND clear the persisted
+  // transcript + resume id (disk) — clearing only the visible chat would resume the old session
+  handle('skillStudio:resetAuth', async (_e, slug) => {
+    await studioAgent.resetAuth(slug)
+    await skillStudio.resetAuthChat(slug)
+  })
 
   onSend('skillStudio:permission-response', (_e, requestId, approved, answers) => {
     studioAgent.resolvePermission(requestId, approved, answers)

@@ -409,6 +409,22 @@ export const createSkillStudioSlice: StateCreator<Store, [], [], SkillStudioSlic
     if (slug) void window.fabulist.skillStudio.authInterrupt(slug)
   },
 
+  resetAuth: async () => {
+    const slug = get().activeSkill
+    if (!slug) return
+    // main rotates the SDK resume session AND clears the persisted transcript + resume id,
+    // so the next message is a genuinely fresh conversation — the skill's files are untouched
+    await window.fabulist.skillStudio.resetAuth(slug).catch(() => {})
+    const authUsage = { ...get().authUsage }
+    delete authUsage[slug]
+    set({
+      authChats: { ...get().authChats, [slug]: [] },
+      authAgent: { ...get().authAgent, [slug]: 'idle' },
+      authPermissions: { ...get().authPermissions, [slug]: [] },
+      authUsage
+    })
+  },
+
   setStudioAutoApprove: (on) => {
     set({ studioAutoApprove: on })
     const slug = get().activeSkill

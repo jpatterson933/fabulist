@@ -283,6 +283,8 @@ export interface SkillStudioSlice {
     opts?: { testRef?: 'current' | { version: string } }
   ) => Promise<void>
   interruptAuth: () => void
+  /** start a fresh authoring conversation — wipes the transcript + SDK session, keeps the skill's files */
+  resetAuth: () => Promise<void>
   handleAuthEvent: (e: AgentEvent) => void
   /** toggle whether the authoring agent's edits auto-apply or wait for approval */
   setStudioAutoApprove: (on: boolean) => void

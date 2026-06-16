@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from '@/store'
 import { selectAuthChat, selectTestChat } from '@/store/selectors'
 import { ChatBubble } from '@/components/chat/Messages'
@@ -34,6 +34,7 @@ export default function StudioChat({ slug }: { slug: string }): React.JSX.Elemen
   const openFilePath = useStore((s) => s.openFilePath)
   const authSend = useStore((s) => s.authSend)
   const interruptAuth = useStore((s) => s.interruptAuth)
+  const resetAuth = useStore((s) => s.resetAuth)
   const respond = useStore((s) => s.respondStudioPermission)
   const reveal = useStore((s) => s.revealStudioEdit)
 
@@ -48,11 +49,35 @@ export default function StudioChat({ slug }: { slug: string }): React.JSX.Elemen
   const [slash, setSlash] = useState<{ start: number; query: string } | null>(null)
   const [archivedView, setArchivedView] = useState(false)
   const [archivedQuery, setArchivedQuery] = useState('')
+  const [confirming, setConfirming] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const { scrollRef, onScroll, stick } = useStickToBottom([chat, status, permissions])
   const busy = status === 'starting' || status === 'working'
 
   const hasTest = testChat.length > 0
+
+  // "New conversation" → first click arms the confirm, second click wipes the chat and
+  // rotates the SDK session for a true clean slate. The skill's files are never touched —
+  // only the conversation is reset. An empty chat just resets (nothing to confirm).
+  const onReset = (): void => {
+    if (chat.length === 0) {
+      void resetAuth()
+      return
+    }
+    if (!confirming) {
+      setConfirming(true)
+      return
+    }
+    setConfirming(false)
+    void resetAuth()
+  }
+  // un-arm the confirm if left idle, or when switching skills
+  useEffect(() => {
+    if (!confirming) return
+    const t = setTimeout(() => setConfirming(false), 4000)
+    return () => clearTimeout(t)
+  }, [confirming])
+  useEffect(() => setConfirming(false), [slug])
 
   // top-level "/" options: the live run, and (if any) an entry into the archive
   const topOptions = useMemo(() => {
@@ -118,6 +143,20 @@ export default function StudioChat({ slug }: { slug: string }): React.JSX.Elemen
 
   return (
     <div className="chat">
+      <div className="studio-chat-head">
+        <button
+          className={`btn-ghost btn-small${confirming ? ' is-confirming' : ''}`}
+          onClick={onReset}
+          disabled={busy}
+          title={
+            confirming
+              ? 'Click again to clear this conversation — the skill’s files are untouched'
+              : 'Start a fresh conversation: clears this chat and its memory, but keeps all the skill’s files'
+          }
+        >
+          {confirming ? 'Clear chat? Files are safe' : '⟳ New conversation'}
+        </button>
+      </div>
       {usage && (
         <div className="studio-usage-bar" title="Total tokens + cost spent building this skill">
           Σ {usageLine(usage)} · {usage.runs} run{usage.runs === 1 ? '' : 's'}

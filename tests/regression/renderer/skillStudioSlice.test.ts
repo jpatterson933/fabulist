@@ -260,6 +260,26 @@ describe('skill studio slice', () => {
     expect(useStore.getState().testChats['a']).toEqual([])
   })
 
+  it('clears the authoring chat + usage and rotates the SDK session on reset', async () => {
+    const resetAuth = vi.fn(async () => {})
+    const { useStore } = await freshStore(makeFabulist({ skillStudio: { resetAuth } }))
+    useStore.setState({
+      activeSkill: 'a',
+      authChats: { a: [{ id: 'm', role: 'assistant', text: 'x', at: 0 }] },
+      authUsage: {
+        a: { inputTokens: 1, outputTokens: 1, cacheReadTokens: 0, cacheCreationTokens: 0, costUsd: 1, runs: 1 }
+      },
+      authAgent: { a: 'done' }
+    })
+    await useStore.getState().resetAuth()
+    // main does the real reset (drops the resume session + wipes the on-disk transcript/id)
+    expect(resetAuth).toHaveBeenCalledWith('a')
+    // and the in-memory conversation is cleared to a clean slate
+    expect(useStore.getState().authChats['a']).toEqual([])
+    expect(useStore.getState().authUsage['a']).toBeUndefined()
+    expect(useStore.getState().authAgent['a']).toBe('idle')
+  })
+
   it('invokes a picked skill with a directive, keeping the chat echo clean', async () => {
     const test = vi.fn(async () => {})
     const { useStore } = await freshStore(makeFabulist({ skillStudio: { test } }))

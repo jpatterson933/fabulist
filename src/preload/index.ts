@@ -101,6 +101,7 @@ const api = {
       invoke('skillStudio:authSend', slug, prompt, display),
     authInterrupt: (slug: string) => invoke('skillStudio:authInterrupt', slug),
     authBusy: (slug: string) => invoke('skillStudio:authBusy', slug),
+    resetAuth: (slug: string) => invoke('skillStudio:resetAuth', slug),
     onAuthEvent: (cb: (event: AgentEvent) => void) => subscribe('skillStudio:authEvent', cb),
     respondPermission: (requestId: string, approved: boolean, answers?: Record<string, string>): void => {
       ipcRenderer.send('skillStudio:permission-response', requestId, approved, answers)
