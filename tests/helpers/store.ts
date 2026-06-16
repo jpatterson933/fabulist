@@ -68,6 +68,8 @@ export function makeFabulist(
       createFile: vi.fn(async () => {}),
       createFolder: vi.fn(async () => {}),
       deleteFile: vi.fn(async () => {}),
+      getSettings: vi.fn(async () => ({ model: '', autoApprove: false })),
+      setSetting: vi.fn(async () => {}),
       listPluginSkills: vi.fn(async () => []),
       readChats: vi.fn(async () => ({ authChat: [], testChat: [], testVersion: 1, archivedTests: [] })),
       saveAuthChat: vi.fn(async () => {}),

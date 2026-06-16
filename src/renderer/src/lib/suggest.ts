@@ -85,10 +85,20 @@ export function suggestionSegments(current: string, proposed: string): SuggestSe
   return segments
 }
 
-export function computeSuggestion(current: string, req: PermissionRequest): SuggestSegment[] | null {
-  if (!isPrimaryDoc(req.filePath)) return null
+/**
+ * The inline segments for a request against `current`, ignoring which file it
+ * targets. The pure core shared by both the document editor and the Skill Studio —
+ * each layers its own "which file?" gate on top (see computeSuggestion for the doc,
+ * studioInlineEdit for the studio), so the diff math lives in exactly one place.
+ */
+export function inlineSegmentsFor(current: string, req: PermissionRequest): SuggestSegment[] | null {
   const proposed = buildProposed(current, req)
   if (proposed === null) return null
   const segments = suggestionSegments(current, proposed)
   return segments.length > 0 ? segments : null
+}
+
+export function computeSuggestion(current: string, req: PermissionRequest): SuggestSegment[] | null {
+  if (!isPrimaryDoc(req.filePath)) return null
+  return inlineSegmentsFor(current, req)
 }

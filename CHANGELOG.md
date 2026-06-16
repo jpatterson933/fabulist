@@ -8,6 +8,33 @@ All notable changes to Fabulist are documented here. The format follows
 ### Changed
 - Reworked `README.md` into a clearer visual app flow using selected root-level
   screenshots from `docs/`.
+- **Skillulist edits now mirror the writing app.** When the authoring agent proposes an
+  edit (auto-apply off), the diff is rendered **inline in the file editor** — deletions
+  struck through in red, insertions in green — and the buffer locks while it's under review,
+  with **Accept (⌘⏎) / Decline (esc)** in a bar over the editor (the chat card collapses to a
+  compact "shown in the editor" note). Previously the diff only appeared in the chat. This
+  reuses the document editor's exact suggestion overlay; the two pages stay unbraided.
+- **Applied Skillulist edits appear instantly.** Approving an edit (or having it auto-applied)
+  now lands the change in the editor immediately instead of after the whole turn finishes —
+  the editor buffer is updated optimistically from the edit's own diff, with the end-of-turn
+  disk re-read kept as a reconciling backstop.
+- **Skillulist auto-apply now behaves exactly like the writing app.** It's persisted per skill
+  and **re-read on every edit**, so toggling "Auto-apply edits" takes effect immediately —
+  even mid-run — instead of being fixed when the message was sent (it's no longer passed as a
+  per-send argument; the gate reads it from the skill's settings, mirroring `agent.ts`).
+- **Skillulist editor scroll position is now actually restored** when you leave a file and come
+  back — including the bottom of a long file. The position is captured **as you scroll** (while
+  the editor is on-screen) instead of when it's torn down: React runs the teardown after it has
+  already detached the old editor, and a detached element reports `scrollTop: 0`, so the old
+  code always "remembered" the top. Restoring now happens at editor construction (CodeMirror's
+  `scrollTo`), which builds the first viewport around the saved position so it lands exactly.
+
+### Added
+- **Skillulist model picker.** Choose the Claude model for a skill — used for both the
+  authoring chat and test runs — from a picker in the Chat and Test compose bars, mirroring
+  the writing app's model picker. The choice is persisted per skill (alongside auto-apply)
+  under `.skill-studio/.state/<slug>.json` and read by the engine when it launches a run, so
+  it survives a restart.
 
 ### Added
 - **Skillulist**: a separate workspace for building and testing Claude skills, reached
@@ -37,7 +64,10 @@ All notable changes to Fabulist are documented here. The format follows
   colors each element type — headings, bold, italics, inline/fenced code, links, lists,
   blockquotes, rules — from a swappable per-element palette.
 - **Resizable Skill Studio sidebar**: drag the chat/test/comments panel's left edge to widen
-  it (it won't go narrower than the default); double-click the edge to snap back.
+  it (it won't go narrower than the default); double-click the edge to snap back. The panel
+  also **flexes with the window** — it grows as you enlarge the window (to ~32vw, capped at
+  60vw) so chat/test/comment text and tables get more room instead of staying pinned at a
+  fixed width; dragging still overrides the width on top of that.
 - **Versioned, archived test runs**: Skill Studio test threads are now numbered — the live
   thread shows **TEST v0.0.1** (an odometer that carries: `0.0.9`→`0.1.0`, `0.9.9`→`1.0.0`).
   **New test** now archives the current run instead of discarding it: the button arms to

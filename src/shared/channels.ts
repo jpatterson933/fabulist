@@ -21,6 +21,8 @@ import type {
   SendOptions,
   SkillMeta,
   StudioFile,
+  StudioSettings,
+  StudioSettingKey,
   StudioSkill
 } from './types'
 import type { DocSettings, SettingKey } from './settings'
@@ -73,6 +75,14 @@ export interface InvokeChannels {
   'skillStudio:createFile': (slug: string, rel: string) => void
   'skillStudio:createFolder': (slug: string, rel: string) => void
   'skillStudio:deleteFile': (slug: string, rel: string) => void
+  // per-skill settings (model + auto-apply), persisted under .skill-studio/.state/<slug>.json.
+  // Mirrors doc:getSettings / doc:setSetting — main reads them when it launches the agent.
+  'skillStudio:getSettings': (slug: string) => StudioSettings
+  'skillStudio:setSetting': (
+    slug: string,
+    key: StudioSettingKey,
+    value: StudioSettings[StudioSettingKey]
+  ) => void
   // persisted authoring + test transcripts (+ live test version + archive), so they
   // survive an app restart
   'skillStudio:readChats': (slug: string) => {
@@ -94,16 +104,11 @@ export interface InvokeChannels {
   'skillStudio:resetTest': (slug: string) => void
   'skillStudio:interruptTest': (slug: string) => void
   'skillStudio:testBusy': (slug: string) => boolean
-  // the authoring chat — an agent that reads/edits the skill IN its own folder.
-  // autoApprove mirrors the document app: off (default) shows each edit for approval.
-  // `display` separates what the chat shows (echo + a short quote marker) from the
-  // full prompt the model receives — used when a test transcript is woven in.
-  'skillStudio:authSend': (
-    slug: string,
-    prompt: string,
-    autoApprove: boolean,
-    display?: DisplayOptions
-  ) => void
+  // the authoring chat — an agent that reads/edits the skill IN its own folder. Auto-apply
+  // is read from the skill's persisted settings by main (skillStudio:getSettings), mirroring
+  // the document app, so it is not a send argument. `display` separates what the chat shows
+  // (echo + a short quote marker) from the full prompt the model receives (test transcript).
+  'skillStudio:authSend': (slug: string, prompt: string, display?: DisplayOptions) => void
   'skillStudio:authInterrupt': (slug: string) => void
   'skillStudio:authBusy': (slug: string) => boolean
 

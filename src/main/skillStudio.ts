@@ -1,7 +1,14 @@
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { shell } from 'electron'
-import type { ArchivedTest, ChatItem, StudioFile, StudioSkill } from '@shared/types'
+import type {
+  ArchivedTest,
+  ChatItem,
+  StudioFile,
+  StudioSettings,
+  StudioSettingKey,
+  StudioSkill
+} from '@shared/types'
 import { formatTestVersion } from '@shared/testVersion'
 import { LIBRARY_ROOT, sanitizeChat } from './library'
 import { initRepo, commitAll } from './git'
@@ -131,6 +138,10 @@ interface StudioState {
   testVersion?: number
   /** archived test runs, most-recent-first, read-only */
   archivedTests?: ArchivedTest[]
+  /** model alias for authoring + test runs ('' / unset = CLI default) */
+  model?: string
+  /** apply the authoring agent's edits without an approval card */
+  autoApprove?: boolean
 }
 
 const MAX_ARCHIVED = 50
@@ -219,6 +230,21 @@ export async function readAuthSessionId(slug: string): Promise<string | undefine
 
 export async function saveAuthSessionId(slug: string, sessionId: string): Promise<void> {
   await patchStudioState(slug, { authSessionId: sessionId })
+}
+
+/** Per-skill settings (model + auto-apply), defaulted on read — mirrors library.readSettings. */
+export async function readSettings(slug: string): Promise<StudioSettings> {
+  const s = await readStudioState(slug)
+  return { model: s.model ?? '', autoApprove: Boolean(s.autoApprove) }
+}
+
+/** Persist one setting — mirrors library.writeSetting. */
+export async function writeSetting<K extends StudioSettingKey>(
+  slug: string,
+  key: K,
+  value: StudioSettings[K]
+): Promise<void> {
+  await patchStudioState(slug, { [key]: value })
 }
 
 export async function listSkills(): Promise<StudioSkill[]> {

@@ -84,18 +84,21 @@ describe('skill studio slice', () => {
     expect(useStore.getState().testChats['a'].filter((c) => c.usage)).toHaveLength(2)
   })
 
-  it('passes the auto-apply flag to the authoring agent', async () => {
+  it('persists the auto-apply flag instead of passing it per send', async () => {
     const authSend = vi.fn(async () => {})
-    const { useStore } = await freshStore(makeFabulist({ skillStudio: { authSend } }))
+    const setSetting = vi.fn(async () => {})
+    const { useStore } = await freshStore(makeFabulist({ skillStudio: { authSend, setSetting } }))
     useStore.setState({ activeSkill: 'a' })
 
+    // main now reads auto-apply from the skill's persisted settings (the gate re-reads it
+    // per call, mirroring the doc app), so it is no longer a send argument
     await useStore.getState().authSend('build it')
-    expect(authSend.mock.calls[0].slice(0, 3)).toEqual(['a', 'build it', false])
+    expect(authSend.mock.calls[0]).toEqual(['a', 'build it', undefined])
 
+    // toggling it updates the store AND persists it for the gate to read
     useStore.getState().setStudioAutoApprove(true)
     expect(useStore.getState().studioAutoApprove).toBe(true)
-    await useStore.getState().authSend('again')
-    expect(authSend.mock.calls[1].slice(0, 3)).toEqual(['a', 'again', true])
+    expect(setSetting).toHaveBeenCalledWith('a', 'autoApprove', true)
   })
 
   it('weaves the test transcript into an authoring prompt when referenced', async () => {
@@ -112,10 +115,9 @@ describe('skill studio slice', () => {
     })
 
     await useStore.getState().authSend('the test ignored the haiku rule, fix it', { testRef: 'current' })
-    const [slug, prompt, , display] = authSend.mock.calls[0] as [
+    const [slug, prompt, display] = authSend.mock.calls[0] as [
       string,
       string,
-      boolean,
       { echo: string; quote?: string }
     ]
     expect(slug).toBe('a')
@@ -133,7 +135,7 @@ describe('skill studio slice', () => {
     const { useStore } = await freshStore(makeFabulist({ skillStudio: { authSend } }))
     useStore.setState({ activeSkill: 'a' })
     await useStore.getState().authSend('just edit it', { testRef: 'current' })
-    const [, prompt, , display] = authSend.mock.calls[0]
+    const [, prompt, display] = authSend.mock.calls[0]
     expect(prompt).toBe('just edit it') // no <test-run> framing
     expect(display).toBeUndefined()
   })
@@ -327,8 +329,8 @@ describe('skill studio slice', () => {
       }
     })
     await useStore.getState().authSend('what went wrong here?', { testRef: { version: '0.0.1' } })
-    // skillStudio.authSend(slug, prompt, autoApprove, display)
-    const [, prompt, , display] = authSend.mock.calls[0] as [string, string, boolean, { quote?: string }]
+    // skillStudio.authSend(slug, prompt, display)
+    const [, prompt, display] = authSend.mock.calls[0] as [string, string, { quote?: string }]
     expect(prompt).toContain('archived output')
     expect(prompt).toContain('what went wrong here?')
     expect(display.quote).toMatch(/test v0\.0\.1/i)

@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { EventChannels, InvokeChannels } from '@shared/channels'
-import type { AgentEvent, AnchorUpdate, ChatItem, CommentAnchor, CommentThread, DisplayOptions, SendOptions } from '@shared/types'
+import type { AgentEvent, AnchorUpdate, ChatItem, CommentAnchor, CommentThread, DisplayOptions, SendOptions, StudioSettings, StudioSettingKey } from '@shared/types'
 import type { DocSettings, SettingKey } from '@shared/settings'
 
 /** Typed `ipcRenderer.invoke`: name, args, and return type checked against the channel map. */
@@ -84,6 +84,9 @@ const api = {
     createFile: (slug: string, rel: string) => invoke('skillStudio:createFile', slug, rel),
     createFolder: (slug: string, rel: string) => invoke('skillStudio:createFolder', slug, rel),
     deleteFile: (slug: string, rel: string) => invoke('skillStudio:deleteFile', slug, rel),
+    getSettings: (slug: string) => invoke('skillStudio:getSettings', slug),
+    setSetting: <K extends StudioSettingKey>(slug: string, key: K, value: StudioSettings[K]) =>
+      invoke('skillStudio:setSetting', slug, key, value),
     readChats: (slug: string) => invoke('skillStudio:readChats', slug),
     saveAuthChat: (slug: string, chat: ChatItem[]) => invoke('skillStudio:saveAuthChat', slug, chat),
     saveTestChat: (slug: string, chat: ChatItem[]) => invoke('skillStudio:saveTestChat', slug, chat),
@@ -94,8 +97,8 @@ const api = {
     interruptTest: (slug: string) => invoke('skillStudio:interruptTest', slug),
     testBusy: (slug: string) => invoke('skillStudio:testBusy', slug),
     onEvent: (cb: (event: AgentEvent) => void) => subscribe('skillStudio:event', cb),
-    authSend: (slug: string, prompt: string, autoApprove: boolean, display?: DisplayOptions) =>
-      invoke('skillStudio:authSend', slug, prompt, autoApprove, display),
+    authSend: (slug: string, prompt: string, display?: DisplayOptions) =>
+      invoke('skillStudio:authSend', slug, prompt, display),
     authInterrupt: (slug: string) => invoke('skillStudio:authInterrupt', slug),
     authBusy: (slug: string) => invoke('skillStudio:authBusy', slug),
     onAuthEvent: (cb: (event: AgentEvent) => void) => subscribe('skillStudio:authEvent', cb),
