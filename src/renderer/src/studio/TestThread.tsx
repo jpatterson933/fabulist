@@ -17,8 +17,8 @@ interface PluginSkill {
 }
 
 /**
- * The jailed test thread: type a real task, the skill runs in a throwaway sandbox
- * (its sub-agents spin up with it), and the transcript streams here. Type "/" to
+ * The jailed test thread: type a real task, the plugin runs in a throwaway sandbox
+ * (its skills and sub-agents spin up with it), and the transcript streams here. Type "/" to
  * invoke a specific skill — the model gets a "use the <name> skill" directive, the
  * same way a user would call it, and the skill drives what it reads from there. If the
  * skill asks the user a question, it surfaces here as a card to answer (not auto-skipped).
@@ -129,7 +129,7 @@ export default function TestThread({ slug }: { slug: string }): React.JSX.Elemen
         </button>
       </div>
       {usage && (
-        <div className="studio-usage-bar" title="Total tokens + cost across this skill's test runs">
+        <div className="studio-usage-bar" title="Total tokens + cost across this plugin's test runs">
           Σ {usageLine(usage)} · {usage.runs} run{usage.runs === 1 ? '' : 's'}
         </div>
       )}
@@ -137,12 +137,12 @@ export default function TestThread({ slug }: { slug: string }): React.JSX.Elemen
         {chat.length === 0 && (
           <div className="chat-empty">
             <p>
-              Run this skill the way a user would. Give it a real task — a brief, a
-              ticket, a description — and watch it respond. Any sub-agents the skill
-              bundles spin up too.
+              Run this plugin the way a user would. Give it a real task — a brief, a
+              ticket, a description — and watch it respond. Any skills or sub-agents the
+              plugin bundles spin up too.
             </p>
             <p className="chat-empty-hint">
-              Type <code>/</code> to invoke a specific skill by name. Edits to the skill are
+              Type <code>/</code> to invoke a specific skill by name. Edits to the plugin are
               picked up when you start a new test.
             </p>
           </div>
@@ -156,7 +156,7 @@ export default function TestThread({ slug }: { slug: string }): React.JSX.Elemen
         {busy && (
           <div className="chat-working">
             <span className="agent-dot agent-working" />
-            Running the skill
+            Running the plugin
             <button className="btn-ghost btn-small" onClick={interruptTest}>
               Stop
             </button>
@@ -197,7 +197,7 @@ export default function TestThread({ slug }: { slug: string }): React.JSX.Elemen
             ref={inputRef}
             rows={Math.min(6, Math.max(1, input.split('\n').length))}
             value={input}
-            placeholder={busy ? 'Running…' : 'Give the skill a task to test…'}
+            placeholder={busy ? 'Running…' : 'Give the plugin a task to test…'}
             disabled={busy}
             onChange={(e) => {
               setInput(e.target.value)

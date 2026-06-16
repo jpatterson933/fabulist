@@ -6,7 +6,7 @@ import DiffView from '@/components/DiffView'
 
 // The approval surface, extracted from ChatPanel: a command/diff approval card
 // and the AskUserQuestion card. ApprovalCard dispatches on request.kind. The
-// optional `respond` lets a second agent (the Skill Studio) route answers to its
+// optional `respond` lets a second agent (the Plugin Studio) route answers to its
 // own IPC channel; it defaults to the document agent's respondPermission.
 
 type Responder = (requestId: string, approved: boolean, answers?: Record<string, string>) => void
@@ -92,7 +92,7 @@ export function ApprovalCard({
 }: {
   request: PermissionRequest
   respond?: Responder
-  /** force the compact "shown inline" form (the Skill Studio computes this itself);
+  /** force the compact "shown inline" form (the Plugin Studio computes this itself);
    *  the document app omits it and falls back to the store's inlineSuggestionId */
   inline?: boolean
 }): React.JSX.Element {

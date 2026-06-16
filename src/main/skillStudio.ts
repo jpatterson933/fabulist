@@ -16,7 +16,7 @@ import { initRepo, commitAll } from './git'
 import { validateSkillSlug, resolveInside } from './pathGuards'
 
 /**
- * Skill Studio storage — a local Claude plugin *marketplace* at
+ * Plugin Studio storage — a local Claude plugin *marketplace* at
  * ~/Documents/Fabulist/.skill-studio/, where EACH skill is its own self-contained
  * plugin in its own folder:
  *
@@ -114,7 +114,7 @@ export async function ensureStudio(): Promise<void> {
   await writeMarketplace()
   if (fresh) {
     await initRepo(STUDIO_ROOT).catch(() => {})
-    await commitAll(STUDIO_ROOT, 'Initialize Skill Studio').catch(() => {})
+    await commitAll(STUDIO_ROOT, 'Initialize Plugin Studio').catch(() => {})
   }
 }
 

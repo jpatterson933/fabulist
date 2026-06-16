@@ -71,7 +71,7 @@ export function StudioAutoApproveToggle(): React.JSX.Element {
   return (
     <label
       className="auto-approve"
-      title="Apply the authoring agent's edits to the skill's files immediately, without approval cards. Otherwise each edit waits for your approval."
+      title="Apply the authoring agent's edits to the plugin's files immediately, without approval cards. Otherwise each edit waits for your approval."
     >
       <input
         type="checkbox"
@@ -134,8 +134,8 @@ export function ModelPicker({ disabled }: { disabled: boolean }): React.JSX.Elem
 }
 
 /**
- * The Skill Studio's model picker — the same control as the document app's, bound to
- * the active skill's persisted model. One model per skill drives both the authoring
+ * Plugin Studio's model picker — the same control as the document app's, bound to
+ * the active plugin's persisted model. One model per plugin drives both the authoring
  * chat and the test runs, mirroring how the document app uses one model per document.
  */
 export function StudioModelPicker({ disabled }: { disabled: boolean }): React.JSX.Element {

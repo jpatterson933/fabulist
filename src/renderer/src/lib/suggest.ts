@@ -87,7 +87,7 @@ export function suggestionSegments(current: string, proposed: string): SuggestSe
 
 /**
  * The inline segments for a request against `current`, ignoring which file it
- * targets. The pure core shared by both the document editor and the Skill Studio —
+ * targets. The pure core shared by both the document editor and the Plugin Studio —
  * each layers its own "which file?" gate on top (see computeSuggestion for the doc,
  * studioInlineEdit for the studio), so the diff math lives in exactly one place.
  */

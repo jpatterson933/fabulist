@@ -10,7 +10,7 @@ import StudioCodeEditor from '@/studio/StudioCodeEditor'
 const NO_PERMISSIONS: PermissionRequest[] = []
 
 /**
- * The Skill Studio surface — a separate top-level workspace (mode === 'skillStudio'),
+ * The Plugin Studio surface — a separate top-level workspace (mode === 'skillStudio'),
  * laid out to mirror the writing app: a collapsible left rail (whose top-left brand is
  * the same ❡ logo dropdown that switches workspaces), an editor column with its own
  * header + rail toggle, and the jailed test thread. App.tsx branches here on mode.
@@ -38,7 +38,7 @@ export default function SkillStudio(): React.JSX.Element {
             <button
               className="btn-ghost btn-icon"
               onClick={toggleStudioRail}
-              title="Toggle skills  ⌘\"
+              title="Toggle plugins  ⌘\"
             >
               <RailIcon />
             </button>
@@ -49,7 +49,7 @@ export default function SkillStudio(): React.JSX.Element {
               <button
                 className="btn-ghost"
                 onClick={() => window.fabulist.skillStudio.reveal(activeSkill)}
-                title="Reveal the skill plugin folder in Finder"
+                title="Reveal the plugin folder in Finder"
               >
                 Reveal
               </button>
@@ -68,10 +68,10 @@ function StudioEmpty(): React.JSX.Element {
     <div className="studio-empty">
       <div className="empty-state-inner">
         <span className="empty-state-glyph">⚒</span>
-        <h2>Build a skill, test it on the spot.</h2>
+        <h2>Build a plugin, test it on the spot.</h2>
         <p>
-          Each skill is its own real Claude plugin under <code>.skill-studio/</code> — with its own{' '}
-          <code>skills/</code>, <code>agents/</code>, and <code>.mcp.json</code>. Create one on the
+          Each plugin lives under <code>.skill-studio/</code> — with its own <code>skills/</code>,{' '}
+          <code>agents/</code>, and <code>.mcp.json</code>. Create one on the
           left, edit it, then run it in the jailed test thread — no publishing, no setup.
         </p>
       </div>
@@ -103,8 +103,8 @@ function SkillRail(): React.JSX.Element {
         <WorkspaceSwitcher />
       </div>
       <div className="library-head">
-        <span className="library-label">Skills</span>
-        <button className="library-new" onClick={() => setCreating(true)} title="New skill">
+        <span className="library-label">Plugins</span>
+        <button className="library-new" onClick={() => setCreating(true)} title="New plugin">
           +
         </button>
       </div>
@@ -113,7 +113,7 @@ function SkillRail(): React.JSX.Element {
           <input
             autoFocus
             value={name}
-            placeholder="Skill name"
+            placeholder="Plugin name"
             onChange={(e) => setName(e.target.value)}
             onBlur={submit}
             onKeyDown={(e) => {
@@ -131,7 +131,7 @@ function SkillRail(): React.JSX.Element {
       )}
       <div className="library-list">
         {skills.length === 0 && !creating && (
-          <div className="library-empty">No skills yet. Click + to create your first one.</div>
+          <div className="library-empty">No plugins yet. Click + to create your first one.</div>
         )}
         {skills.map((s) => (
           <div key={s.slug} className={`library-item ${s.slug === activeSkill ? 'is-active' : ''}`}>
@@ -142,7 +142,7 @@ function SkillRail(): React.JSX.Element {
             </button>
             <button
               className="library-item-x"
-              title="Delete skill"
+              title="Delete plugin"
               onClick={() => setConfirmDel(s.slug)}
             >
               ✕

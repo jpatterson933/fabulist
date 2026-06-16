@@ -5,7 +5,7 @@ import { locateAnchor } from '@/lib/anchors'
  * Locate where an applied edit landed in the current text, by the inserted text
  * (falling back to the replaced text) — the edit's own offsets are stale. Returns the
  * span to reveal, or null if the text isn't present. Shared by the document chat
- * (revealEdit) and the Skill Studio (revealStudioEdit).
+ * (revealEdit) and the Plugin Studio (revealStudioEdit).
  */
 export function findEditSpan(
   content: string,

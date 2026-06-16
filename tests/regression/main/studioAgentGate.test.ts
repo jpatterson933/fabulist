@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import path from 'node:path'
 import type { AgentEvent } from '../../../src/shared/types'
 
-// The Skill Studio gates mirror the document app's gate (src/main/agent.ts): the
+// The Plugin Studio gates mirror the document app's gate (src/main/agent.ts): the
 // authoring gate asks before applying edits unless auto-apply is on, and a test run
 // surfaces AskUserQuestion instead of letting the engine treat it as skipped.
 

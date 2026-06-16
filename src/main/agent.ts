@@ -27,7 +27,7 @@ import { logError } from './log'
 export { describeTool }
 
 const systemAppend = (autoApprove: boolean): string => `
-You are operating inside Fabulist, a writing studio. The current working directory is a
+You are operating inside Fabulist's Markdown Studio. The current working directory is a
 single document project; the document itself is document.md. Follow the project CLAUDE.md.
 ${
   autoApprove

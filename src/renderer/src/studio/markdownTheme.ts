@@ -3,7 +3,7 @@ import { HighlightStyle } from '@codemirror/language'
 import { tags as t } from '@lezer/highlight'
 
 /**
- * Markdown element styling for the Skill Studio editor — MODULAR by design.
+ * Markdown element styling for the Plugin Studio editor — MODULAR by design.
  *
  * This file only MAPS each Markdown token type to a CSS class (`cm-md-*`). All
  * visual styling (colors, weights) lives in CSS as `.studio .cm-md-*` rules driven

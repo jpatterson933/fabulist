@@ -1,6 +1,7 @@
 /* ─── Fabulist design system ───────────────────────────────────────────
-   Warm paper, ink, and an ember-red accent. Fraunces for display,
-   Newsreader for the manuscript, IBM Plex Sans/Mono for the chrome. */
+   Dark studio shell with soft neon accents. The base :root layer is the
+   Markdown Studio palette; Plugin Studio overrides the same semantic tokens
+   inside .studio so future retuning stays localized and unbraided. */
 
 :root {
   --font-display: 'Fraunces Variable', 'Iowan Old Style', serif;
@@ -8,32 +9,44 @@
   --font-ui: 'IBM Plex Sans', 'Avenir Next', sans-serif;
   --font-mono: 'IBM Plex Mono', 'SF Mono', monospace;
 
-  --paper: oklch(0.966 0.009 85);
-  --paper-deep: oklch(0.938 0.013 83);
-  --paper-deeper: oklch(0.915 0.015 81);
-  --surface: oklch(0.982 0.006 88);
-  --ink: oklch(0.28 0.022 50);
-  --ink-soft: oklch(0.46 0.02 55);
-  --ink-faint: oklch(0.63 0.018 70);
-  --line: oklch(0.885 0.014 80);
-  --line-soft: oklch(0.92 0.012 82);
+  --paper: oklch(0.17 0.018 274);
+  --paper-deep: oklch(0.135 0.02 274);
+  --paper-deeper: oklch(0.225 0.023 276);
+  --surface: oklch(0.195 0.02 276);
+  --ink: oklch(0.87 0.018 82);
+  --ink-soft: oklch(0.72 0.025 86);
+  --ink-faint: oklch(0.55 0.026 268);
+  --line: oklch(0.37 0.04 288 / 0.72);
+  --line-soft: oklch(0.31 0.035 288 / 0.62);
 
-  --accent: oklch(0.54 0.165 32);
-  --accent-deep: oklch(0.44 0.145 30);
-  --accent-wash: oklch(0.93 0.035 38);
-  --accent-ink: oklch(0.985 0.008 60);
+  --accent: oklch(0.74 0.16 350);
+  --accent-deep: oklch(0.8 0.13 4);
+  --accent-wash: oklch(0.54 0.15 348 / 0.2);
+  --accent-wash-strong: oklch(0.58 0.16 348 / 0.28);
+  --accent-ink: oklch(0.15 0.024 284);
 
-  --selection: oklch(0.885 0.045 55);
-  --thread-bg: oklch(0.93 0.05 88 / 0.55);
-  --thread-bg-active: oklch(0.9 0.075 82);
-  --thread-edge: oklch(0.78 0.09 78);
-  --thread-ghost: oklch(0.94 0.02 88 / 0.4);
+  --selection: oklch(0.56 0.12 318 / 0.42);
+  --thread-bg: oklch(0.43 0.095 320 / 0.22);
+  --thread-bg-active: oklch(0.48 0.12 328 / 0.34);
+  --thread-edge: oklch(0.72 0.13 336 / 0.72);
+  --thread-ghost: oklch(0.32 0.04 290 / 0.24);
 
-  --ok: oklch(0.55 0.12 150);
-  --bad: oklch(0.55 0.16 25);
+  --ok: oklch(0.73 0.12 164);
+  --bad: oklch(0.72 0.14 25);
+  --danger-ink: oklch(0.16 0.018 28);
 
-  --shadow-soft: 0 1px 2px oklch(0.4 0.03 60 / 0.07), 0 6px 24px -8px oklch(0.4 0.03 60 / 0.18);
-  --shadow-pop: 0 2px 6px oklch(0.35 0.04 50 / 0.12), 0 12px 32px -8px oklch(0.35 0.04 50 / 0.22);
+  --diff-add-bg: oklch(0.58 0.105 158 / 0.22);
+  --diff-add-ink: oklch(0.8 0.115 156);
+  --diff-add-edge: oklch(0.72 0.12 156 / 0.72);
+  --diff-del-bg: oklch(0.55 0.115 24 / 0.22);
+  --diff-del-ink: oklch(0.8 0.12 26);
+  --diff-del-edge: oklch(0.72 0.13 28 / 0.76);
+
+  --scroll-thumb: oklch(0.48 0.055 292 / 0.72);
+  --scroll-thumb-hover: oklch(0.58 0.075 306 / 0.84);
+
+  --shadow-soft: 0 1px 2px oklch(0 0 0 / 0.22), 0 12px 34px -22px var(--accent);
+  --shadow-pop: 0 2px 8px oklch(0 0 0 / 0.32), 0 18px 48px -22px var(--accent);
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -133,7 +146,7 @@ input::placeholder {
   transition: background 140ms ease;
 }
 .btn-accent:hover {
-  background: oklch(0.9 0.055 38);
+  background: var(--accent-wash-strong);
 }
 .btn-accent:disabled {
   opacity: 0.5;
@@ -356,7 +369,7 @@ input::placeholder {
 }
 .library-item-x:hover {
   background: var(--bad);
-  color: white;
+  color: var(--danger-ink);
 }
 .library-item-clone:hover {
   background: var(--paper-deeper);
@@ -376,7 +389,7 @@ input::placeholder {
 }
 .library-item-confirm button.danger {
   background: var(--bad);
-  color: white;
+  color: var(--danger-ink);
 }
 
 .library-foot {
@@ -539,8 +552,9 @@ input::placeholder {
   z-index: 30;
   display: flex;
   align-items: center;
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
   border-radius: 8px;
   box-shadow: var(--shadow-pop);
   animation: rise 180ms var(--ease-out);
@@ -558,13 +572,13 @@ input::placeholder {
   transition: background 120ms ease;
 }
 .selection-toolbar button:hover {
-  background: oklch(0.38 0.03 50);
+  background: var(--paper-deeper);
 }
 
 .selection-toolbar-divider {
   width: 1px;
   height: 16px;
-  background: oklch(0.45 0.02 50);
+  background: var(--line);
 }
 
 @keyframes rise {
@@ -582,7 +596,7 @@ input::placeholder {
    contrast comes from context, not saturation */
 .has-active-thread .cm-thread:not(.cm-thread-active) {
   background: var(--thread-ghost);
-  border-bottom-color: oklch(0.86 0.03 82);
+  border-bottom-color: var(--line-soft);
 }
 
 .cm-thread-active {
@@ -619,18 +633,18 @@ input::placeholder {
 /* ─── inline suggestions (Claude's pending edit) ─── */
 
 .cm-suggest-del {
-  background: oklch(0.94 0.04 25 / 0.75);
-  color: oklch(0.45 0.11 25);
+  background: var(--diff-del-bg);
+  color: var(--diff-del-ink);
   text-decoration: line-through;
   text-decoration-thickness: 1.5px;
-  text-decoration-color: oklch(0.55 0.14 25 / 0.8);
+  text-decoration-color: var(--diff-del-edge);
   border-radius: 2px;
 }
 
 .cm-suggest-ins {
-  background: oklch(0.93 0.055 150 / 0.8);
-  color: oklch(0.32 0.09 150);
-  border-bottom: 2px solid oklch(0.55 0.11 150);
+  background: var(--diff-add-bg);
+  color: var(--diff-add-ink);
+  border-bottom: 2px solid var(--diff-add-edge);
   border-radius: 2px;
   white-space: pre-wrap;
 }
@@ -837,7 +851,7 @@ input::placeholder {
   font-size: 13.5px;
 }
 
-/* Rendered Markdown for LLM chat prose (Skill Studio chat/test/comments only). Scoped to
+/* Rendered Markdown for LLM chat prose (Plugin Studio chat/test/comments only). Scoped to
    .bubble-md, so it never affects the document chat or any source/markdown file editor. */
 .bubble-md {
   white-space: normal;
@@ -927,7 +941,7 @@ input::placeholder {
   font-weight: 600;
 }
 .bubble-md a {
-  color: var(--accent, #c2410c);
+  color: var(--accent, oklch(0.74 0.16 350));
   text-decoration: underline;
 }
 .bubble-md hr {
@@ -942,7 +956,7 @@ input::placeholder {
 .bubble-error {
   color: var(--bad);
   font-size: 12.5px;
-  background: oklch(0.95 0.025 25);
+  background: var(--diff-del-bg);
   border-radius: 8px;
   padding: 8px 11px;
 }
@@ -1087,7 +1101,7 @@ input::placeholder {
   right: 42px;
   display: flex;
   flex-direction: column;
-  background: var(--paper, #fff);
+  background: var(--paper, oklch(0.17 0.018 274));
   border: 1px solid var(--line, rgba(0, 0, 0, 0.08));
   border-radius: 9px;
   box-shadow: 0 6px 22px rgba(0, 0, 0, 0.12);
@@ -1136,14 +1150,14 @@ button.slash-item:hover {
   padding: 5px 8px;
   border: 1px solid var(--line, rgba(0, 0, 0, 0.1));
   border-radius: 6px;
-  background: var(--paper, #fff);
+  background: var(--paper, oklch(0.17 0.018 274));
   color: var(--ink);
   font: inherit;
   font-size: 12.5px;
 }
 .slash-search:focus {
   outline: none;
-  border-color: var(--accent, #c2410c);
+  border-color: var(--accent, oklch(0.74 0.16 350));
 }
 
 /* ─── + menu (skills / attachments) ─── */
@@ -1173,7 +1187,7 @@ button.slash-item:hover {
   transform: translateX(-50%);
   display: flex;
   flex-direction: column;
-  background: var(--paper, #fff);
+  background: var(--paper, oklch(0.17 0.018 274));
   border: 1px solid var(--line, rgba(0, 0, 0, 0.08));
   border-radius: 8px;
   box-shadow: 0 6px 22px rgba(0, 0, 0, 0.12);
@@ -1446,14 +1460,14 @@ button.slash-item:hover {
 
 .diff ins {
   text-decoration: none;
-  background: oklch(0.92 0.07 150 / 0.8);
-  color: oklch(0.35 0.09 150);
+  background: var(--diff-add-bg);
+  color: var(--diff-add-ink);
   border-radius: 2px;
 }
 
 .diff del {
-  background: oklch(0.93 0.05 25 / 0.8);
-  color: oklch(0.42 0.12 25);
+  background: var(--diff-del-bg);
+  color: var(--diff-del-ink);
   border-radius: 2px;
 }
 
@@ -1477,12 +1491,12 @@ button.slash-item:hover {
   border-radius: 3px;
 }
 .diff-row.diff-add {
-  background: oklch(0.94 0.05 150 / 0.7);
-  color: oklch(0.35 0.09 150);
+  background: var(--diff-add-bg);
+  color: var(--diff-add-ink);
 }
 .diff-row.diff-del {
-  background: oklch(0.94 0.04 25 / 0.7);
-  color: oklch(0.42 0.12 25);
+  background: var(--diff-del-bg);
+  color: var(--diff-del-ink);
 }
 .diff-row.diff-ctx {
   color: var(--ink-soft);
@@ -1822,13 +1836,13 @@ button.slash-item:hover {
   height: 10px;
 }
 ::-webkit-scrollbar-thumb {
-  background: oklch(0.82 0.015 75);
+  background: var(--scroll-thumb);
   border-radius: 99px;
   border: 3px solid transparent;
   background-clip: content-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: oklch(0.72 0.018 70);
+  background: var(--scroll-thumb-hover);
   border: 3px solid transparent;
   background-clip: content-box;
 }
@@ -1962,7 +1976,7 @@ button.slash-item:hover {
   flex-direction: column;
   width: min(440px, calc(100vw - 48px));
   max-height: min(620px, calc(100vh - 64px));
-  background: var(--paper, #fff);
+  background: var(--paper, oklch(0.17 0.018 274));
   border: 1px solid var(--line, rgba(0, 0, 0, 0.08));
   border-radius: 12px;
   box-shadow: 0 18px 48px rgba(0, 0, 0, 0.22);
@@ -1999,7 +2013,7 @@ button.slash-item:hover {
   max-width: 560px;
   padding: 9px 12px;
   border-radius: 9px;
-  background: oklch(0.95 0.025 25);
+  background: var(--diff-del-bg);
   color: var(--bad);
   box-shadow: 0 6px 24px oklch(0 0 0 / 0.18);
   font-size: 12.5px;
@@ -2104,7 +2118,7 @@ button.slash-item:hover {
   color: var(--ink-faint);
 }
 
-/* ─── Skill Studio ─── */
+/* ─── Plugin Studio ─── */
 
 .studio {
   display: grid;
@@ -2151,7 +2165,7 @@ button.slash-item:hover {
   transition: background-color 140ms ease;
 }
 .sidebar-resize:hover::after {
-  background: var(--accent, #c2410c);
+  background: var(--accent, oklch(0.74 0.16 350));
 }
 /* while dragging: snappy (no grid transition lag), global resize cursor, no text selection */
 body.is-col-resizing {
@@ -2263,7 +2277,7 @@ body.is-col-resizing .studio {
 }
 .studio-file-x:hover {
   background: var(--bad);
-  color: #fff;
+  color: var(--danger-ink);
 }
 .studio-file.is-dir {
   margin-top: 4px;
@@ -2316,10 +2330,10 @@ body.is-col-resizing .studio {
 }
 .ctx-menu button.danger:hover {
   background: var(--bad);
-  color: #fff;
+  color: var(--danger-ink);
 }
 
-/* ─── token/cost usage (Skill Studio) ─── */
+/* ─── token/cost usage (Plugin Studio) ─── */
 
 .usage-line {
   align-self: stretch;
@@ -2341,59 +2355,70 @@ body.is-col-resizing .studio {
   text-overflow: ellipsis;
 }
 
-/* ─── Skillulist — Matrix neon theme (scoped to .studio only) ───────────────
-   Override the design-system custom properties inside the studio so every
-   reused component (rail, sidebar, chat, diffs, buttons) recolors at once;
-   the writing app outside .studio keeps the warm-paper palette. */
+/* ─── Plugin Studio theme (scoped to .studio only) ─────────────────────────
+   Overrides the shared semantic tokens so reused rails, sidebars, chat, diffs,
+   buttons, and editors recolor together while Markdown Studio keeps its own
+   quieter editorial palette. */
 
 .studio {
   position: relative;
-  /* white surfaces */
-  --paper: oklch(0.99 0.004 200);
-  --paper-deep: oklch(0.975 0.006 200);
-  --paper-deeper: oklch(0.95 0.013 195);
-  --surface: oklch(1 0 0);
-  /* dark ink, readable on white */
-  --ink: oklch(0.27 0.03 235);
-  --ink-soft: oklch(0.46 0.03 232);
-  --ink-faint: oklch(0.62 0.03 230);
-  /* neon borders + accent */
-  --line: oklch(0.8 0.17 178);
-  --line-soft: oklch(0.88 0.1 180);
-  --accent: oklch(0.7 0.27 172);
-  --accent-deep: oklch(0.6 0.27 174);
-  --accent-wash: oklch(0.94 0.08 178);
-  --accent-ink: oklch(1 0 0);
-  --ok: oklch(0.68 0.2 150);
-  --bad: oklch(0.62 0.24 25);
-  --selection: oklch(0.9 0.12 182);
-  --shadow-soft: 0 0 0 1px var(--line), 0 0 14px -7px var(--accent);
-  --shadow-pop: 0 0 0 1px var(--accent), 0 0 24px -7px var(--accent);
-  /* per-Markdown-element neon palette — change these to restyle (see .cm-md-* below) */
-  --md-h1: oklch(0.58 0.28 350);
-  --md-h2: oklch(0.55 0.28 312);
-  --md-h3: oklch(0.55 0.26 268);
-  --md-h4: oklch(0.58 0.2 232);
-  --md-h5: oklch(0.6 0.16 215);
-  --md-h6: oklch(0.62 0.14 200);
-  --md-strong: oklch(0.58 0.27 18);
-  --md-em: oklch(0.62 0.21 60);
-  --md-strike: oklch(0.66 0.04 235);
-  --md-code: oklch(0.52 0.2 150);
-  --md-link: oklch(0.56 0.24 252);
-  --md-url: oklch(0.62 0.18 215);
-  --md-list: oklch(0.58 0.23 132);
-  --md-quote: oklch(0.55 0.13 195);
-  --md-hr: oklch(0.7 0.18 178);
-  --md-mark: oklch(0.72 0.13 200);
+  --paper: oklch(0.145 0.023 240);
+  --paper-deep: oklch(0.115 0.025 242);
+  --paper-deeper: oklch(0.215 0.032 242);
+  --surface: oklch(0.175 0.028 242);
+  --ink: oklch(0.88 0.018 205);
+  --ink-soft: oklch(0.73 0.035 212);
+  --ink-faint: oklch(0.56 0.044 222);
+  --line: oklch(0.4 0.07 220 / 0.72);
+  --line-soft: oklch(0.31 0.055 220 / 0.62);
+  --accent: oklch(0.78 0.14 188);
+  --accent-deep: oklch(0.83 0.12 184);
+  --accent-wash: oklch(0.55 0.12 194 / 0.18);
+  --accent-wash-strong: oklch(0.58 0.13 194 / 0.28);
+  --accent-ink: oklch(0.12 0.026 236);
+  --ok: oklch(0.76 0.13 154);
+  --bad: oklch(0.74 0.14 18);
+  --danger-ink: oklch(0.13 0.024 24);
+  --selection: oklch(0.58 0.12 202 / 0.42);
+  --thread-bg: oklch(0.44 0.09 200 / 0.2);
+  --thread-bg-active: oklch(0.5 0.115 198 / 0.3);
+  --thread-edge: oklch(0.76 0.12 188 / 0.7);
+  --thread-ghost: oklch(0.32 0.045 230 / 0.24);
+  --diff-add-bg: oklch(0.58 0.11 156 / 0.22);
+  --diff-add-ink: oklch(0.82 0.12 154);
+  --diff-add-edge: oklch(0.74 0.13 154 / 0.72);
+  --diff-del-bg: oklch(0.56 0.12 22 / 0.22);
+  --diff-del-ink: oklch(0.82 0.12 24);
+  --diff-del-edge: oklch(0.74 0.13 24 / 0.76);
+  --scroll-thumb: oklch(0.5 0.085 202 / 0.72);
+  --scroll-thumb-hover: oklch(0.62 0.105 194 / 0.84);
+  --shadow-soft: 0 1px 2px oklch(0 0 0 / 0.22), 0 0 28px -20px var(--accent);
+  --shadow-pop: 0 2px 8px oklch(0 0 0 / 0.34), 0 0 42px -18px var(--accent);
+  /* per-Markdown-element palette: Plugin Studio can retune code colors here alone. */
+  --md-h1: oklch(0.78 0.16 332);
+  --md-h2: oklch(0.77 0.14 286);
+  --md-h3: oklch(0.78 0.13 230);
+  --md-h4: oklch(0.77 0.12 198);
+  --md-h5: oklch(0.76 0.11 168);
+  --md-h6: oklch(0.75 0.1 142);
+  --md-strong: oklch(0.8 0.14 18);
+  --md-em: oklch(0.8 0.12 74);
+  --md-strike: oklch(0.62 0.035 220);
+  --md-code: oklch(0.78 0.13 154);
+  --md-link: oklch(0.78 0.14 232);
+  --md-url: oklch(0.74 0.11 204);
+  --md-list: oklch(0.76 0.13 144);
+  --md-quote: oklch(0.73 0.09 190);
+  --md-hr: oklch(0.72 0.11 188);
+  --md-mark: oklch(0.76 0.09 210);
   color: var(--ink);
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   background:
-    radial-gradient(130% 90% at 50% 0%, var(--accent-wash), transparent 60%),
+    linear-gradient(180deg, oklch(0.2 0.045 238 / 0.72), transparent 190px),
     var(--paper);
 }
 
-/* faint CRT scanlines over the whole studio (very subtle, non-interactive) */
+/* faint scanlines over the plugin workspace (subtle, non-interactive) */
 .studio::after {
   content: '';
   position: absolute;
@@ -2402,7 +2427,7 @@ body.is-col-resizing .studio {
   z-index: 6;
   background: repeating-linear-gradient(
     0deg,
-    oklch(0.72 0.18 182 / 0.05) 0 1px,
+    oklch(0.7 0.08 200 / 0.035) 0 1px,
     transparent 1px 3px
   );
 }
@@ -2411,17 +2436,17 @@ body.is-col-resizing .studio {
 .studio .workspace-title h1,
 .studio .studio-empty h2 {
   color: var(--accent-deep);
-  text-shadow: 0 0 12px var(--accent-wash);
+  text-shadow: 0 0 18px oklch(0.72 0.13 188 / 0.18);
 }
 .studio .ws-switcher-mark {
   font-family: var(--font-mono);
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
 }
 .studio .ws-switcher-glyph,
 .studio .empty-state-glyph {
   color: var(--accent);
-  text-shadow: 0 0 12px var(--accent);
+  text-shadow: 0 0 16px oklch(0.76 0.13 188 / 0.28);
 }
 .studio .library-label,
 .studio .studio-test-title {
@@ -2447,32 +2472,32 @@ body.is-col-resizing .studio {
   background: var(--paper-deep);
 }
 .studio .bubble-error {
-  background: oklch(0.96 0.04 25);
+  background: var(--diff-del-bg);
 }
-/* diffs: light-on-white with neon-ish tint */
+/* Diffs stay soft on the dark plugin surface. */
 .studio .diff ins,
 .studio .diff-row.diff-add {
-  background: oklch(0.9 0.12 150);
-  color: oklch(0.38 0.13 150);
+  background: var(--diff-add-bg);
+  color: var(--diff-add-ink);
 }
 .studio .diff del,
 .studio .diff-row.diff-del {
-  background: oklch(0.93 0.09 25);
-  color: oklch(0.45 0.15 25);
+  background: var(--diff-del-bg);
+  color: var(--diff-del-ink);
 }
-/* neon scrollbar thumb inside the studio (the global one is warm-tan) */
+/* Plugin Studio scrollbars use the scoped accent tokens. */
 .studio ::-webkit-scrollbar-thumb {
-  background: oklch(0.8 0.15 178);
+  background: var(--scroll-thumb);
   border: 3px solid transparent;
   background-clip: content-box;
 }
 .studio ::-webkit-scrollbar-thumb:hover {
-  background: oklch(0.68 0.2 175);
+  background: var(--scroll-thumb-hover);
   border: 3px solid transparent;
   background-clip: content-box;
 }
 
-/* ─── Markdown element styling (Skill Studio editor) ────────────────────────
+/* ─── Markdown element styling (Plugin Studio editor) ────────────────────────
    The CodeMirror highlight (studio/markdownTheme.ts) only assigns these classes;
    every color is a --md-* variable above, so the palette is swappable here alone. */
 .studio-cm {
