@@ -785,15 +785,6 @@ input::placeholder {
   text-overflow: ellipsis;
 }
 
-.thread-count {
-  font-size: 10.5px;
-  font-weight: 600;
-  background: var(--accent-wash);
-  color: var(--accent-deep);
-  padding: 1px 6px;
-  border-radius: 99px;
-}
-
 .thread-caret {
   margin-left: auto;
   flex-shrink: 0;

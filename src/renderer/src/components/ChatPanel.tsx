@@ -202,7 +202,6 @@ function ThreadBar({ docId, busy }: { docId: string; busy: boolean }): React.JSX
         title="Switch conversation"
       >
         <span className="thread-current-title">{active?.title ?? 'Conversation'}</span>
-        {threads.length > 1 && <span className="thread-count">{threads.length}</span>}
         <svg className="thread-caret" width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden>
           <path d="M3 4.5 6 7.5 9 4.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
         </svg>

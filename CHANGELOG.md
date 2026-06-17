@@ -16,6 +16,7 @@ All notable changes to Fabulist are documented here. The format follows
 ### Changed
 - The sidebar toggle in the workspace header is now an icon button (matching the library
   toggle) instead of a "Panel" text label.
+- Removed the thread-count badge from the per-document conversation selector.
 
 ### Added
 - **Attach files to a chat message**: a 📎 button (and drag-and-drop onto the chat panel)
