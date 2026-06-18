@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import type { ChatItem } from '@shared/types'
 import { isPrimaryDoc } from '@shared/doc'
 import { useStore } from '@/store'
@@ -48,7 +49,13 @@ export function EditGroupCard({
   )
 }
 
-export function ChatBubble({
+// Memoized: the composer in every chat lives in the same component as the transcript, so
+// each keystroke re-renders the parent. Without this, every bubble re-renders and each
+// <Markdown> re-parses on every key. Transcript items are reference-stable (the store
+// swaps only the changed item), so memoized bubbles bail out while typing and only the
+// streaming bubble re-renders. `reveal` is a stable store action (or undefined), so it
+// doesn't defeat the memo.
+export const ChatBubble = memo(function ChatBubble({
   item,
   reveal,
   markdown
@@ -100,7 +107,7 @@ export function ChatBubble({
       )}
     </div>
   )
-}
+})
 
 function AppliedEditCard({ item, reveal }: { item: ChatItem; reveal?: Reveal }): React.JSX.Element {
   const revealEdit = useStore((s) => s.revealEdit)

@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
@@ -11,8 +12,13 @@ const SAFE_LINK = /^(https?:|mailto:)/i
  * Safe by construction: react-markdown does not render raw HTML (no XSS via injected
  * tags) and sanitizes URLs; links additionally open in the system browser rather than
  * navigating the app window, and only for http(s)/mailto.
+ *
+ * Memoized on `text`: react-markdown rebuilds a full mdast/hast AST on every render, which
+ * is expensive. Transcript items are reference-stable, so this re-parses only when a
+ * bubble's text actually changes (streaming) — not on every unrelated parent re-render,
+ * such as typing in the composer below a long transcript.
  */
-export default function Markdown({ text }: { text: string }): React.JSX.Element {
+const Markdown = memo(function Markdown({ text }: { text: string }): React.JSX.Element {
   return (
     <div className="bubble-md">
       <ReactMarkdown
@@ -35,4 +41,6 @@ export default function Markdown({ text }: { text: string }): React.JSX.Element 
       </ReactMarkdown>
     </div>
   )
-}
+})
+
+export default Markdown
