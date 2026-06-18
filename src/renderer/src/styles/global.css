@@ -1,5 +1,5 @@
 /* ─── Fabulist design system ───────────────────────────────────────────
-   Dark studio shell with soft neon accents. The base :root layer is the
+   Dark studio shell with restrained product accents. The base :root layer is the
    Markdown Studio palette; Plugin Studio overrides the same semantic tokens
    inside .studio so future retuning stays localized and unbraided. */
 
@@ -2362,81 +2362,75 @@ body.is-col-resizing .studio {
 
 .studio {
   position: relative;
-  --paper: oklch(0.145 0.023 240);
-  --paper-deep: oklch(0.115 0.025 242);
-  --paper-deeper: oklch(0.215 0.032 242);
-  --surface: oklch(0.175 0.028 242);
-  --ink: oklch(0.88 0.018 205);
-  --ink-soft: oklch(0.73 0.035 212);
-  --ink-faint: oklch(0.56 0.044 222);
-  --line: oklch(0.4 0.07 220 / 0.72);
-  --line-soft: oklch(0.31 0.055 220 / 0.62);
-  --accent: oklch(0.78 0.14 188);
-  --accent-deep: oklch(0.83 0.12 184);
-  --accent-wash: oklch(0.55 0.12 194 / 0.18);
-  --accent-wash-strong: oklch(0.58 0.13 194 / 0.28);
-  --accent-ink: oklch(0.12 0.026 236);
-  --ok: oklch(0.76 0.13 154);
-  --bad: oklch(0.74 0.14 18);
-  --danger-ink: oklch(0.13 0.024 24);
-  --selection: oklch(0.58 0.12 202 / 0.42);
-  --thread-bg: oklch(0.44 0.09 200 / 0.2);
-  --thread-bg-active: oklch(0.5 0.115 198 / 0.3);
-  --thread-edge: oklch(0.76 0.12 188 / 0.7);
-  --thread-ghost: oklch(0.32 0.045 230 / 0.24);
-  --diff-add-bg: oklch(0.58 0.11 156 / 0.22);
-  --diff-add-ink: oklch(0.82 0.12 154);
-  --diff-add-edge: oklch(0.74 0.13 154 / 0.72);
-  --diff-del-bg: oklch(0.56 0.12 22 / 0.22);
-  --diff-del-ink: oklch(0.82 0.12 24);
-  --diff-del-edge: oklch(0.74 0.13 24 / 0.76);
-  --scroll-thumb: oklch(0.5 0.085 202 / 0.72);
-  --scroll-thumb-hover: oklch(0.62 0.105 194 / 0.84);
-  --shadow-soft: 0 1px 2px oklch(0 0 0 / 0.22), 0 0 28px -20px var(--accent);
-  --shadow-pop: 0 2px 8px oklch(0 0 0 / 0.34), 0 0 42px -18px var(--accent);
+  --paper: oklch(0.165 0.008 260);
+  --paper-deep: oklch(0.128 0.009 260);
+  --paper-deeper: oklch(0.235 0.012 255);
+  --surface: oklch(0.192 0.01 258);
+  --ink: oklch(0.91 0.008 245);
+  --ink-soft: oklch(0.73 0.013 248);
+  --ink-faint: oklch(0.57 0.015 252);
+  --line: oklch(0.37 0.018 254 / 0.72);
+  --line-soft: oklch(0.29 0.014 254 / 0.68);
+  --accent: oklch(0.66 0.155 248);
+  --accent-deep: oklch(0.78 0.105 232);
+  --accent-wash: oklch(0.52 0.12 246 / 0.18);
+  --accent-wash-strong: oklch(0.56 0.12 246 / 0.28);
+  --accent-ink: oklch(0.985 0.005 245);
+  --ok: oklch(0.72 0.12 154);
+  --bad: oklch(0.68 0.16 28);
+  --danger-ink: oklch(0.98 0.01 35);
+  --selection: oklch(0.58 0.12 246 / 0.38);
+  --thread-bg: oklch(0.48 0.08 230 / 0.18);
+  --thread-bg-active: oklch(0.5 0.1 236 / 0.28);
+  --thread-edge: oklch(0.72 0.11 232 / 0.72);
+  --thread-ghost: oklch(0.34 0.025 252 / 0.24);
+  --diff-add-bg: oklch(0.55 0.11 154 / 0.2);
+  --diff-add-ink: oklch(0.82 0.11 154);
+  --diff-add-edge: oklch(0.72 0.12 154 / 0.68);
+  --diff-del-bg: oklch(0.54 0.13 28 / 0.2);
+  --diff-del-ink: oklch(0.82 0.115 28);
+  --diff-del-edge: oklch(0.72 0.13 28 / 0.7);
+  --scroll-thumb: oklch(0.49 0.035 252 / 0.72);
+  --scroll-thumb-hover: oklch(0.6 0.055 246 / 0.86);
+  --shadow-soft: 0 1px 2px oklch(0 0 0 / 0.22), 0 16px 34px -28px oklch(0 0 0 / 0.88);
+  --shadow-pop: 0 2px 8px oklch(0 0 0 / 0.34), 0 20px 52px -30px oklch(0 0 0 / 0.9);
   /* per-Markdown-element palette: Plugin Studio can retune code colors here alone. */
-  --md-h1: oklch(0.78 0.16 332);
-  --md-h2: oklch(0.77 0.14 286);
-  --md-h3: oklch(0.78 0.13 230);
-  --md-h4: oklch(0.77 0.12 198);
-  --md-h5: oklch(0.76 0.11 168);
-  --md-h6: oklch(0.75 0.1 142);
-  --md-strong: oklch(0.8 0.14 18);
-  --md-em: oklch(0.8 0.12 74);
+  --md-h1: oklch(0.79 0.105 232);
+  --md-h2: oklch(0.78 0.085 252);
+  --md-h3: oklch(0.77 0.075 194);
+  --md-h4: oklch(0.75 0.07 160);
+  --md-h5: oklch(0.74 0.065 118);
+  --md-h6: oklch(0.73 0.06 70);
+  --md-strong: oklch(0.82 0.1 74);
+  --md-em: oklch(0.8 0.08 158);
   --md-strike: oklch(0.62 0.035 220);
-  --md-code: oklch(0.78 0.13 154);
-  --md-link: oklch(0.78 0.14 232);
-  --md-url: oklch(0.74 0.11 204);
-  --md-list: oklch(0.76 0.13 144);
-  --md-quote: oklch(0.73 0.09 190);
-  --md-hr: oklch(0.72 0.11 188);
-  --md-mark: oklch(0.76 0.09 210);
+  --md-code: oklch(0.78 0.095 154);
+  --md-link: oklch(0.79 0.12 232);
+  --md-url: oklch(0.75 0.08 204);
+  --md-list: oklch(0.75 0.09 144);
+  --md-quote: oklch(0.73 0.07 190);
+  --md-hr: oklch(0.68 0.05 230);
+  --md-mark: oklch(0.78 0.08 84);
   color: var(--ink);
   font-family: var(--font-ui);
-  background:
-    linear-gradient(180deg, oklch(0.2 0.045 238 / 0.72), transparent 190px),
-    var(--paper);
+  background: var(--paper);
 }
 
-/* faint scanlines over the plugin workspace (subtle, non-interactive) */
+/* legacy scanline layer disabled for the calmer enterprise studio surface */
 .studio::after {
   content: '';
   position: absolute;
   inset: 0;
   pointer-events: none;
   z-index: 6;
-  background: repeating-linear-gradient(
-    0deg,
-    oklch(0.7 0.08 200 / 0.035) 0 1px,
-    transparent 1px 3px
-  );
+  display: none;
 }
 
 .studio .ws-switcher-mark,
 .studio .workspace-title h1,
 .studio .studio-empty h2 {
-  color: var(--accent-deep);
-  text-shadow: 0 0 18px oklch(0.72 0.13 188 / 0.18);
+  color: var(--ink);
+  text-shadow: none;
 }
 .studio .ws-switcher-mark {
   font-family: var(--font-mono);
@@ -2445,24 +2439,24 @@ body.is-col-resizing .studio {
 }
 .studio .ws-switcher-glyph,
 .studio .empty-state-glyph {
-  color: var(--accent);
-  text-shadow: 0 0 16px oklch(0.76 0.13 188 / 0.28);
+  color: var(--accent-deep);
+  text-shadow: none;
 }
 .studio .library-label,
 .studio .studio-test-title {
-  color: var(--accent-deep);
+  color: var(--ink-faint);
 }
 .studio .library-item.is-active,
 .studio .studio-file.is-open {
-  box-shadow: inset 2px 0 0 var(--accent), 0 0 14px -8px var(--accent);
+  box-shadow: inset 3px 0 0 var(--accent);
 }
 .studio .agent-dot.agent-working,
 .studio .agent-dot.agent-starting {
-  box-shadow: 0 0 8px var(--accent);
+  box-shadow: none;
 }
 .studio .chat-send,
 .studio .btn-primary {
-  box-shadow: 0 0 16px -5px var(--accent);
+  box-shadow: var(--shadow-soft);
 }
 .studio .studio-editor-area {
   caret-color: var(--accent);
@@ -2473,6 +2467,310 @@ body.is-col-resizing .studio {
 }
 .studio .bubble-error {
   background: var(--diff-del-bg);
+}
+
+.studio .workspace-header {
+  background: var(--surface);
+  border-bottom-color: var(--line);
+}
+.studio .workspace-title h1 {
+  font-family: var(--font-ui);
+  font-size: 14.5px;
+  font-weight: 640;
+}
+.studio .workspace-actions .btn-ghost {
+  border: 1px solid var(--line-soft);
+  background: var(--paper-deep);
+  font-weight: 540;
+}
+.studio .workspace-actions .btn-ghost:hover {
+  border-color: var(--line);
+  background: var(--paper-deeper);
+}
+.studio .btn-ghost {
+  border: 1px solid transparent;
+}
+.studio .btn-ghost:hover,
+.studio .btn-ghost.is-on {
+  border-color: var(--line-soft);
+  background: var(--paper-deeper);
+}
+.studio .btn-primary {
+  font-weight: 620;
+}
+.studio .studio-rail {
+  background: var(--paper-deep);
+  border-right-color: var(--line);
+}
+.studio .library-brand {
+  align-items: center;
+  padding: 2px 12px 13px;
+  background: var(--paper-deep);
+  border-bottom-color: var(--line);
+}
+.studio .ws-switcher-btn {
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: 7px;
+}
+.studio .ws-switcher-btn:hover {
+  border-color: var(--line-soft);
+  background: var(--surface);
+}
+.studio .ws-switcher-menu {
+  background: var(--surface);
+  border-color: var(--line);
+}
+.studio .ws-switcher-menu button:hover,
+.studio .ws-switcher-menu button.is-current {
+  background: var(--paper-deeper);
+}
+.studio .ws-switcher-menu button.is-current {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.studio .library-head,
+.studio .studio-files-head {
+  align-items: center;
+  padding: 16px 14px 9px;
+}
+.studio .library-label {
+  letter-spacing: 0.12em;
+}
+.studio .library-new {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--line-soft);
+  background: var(--surface);
+  color: var(--ink-soft);
+}
+.studio .library-new:hover {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.studio .library-create,
+.studio .studio-files-create {
+  padding: 0 12px 10px;
+}
+.studio .library-create input,
+.studio .studio-files-create input,
+.studio .slash-search {
+  background: var(--paper);
+  border-color: var(--line-soft);
+  font-family: var(--font-ui);
+}
+.studio .library-list,
+.studio .studio-file-list {
+  padding: 4px 10px 16px;
+}
+.studio .library-item,
+.studio .studio-file {
+  border: 1px solid transparent;
+  border-radius: 8px;
+}
+.studio .library-item {
+  margin-bottom: 4px;
+}
+.studio .library-item:hover,
+.studio .studio-file:hover {
+  background: var(--surface);
+  border-color: var(--line-soft);
+}
+.studio .library-item.is-active,
+.studio .studio-file.is-open {
+  background: var(--paper-deeper);
+  border-color: var(--line);
+}
+.studio .library-item-main {
+  padding: 11px 44px 11px 12px;
+}
+.studio .library-item-title {
+  font-family: var(--font-ui);
+  font-size: 13.5px;
+  font-weight: 640;
+}
+.studio .library-item-preview {
+  color: var(--ink-soft);
+}
+.studio .library-item-meta,
+.studio .studio-file-name,
+.studio .studio-editor-path {
+  font-family: var(--font-mono);
+}
+.studio .library-item-meta {
+  font-size: 10.5px;
+}
+.studio .library-item-x,
+.studio .studio-file-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  background: var(--paper-deep);
+}
+.studio .library-item-x:hover,
+.studio .studio-file-x:hover {
+  border-color: var(--bad);
+}
+.studio .library-item-confirm button {
+  border: 1px solid var(--line-soft);
+  background: var(--surface);
+}
+.studio .library-item-confirm button.danger {
+  border-color: transparent;
+  background: var(--bad);
+  color: var(--danger-ink);
+}
+.studio .studio-main {
+  background: var(--paper);
+}
+.studio .studio-main-body {
+  grid-template-columns: 208px minmax(0, 1fr);
+}
+.studio .studio-files {
+  background: var(--surface);
+  border-right-color: var(--line);
+}
+.studio .studio-file-list {
+  gap: 2px;
+}
+.studio .studio-file-dir {
+  padding: 4px 9px 3px;
+  letter-spacing: 0.04em;
+}
+.studio .studio-file-name {
+  font-size: 12px;
+  padding: 7px 28px 7px 10px;
+}
+.studio .ctx-menu,
+.studio .slash-menu {
+  background: var(--surface);
+  border-color: var(--line);
+  box-shadow: var(--shadow-pop);
+}
+.studio .ctx-menu button:hover,
+.studio button.slash-item:hover,
+.studio .slash-item.is-selected {
+  background: var(--paper-deeper);
+}
+.studio .studio-editor {
+  background: var(--paper);
+}
+.studio .studio-editor-head {
+  min-height: 48px;
+  gap: 14px;
+  background: var(--surface);
+  border-bottom-color: var(--line);
+}
+.studio .studio-editor-path {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink-soft);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.studio .studio-editor-status {
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  background: var(--paper-deep);
+  padding: 2px 7px;
+  letter-spacing: 0.08em;
+}
+.studio .studio-cm .cm-editor,
+.studio .studio-cm .cm-scroller {
+  background: var(--paper);
+}
+.studio .sidebar {
+  background: var(--surface);
+  border-left-color: var(--line);
+}
+.studio .sidebar-tabs {
+  gap: 4px;
+  padding: 10px 12px;
+  background: var(--paper-deep);
+  border-bottom-color: var(--line);
+}
+.studio .sidebar-tabs button {
+  border: 1px solid transparent;
+  border-radius: 7px;
+  padding: 7px 10px;
+}
+.studio .sidebar-tabs button:hover {
+  border-color: var(--line-soft);
+  background: var(--surface);
+  color: var(--ink-soft);
+}
+.studio .sidebar-tabs button.is-active {
+  border-color: var(--line);
+  background: var(--paper-deeper);
+  color: var(--ink);
+}
+.studio .sidebar-tabs button.is-active::after {
+  display: none;
+}
+.studio .studio-chat-head,
+.studio .studio-test-head {
+  min-height: 48px;
+  background: var(--surface);
+  border-bottom-color: var(--line);
+}
+.studio .studio-test-title {
+  letter-spacing: 0.12em;
+}
+.studio .studio-usage-bar {
+  background: var(--paper-deep);
+  border-bottom-color: var(--line-soft);
+}
+.studio .chat-scroll {
+  background: var(--surface);
+}
+.studio .chat-empty,
+.studio .comments-empty {
+  color: var(--ink-soft);
+}
+.studio .bubble-user {
+  border: 1px solid var(--line-soft);
+  background: var(--paper-deeper);
+  box-shadow: var(--shadow-soft);
+}
+.studio .bubble-md code,
+.studio .bubble-md pre {
+  background: var(--paper);
+  border-color: var(--line-soft);
+}
+.studio .approval,
+.studio .thread-card,
+.studio .applied-edit {
+  background: var(--paper);
+  border-color: var(--line);
+}
+.studio .approval {
+  border-color: var(--accent);
+}
+.studio .approval-head {
+  background: var(--accent-wash);
+}
+.studio .chat-compose {
+  background: var(--paper-deep);
+  border-top-color: var(--line);
+}
+.studio .chat-inputrow textarea {
+  background: var(--paper);
+  border-color: var(--line);
+}
+.studio .chat-send {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-weight: 700;
+}
+.studio .attach-chip {
+  background: var(--surface);
+  border-color: var(--line-soft);
 }
 /* Diffs stay soft on the dark plugin surface. */
 .studio .diff ins,
@@ -2638,27 +2936,34 @@ body.is-col-resizing .studio {
   display: grid;
   place-items: center;
   padding: 40px;
+  background: var(--paper);
 }
 .studio-empty .empty-state-glyph {
-  display: block;
-  font-family: var(--font-display);
-  font-size: 40px;
-  color: var(--accent);
-  margin-bottom: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 54px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--accent-deep);
+  margin-bottom: 18px;
+  box-shadow: var(--shadow-soft);
 }
 .studio-empty h2 {
-  font-family: var(--font-display);
-  font-size: 24px;
-  font-weight: 540;
+  font-family: var(--font-ui);
+  font-size: 22px;
+  font-weight: 660;
   line-height: 1.25;
   margin-bottom: 12px;
 }
 .studio-empty p {
   color: var(--ink-soft);
-  line-height: 1.6;
+  line-height: 1.58;
 }
 .studio-empty code {
   font-family: var(--font-mono);
   font-size: 0.9em;
-  color: var(--accent-deep);
+  color: var(--ink);
 }

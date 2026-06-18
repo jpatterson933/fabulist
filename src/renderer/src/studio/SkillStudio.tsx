@@ -67,8 +67,10 @@ function StudioEmpty(): React.JSX.Element {
   return (
     <div className="studio-empty">
       <div className="empty-state-inner">
-        <span className="empty-state-glyph">⚒</span>
-        <h2>Build a plugin, test it on the spot.</h2>
+        <span className="empty-state-glyph" aria-hidden>
+          <PluginStudioIcon />
+        </span>
+        <h2>Create a production-ready plugin.</h2>
         <p>
           Each plugin lives under <code>.skill-studio/</code> — with its own <code>skills/</code>,{' '}
           <code>agents/</code>, and <code>.mcp.json</code>. Create one on the
@@ -104,8 +106,13 @@ function SkillRail(): React.JSX.Element {
       </div>
       <div className="library-head">
         <span className="library-label">Plugins</span>
-        <button className="library-new" onClick={() => setCreating(true)} title="New plugin">
-          +
+        <button
+          className="library-new"
+          onClick={() => setCreating(true)}
+          title="New plugin"
+          aria-label="New plugin"
+        >
+          <PlusIcon />
         </button>
       </div>
       {creating && (
@@ -143,9 +150,10 @@ function SkillRail(): React.JSX.Element {
             <button
               className="library-item-x"
               title="Delete plugin"
+              aria-label={`Delete ${s.name}`}
               onClick={() => setConfirmDel(s.slug)}
             >
-              ✕
+              <XIcon />
             </button>
             {confirmDel === s.slug && (
               <div className="library-item-confirm">
@@ -277,8 +285,9 @@ function SkillEditor({ slug }: { slug: string }): React.JSX.Element {
               setName('')
             }}
             title="New file (right-click a folder to add inside it)"
+            aria-label="New file"
           >
-            +
+            <PlusIcon />
           </button>
         </div>
         {creating && (
@@ -342,9 +351,10 @@ function SkillEditor({ slug }: { slug: string }): React.JSX.Element {
                 <button
                   className="studio-file-x"
                   title="Delete file"
+                  aria-label={`Delete ${base}`}
                   onClick={() => void removeStudioFile(f.rel)}
                 >
-                  ✕
+                  <XIcon />
                 </button>
               </li>
             )
@@ -456,6 +466,48 @@ function RailIcon(): React.JSX.Element {
     <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden>
       <rect x="1.5" y="2.5" width="13" height="11" rx="2" stroke="currentColor" strokeWidth="1.3" />
       <path d="M6 2.5v11" stroke="currentColor" strokeWidth="1.3" />
+    </svg>
+  )
+}
+
+function PlusIcon(): React.JSX.Element {
+  return (
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden>
+      <path
+        d="M8 3.25v9.5M3.25 8h9.5"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+function XIcon(): React.JSX.Element {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
+      <path
+        d="M4.25 4.25l7.5 7.5M11.75 4.25l-7.5 7.5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+function PluginStudioIcon(): React.JSX.Element {
+  return (
+    <svg width="38" height="38" viewBox="0 0 38 38" fill="none" aria-hidden>
+      <rect x="5" y="6" width="28" height="26" rx="6" stroke="currentColor" strokeWidth="1.7" />
+      <path d="M12 15.5h14M12 22.5h9" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+      <path
+        d="M27 21.5l3 3-3 3"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   )
 }

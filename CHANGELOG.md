@@ -38,6 +38,10 @@ All notable changes to Fabulist are documented here. The format follows
   caret via the app's `--selection` / `--accent` colors instead of the browser defaults.)
 
 ### Changed
+- **Plugin Studio now has a more enterprise-grade visual system.** Its scoped theme trades the
+  old neon/scanline treatment for a restrained graphite palette, sharper navigation states,
+  cleaner editor and assistant-panel chrome, SVG icon controls, and a more polished empty state
+  while leaving the studio workflow unchanged.
 - **Workspace names and dark studio themes.** The app remains **Fabulist**, while the two
   workspaces are now **Markdown Studio** and **Plugin Studio** in the switcher and docs. The
   shared design tokens now define a soft dark Markdown Studio palette, and Plugin Studio
