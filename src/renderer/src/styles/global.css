@@ -2122,11 +2122,10 @@ button.slash-item:hover {
 
 .studio {
   display: grid;
-  /* The sidebar flexes with the window: it's at least the dragged width (or 380px) AND
-     at least 32vw, so it grows as the window does, capped at 60vw. The drag handle still
-     widens it past the auto size (raising --studio-sidebar-w). The editor (1fr) takes the
-     rest. min()/max()/clamp keep one responsive track instead of a pinned px column. */
-  --studio-sidebar-track: clamp(380px, max(var(--studio-sidebar-w, 380px), 32vw), 60vw);
+  /* The sidebar loads at 380px (--studio-sidebar-w) and the drag handle resizes it freely.
+     The clamp only keeps it on-screen: never below 120px (so the handle stays grabbable),
+     never wider than the window minus 220px (so the editor stays visible). */
+  --studio-sidebar-track: clamp(120px, var(--studio-sidebar-w, 380px), calc(100% - 220px));
   grid-template-columns: 240px minmax(0, 1fr) var(--studio-sidebar-track);
   height: 100%;
   background: var(--paper);
@@ -2201,29 +2200,59 @@ body.is-col-resizing .studio {
   min-height: 0;
   display: grid;
   grid-template-columns: 196px minmax(0, 1fr);
+  transition: grid-template-columns 280ms var(--ease-out);
+}
+.studio .studio-main-body.files-closed {
+  grid-template-columns: 0px minmax(0, 1fr);
 }
 
 .studio-files {
+  min-width: 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
   background: var(--surface);
   border-right: 1px solid var(--line-soft);
+  overflow-x: hidden;
   overflow-y: auto;
 }
 .studio-files-head {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  padding: 16px 14px 6px;
+  align-items: center;
+  padding: 14px 14px 8px;
+  color: var(--ink-soft);
 }
-.studio-files-create {
-  padding: 0 12px 8px;
+.studio-files-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 0 8px 8px;
+  border-bottom: 1px solid var(--line-soft);
 }
-.studio-files-create input {
+.studio-file-chevron {
+  flex: none;
+  color: var(--ink-faint);
+  transition: transform 130ms ease;
+}
+.studio-file-chevron.is-collapsed {
+  transform: rotate(-90deg);
+}
+.studio-file-creating {
+  padding: 1px 8px;
+}
+.studio-file-input {
   width: 100%;
-  font-size: 12.5px;
+  padding: 6px 10px;
   font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line-soft);
+  border-radius: 7px;
+  outline: none;
+}
+.studio-file-input:focus {
+  border-color: var(--accent);
 }
 .studio-file-list {
   list-style: none;
@@ -2287,15 +2316,6 @@ body.is-col-resizing .studio {
   font-size: 12px;
   line-height: 1.5;
   color: var(--ink-faint);
-}
-.studio-files-create-where {
-  font-size: 11px;
-  color: var(--ink-faint);
-  padding: 0 2px 4px;
-}
-.studio-files-create-where code {
-  font-family: var(--font-mono);
-  color: var(--ink-soft);
 }
 
 /* right-click context menu in the file tree */
@@ -2551,12 +2571,10 @@ body.is-col-resizing .studio {
   background: var(--accent);
   color: var(--accent-ink);
 }
-.studio .library-create,
-.studio .studio-files-create {
+.studio .library-create {
   padding: 0 12px 10px;
 }
 .studio .library-create input,
-.studio .studio-files-create input,
 .studio .slash-search {
   background: var(--paper);
   border-color: var(--line-soft);
@@ -2580,7 +2598,8 @@ body.is-col-resizing .studio {
   border-color: var(--line-soft);
 }
 .studio .library-item.is-active,
-.studio .studio-file.is-open {
+.studio .studio-file.is-open,
+.studio .studio-file.is-selected {
   background: var(--paper-deeper);
   border-color: var(--line);
 }
@@ -2638,12 +2657,17 @@ body.is-col-resizing .studio {
   gap: 2px;
 }
 .studio .studio-file-dir {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  width: 100%;
+  text-align: left;
   padding: 4px 9px 3px;
   letter-spacing: 0.04em;
 }
 .studio .studio-file-name {
   font-size: 12px;
-  padding: 7px 28px 7px 10px;
+  padding: 7px 28px 7px 22px;
 }
 .studio .ctx-menu,
 .studio .slash-menu {

@@ -9,6 +9,7 @@ import { editorPowerFeatures } from '@/editor/powerEditing'
 import { minimalReplace } from '@/lib/externalMerge'
 import type { SuggestSegment } from '@/lib/suggest'
 import { neonMarkdownHighlight, studioEditorTheme } from './markdownTheme'
+import { subtleLineNumbers } from './studioLineNumbers'
 
 // Remember each file's scroll position across remounts (the editor is keyed by file
 // upstream, so switching files away and back would otherwise start at the top). Keyed by
@@ -91,6 +92,7 @@ export default function StudioCodeEditor({
           lang,
           syntaxHighlighting(neonMarkdownHighlight),
           studioEditorTheme,
+          subtleLineNumbers,
           // Find (⌘F), multi-cursor (⌘D), column select, Tab-to-indent —
           // the same self-contained pack the writing editor uses.
           ...editorPowerFeatures(),

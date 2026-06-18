@@ -47,8 +47,7 @@ export const studioEditorTheme = EditorView.theme(
     '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--accent)' },
     '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection': {
       backgroundColor: 'var(--selection)'
-    },
-    '.cm-gutters': { display: 'none' }
+    }
   },
   { dark: false }
 )

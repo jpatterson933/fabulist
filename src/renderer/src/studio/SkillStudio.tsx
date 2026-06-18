@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import type { PermissionRequest } from '@shared/types'
 import { useStore } from '@/store'
 import { formatMarkdown } from '@/lib/markdown'
@@ -20,6 +20,7 @@ export default function SkillStudio(): React.JSX.Element {
   const railOpen = useStore((s) => s.studioRailOpen)
   const sidebarWidth = useStore((s) => s.studioSidebarWidth)
   const toggleStudioRail = useStore((s) => s.toggleStudioRail)
+  const toggleStudioFiles = useStore((s) => s.toggleStudioFiles)
   const loadStudioSkills = useStore((s) => s.loadStudioSkills)
 
   useEffect(() => {
@@ -42,6 +43,11 @@ export default function SkillStudio(): React.JSX.Element {
             >
               <RailIcon />
             </button>
+            {activeSkill && (
+              <button className="btn-ghost btn-icon" onClick={toggleStudioFiles} title="Toggle files">
+                <FilesIcon />
+              </button>
+            )}
             {activeSkill && <h1>{activeSkill}</h1>}
           </div>
           {activeSkill && (
@@ -188,9 +194,11 @@ function SkillEditor({ slug }: { slug: string }): React.JSX.Element {
   const addStudioFile = useStore((s) => s.addStudioFile)
   const addStudioFolder = useStore((s) => s.addStudioFolder)
   const removeStudioFile = useStore((s) => s.removeStudioFile)
+  const loadStudioFiles = useStore((s) => s.loadStudioFiles)
   const startComment = useStore((s) => s.startComment)
   const respondStudioPermission = useStore((s) => s.respondStudioPermission)
   const reportError = useStore((s) => s.reportError)
+  const filesOpen = useStore((s) => s.studioFilesOpen)
   const [selText, setSelText] = useState('')
 
   // Claude's pending edit to the open file, rendered inline (green/red strike-through)
@@ -231,6 +239,13 @@ function SkillEditor({ slug }: { slug: string }): React.JSX.Element {
   } | null>(null)
   const [creating, setCreating] = useState<{ parentRel: string; kind: 'file' | 'folder' } | null>(null)
   const [name, setName] = useState('')
+  const [selected, setSelected] = useState<{ rel: string; isDir: boolean } | null>(null)
+  const [collapsedDirs, setCollapsedDirs] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    setSelected(null)
+    setCollapsedDirs(new Set())
+  }, [slug])
 
   // the editor's current text selection → a comment draft (Comments tab)
   const onComment = (): void => {
@@ -238,6 +253,37 @@ function SkillEditor({ slug }: { slug: string }): React.JSX.Element {
   }
 
   const parentOf = (rel: string): string => rel.split('/').slice(0, -1).join('/')
+
+  const createParent = (): string =>
+    selected ? (selected.isDir ? selected.rel : parentOf(selected.rel)) : ''
+
+  const isUnderCollapsedDir = (rel: string): boolean => {
+    const segs = rel.split('/')
+    for (let i = 1; i < segs.length; i++) {
+      if (collapsedDirs.has(segs.slice(0, i).join('/'))) return true
+    }
+    return false
+  }
+
+  const toggleDir = (rel: string): void =>
+    setCollapsedDirs((prev) => {
+      const next = new Set(prev)
+      if (!next.delete(rel)) next.add(rel)
+      return next
+    })
+
+  const collapseAllDirs = (): void =>
+    setCollapsedDirs(new Set(files.filter((f) => f.isDir).map((f) => f.rel)))
+
+  const revealDir = (dir: string): void => {
+    if (!dir) return
+    const segs = dir.split('/')
+    setCollapsedDirs((prev) => {
+      const next = new Set(prev)
+      for (let i = 1; i <= segs.length; i++) next.delete(segs.slice(0, i).join('/'))
+      return next
+    })
+  }
 
   const openMenu = (
     e: React.MouseEvent,
@@ -254,8 +300,9 @@ function SkillEditor({ slug }: { slug: string }): React.JSX.Element {
     setMenu({ x, y, parentRel, target })
   }
 
-  const beginCreate = (kind: 'file' | 'folder'): void => {
-    setCreating({ parentRel: menu?.parentRel ?? '', kind })
+  const beginCreate = (kind: 'file' | 'folder', parentRel: string): void => {
+    revealDir(parentRel)
+    setCreating({ parentRel, kind })
     setName('')
     setMenu(null)
   }
@@ -273,92 +320,132 @@ function SkillEditor({ slug }: { slug: string }): React.JSX.Element {
 
   const here = (parentRel: string): string => (parentRel ? ` in ${parentRel}/` : '')
 
+  const cancelCreate = (): void => {
+    setCreating(null)
+    setName('')
+  }
+
+  const creatingDepth = creating?.parentRel ? creating.parentRel.split('/').length : 0
+  const createRow = creating && (
+    <li className="studio-file-creating" style={{ paddingLeft: 8 + creatingDepth * 13 }}>
+      <input
+        autoFocus
+        className="studio-file-input"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        onBlur={cancelCreate}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault()
+            submitCreate()
+          }
+          if (e.key === 'Escape') cancelCreate()
+        }}
+      />
+    </li>
+  )
+
   return (
-    <div className="studio-main-body">
+    <div className={`studio-main-body ${filesOpen ? '' : 'files-closed'}`}>
       <div className="studio-files">
         <div className="studio-files-head">
-          <span className="library-label">Files</span>
+          <FilesSectionIcon />
+        </div>
+        <div className="studio-files-toolbar">
           <button
-            className="library-new"
-            onClick={() => {
-              setCreating({ parentRel: '', kind: 'file' })
-              setName('')
-            }}
-            title="New file (right-click a folder to add inside it)"
+            className="btn-ghost btn-icon"
+            onClick={() => beginCreate('file', createParent())}
+            title="New file"
             aria-label="New file"
           >
-            <PlusIcon />
+            <NewFileIcon />
+          </button>
+          <button
+            className="btn-ghost btn-icon"
+            onClick={() => beginCreate('folder', createParent())}
+            title="New folder"
+            aria-label="New folder"
+          >
+            <NewFolderIcon />
+          </button>
+          <button
+            className="btn-ghost btn-icon"
+            onClick={() => void loadStudioFiles(slug)}
+            title="Refresh files"
+            aria-label="Refresh files"
+          >
+            <RefreshIcon />
+          </button>
+          <button
+            className="btn-ghost btn-icon"
+            onClick={collapseAllDirs}
+            title="Collapse folders"
+            aria-label="Collapse all folders"
+          >
+            <CollapseAllIcon />
           </button>
         </div>
-        {creating && (
-          <div className="studio-files-create">
-            <div className="studio-files-create-where">
-              New {creating.kind} in <code>{creating.parentRel || '/'}</code>
-            </div>
-            <input
-              autoFocus
-              value={name}
-              placeholder={creating.kind === 'folder' ? 'folder name' : 'file name (e.g. reviewer.md)'}
-              onChange={(e) => setName(e.target.value)}
-              // blur dismisses (clicking away cancels); Enter creates, Escape cancels
-              onBlur={() => {
-                setCreating(null)
-                setName('')
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault()
-                  submitCreate()
-                }
-                if (e.key === 'Escape') {
-                  setCreating(null)
-                  setName('')
-                }
-              }}
-            />
-          </div>
-        )}
         <ul className="studio-file-list" onContextMenu={(e) => openMenu(e, '', null)}>
-          {files.length === 0 && (
+          {files.length === 0 && !creating && (
             <li className="studio-file-hint">Right-click here to add a file or folder.</li>
           )}
-          {files.map((f) => {
-            const depth = f.rel.split('/').length - 1
-            const base = f.rel.split('/').pop() ?? f.rel
-            const indent = { paddingLeft: 8 + depth * 13 } as React.CSSProperties
-            if (f.isDir) {
+          {creating?.parentRel === '' && createRow}
+          {files
+            .filter((f) => !isUnderCollapsedDir(f.rel))
+            .map((f) => {
+              const depth = f.rel.split('/').length - 1
+              const base = f.rel.split('/').pop() ?? f.rel
+              const indent = { paddingLeft: 8 + depth * 13 } as React.CSSProperties
+              if (f.isDir) {
+                return (
+                  <Fragment key={f.rel}>
+                    <li
+                      className={`studio-file is-dir ${selected?.rel === f.rel ? 'is-selected' : ''}`}
+                      style={indent}
+                      onContextMenu={(e) => openMenu(e, f.rel, { rel: f.rel, isDir: true })}
+                    >
+                      <button
+                        className="studio-file-dir"
+                        onClick={() => {
+                          setSelected({ rel: f.rel, isDir: true })
+                          toggleDir(f.rel)
+                        }}
+                      >
+                        <Chevron open={!collapsedDirs.has(f.rel)} />
+                        {base}/
+                      </button>
+                    </li>
+                    {creating?.parentRel === f.rel && createRow}
+                  </Fragment>
+                )
+              }
               return (
                 <li
                   key={f.rel}
-                  className="studio-file is-dir"
+                  className={`studio-file ${f.rel === openFilePath ? 'is-open' : ''} ${selected?.rel === f.rel ? 'is-selected' : ''}`}
                   style={indent}
-                  onContextMenu={(e) => openMenu(e, f.rel, { rel: f.rel, isDir: true })}
+                  onContextMenu={(e) => openMenu(e, parentOf(f.rel), { rel: f.rel, isDir: false })}
                 >
-                  <span className="studio-file-dir">{base}/</span>
+                  <button
+                    className="studio-file-name"
+                    onClick={() => {
+                      setSelected({ rel: f.rel, isDir: false })
+                      void openStudioFile(f.rel)
+                    }}
+                  >
+                    {base}
+                  </button>
+                  <button
+                    className="studio-file-x"
+                    title="Delete file"
+                    aria-label={`Delete ${base}`}
+                    onClick={() => void removeStudioFile(f.rel)}
+                  >
+                    <XIcon />
+                  </button>
                 </li>
               )
-            }
-            return (
-              <li
-                key={f.rel}
-                className={`studio-file ${f.rel === openFilePath ? 'is-open' : ''}`}
-                style={indent}
-                onContextMenu={(e) => openMenu(e, parentOf(f.rel), { rel: f.rel, isDir: false })}
-              >
-                <button className="studio-file-name" onClick={() => void openStudioFile(f.rel)}>
-                  {base}
-                </button>
-                <button
-                  className="studio-file-x"
-                  title="Delete file"
-                  aria-label={`Delete ${base}`}
-                  onClick={() => void removeStudioFile(f.rel)}
-                >
-                  <XIcon />
-                </button>
-              </li>
-            )
-          })}
+            })}
         </ul>
         {menu && (
           <>
@@ -371,8 +458,10 @@ function SkillEditor({ slug }: { slug: string }): React.JSX.Element {
               }}
             />
             <div className="ctx-menu" style={{ left: menu.x, top: menu.y }} role="menu">
-              <button onClick={() => beginCreate('file')}>New file{here(menu.parentRel)}</button>
-              <button onClick={() => beginCreate('folder')}>New folder{here(menu.parentRel)}</button>
+              <button onClick={() => beginCreate('file', menu.parentRel)}>New file{here(menu.parentRel)}</button>
+              <button onClick={() => beginCreate('folder', menu.parentRel)}>
+                New folder{here(menu.parentRel)}
+              </button>
               {menu.target && (
                 <button
                   className="danger"
@@ -466,6 +555,115 @@ function RailIcon(): React.JSX.Element {
     <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden>
       <rect x="1.5" y="2.5" width="13" height="11" rx="2" stroke="currentColor" strokeWidth="1.3" />
       <path d="M6 2.5v11" stroke="currentColor" strokeWidth="1.3" />
+    </svg>
+  )
+}
+
+function FilesIcon(): React.JSX.Element {
+  return (
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden>
+      <path
+        d="M3 4h10M3 8h10M3 12h7"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+function FilesSectionIcon(): React.JSX.Element {
+  return (
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden>
+      <path
+        d="M4.5 2.5h5L12.5 5.5V13a.5.5 0 0 1-.5.5H4.5a.5.5 0 0 1-.5-.5V3a.5.5 0 0 1 .5-.5Z"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinejoin="round"
+      />
+      <path d="M9.25 2.5V6h3.25" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function NewFileIcon(): React.JSX.Element {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
+      <path
+        d="M6 2.6h3.8L12.4 5.2V12a1 1 0 0 1-1 1H7"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M9.6 2.6v2.8h2.8" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+      <path d="M3.4 9.4v3.4M1.7 11.1h3.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function NewFolderIcon(): React.JSX.Element {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
+      <path
+        d="M6.4 5h1.2l1.1 1.4h4.3a1 1 0 0 1 1 1V12a1 1 0 0 1-1 1H7"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M3.4 9.4v3.4M1.7 11.1h3.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function RefreshIcon(): React.JSX.Element {
+  return (
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden>
+      <path d="M12.5 8a4.5 4.5 0 1 1-1.3-3.2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      <path
+        d="M12.7 2.8v2.4h-2.4"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function CollapseAllIcon(): React.JSX.Element {
+  return (
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden>
+      <path
+        d="M4.5 7.5 8 4.5l3.5 3"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M4.5 11.5 8 8.5l3.5 3"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function Chevron({ open }: { open: boolean }): React.JSX.Element {
+  return (
+    <svg
+      className={`studio-file-chevron ${open ? '' : 'is-collapsed'}`}
+      width="10"
+      height="10"
+      viewBox="0 0 12 12"
+      fill="none"
+      aria-hidden
+    >
+      <path d="M3 4.5 6 7.5 9 4.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 }

@@ -29,9 +29,8 @@ function addUsage(prev: UsageTotals | undefined, u: RunUsage): UsageTotals {
   }
 }
 
-/** The default (and minimum) sidebar width; users can drag it wider, up to MAX_SIDEBAR. */
+/** The width the sidebar loads at, and the target of double-click-to-reset. */
 export const DEFAULT_SIDEBAR = 380
-const MAX_SIDEBAR = 820
 
 /** Insert-or-replace an assistant item in a transcript by id (pure). */
 function upsertAssistantItem(
@@ -173,6 +172,7 @@ function makeStudioEventReducer(t: StudioEventTarget): (e: AgentEvent) => void {
 export const createSkillStudioSlice: StateCreator<Store, [], [], SkillStudioSlice> = (set, get) => ({
   mode: 'doc',
   studioRailOpen: true,
+  studioFilesOpen: true,
   studioSidebarWidth: DEFAULT_SIDEBAR,
   studioTab: 'chat',
   studioSkills: [],
@@ -209,8 +209,9 @@ export const createSkillStudioSlice: StateCreator<Store, [], [], SkillStudioSlic
 
   toggleStudioRail: () => set({ studioRailOpen: !get().studioRailOpen }),
 
-  setStudioSidebarWidth: (w) =>
-    set({ studioSidebarWidth: Math.max(DEFAULT_SIDEBAR, Math.min(MAX_SIDEBAR, Math.round(w))) }),
+  toggleStudioFiles: () => set({ studioFilesOpen: !get().studioFilesOpen }),
+
+  setStudioSidebarWidth: (w) => set({ studioSidebarWidth: Math.round(w) }),
 
   setStudioTab: (tab) => set({ studioTab: tab }),
 
