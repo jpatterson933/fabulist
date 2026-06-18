@@ -6,6 +6,22 @@ All notable changes to Fabulist are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- **Plugin Studio: the Files panel is now collapsible.** A files toggle sits in the editor
+  header next to the plugins toggle — fold either panel away to give the editor the full width,
+  click again to bring it back. It mirrors the rail's collapse exactly (the same 280ms slide)
+  and, like the rail, opens fresh each launch. The toggle lives in the always-visible header,
+  so a collapsed panel can always be reopened.
+- **Plugin Studio: a Files toolbar with selection-aware create and foldable folders.** The file
+  panel header is now a compact icon, and directly beneath it a toolbar row holds New file, New
+  folder, Refresh, and Collapse-all. Selecting a file or folder sets where new items land — inside
+  the selected folder, alongside the selected file, or at the root when nothing is selected. You
+  name the new item inline — a bare input appears in the tree exactly where it will land, not in a
+  separate header. Folders now expand and collapse like VS Code (click a folder, or Collapse-all to
+  fold them all); the fold and selection state reset each launch.
+- **Plugin Studio: subtle line numbers in the file editor.** The editor now shows a quiet,
+  VS Code-style line-number gutter (muted, no background or border) for referencing a line while
+  you edit. It's one self-contained extension (`src/renderer/src/studio/studioLineNumbers.ts`)
+  added only to the studio editor, so the writing app is untouched.
 - **Agent tool calls are now logged to the server console.** Every tool an agent runs —
   in the writing app, a skill test, or the authoring chat — prints a `[tool] <scope> · …`
   line when it starts and again when it finishes (`✓ ok` / `✗ error`), so you can watch what
@@ -38,6 +54,11 @@ All notable changes to Fabulist are documented here. The format follows
   caret via the app's `--selection` / `--accent` colors instead of the browser defaults.)
 
 ### Changed
+- **Plugin Studio: the chat sidebar resizes freely.** Its left edge previously only let you drag
+  the panel *wider* (it was pinned between 380px and 820px); now you can drag it to any width in
+  either direction. It still loads at a 380px default and double-click still snaps back — the only
+  limits left simply keep it on-screen (the editor never disappears and the drag handle stays
+  grabbable).
 - **Plugin Studio now has a more enterprise-grade visual system.** Its scoped theme trades the
   old neon/scanline treatment for a restrained graphite palette, sharper navigation states,
   cleaner editor and assistant-panel chrome, SVG icon controls, and a more polished empty state

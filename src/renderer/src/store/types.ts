@@ -214,7 +214,9 @@ export interface SkillStudioSlice {
   mode: AppMode
   /** left skill rail open (collapsible, mirrors the library rail) */
   studioRailOpen: boolean
-  /** width (px) of the right sidebar (chat/comments/test) — resizable wider than the default */
+  /** files panel open (collapsible, mirrors the skill rail) */
+  studioFilesOpen: boolean
+  /** width (px) of the right sidebar (chat/comments/test); loads at the default, drag to resize */
   studioSidebarWidth: number
   /** which sidebar tab (chat / comments / test) is showing */
   studioTab: StudioTab
@@ -259,7 +261,8 @@ export interface SkillStudioSlice {
   openStudio: () => Promise<void>
   closeStudio: () => void
   toggleStudioRail: () => void
-  /** set the sidebar width (clamped between the default and a sane max) */
+  toggleStudioFiles: () => void
+  /** set the sidebar width (px); the layout keeps it on-screen */
   setStudioSidebarWidth: (w: number) => void
   setStudioTab: (tab: StudioTab) => void
   loadStudioSkills: () => Promise<void>
