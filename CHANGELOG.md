@@ -89,6 +89,14 @@ All notable changes to Fabulist are documented here. The format follows
   root, so the skill reads its bundled files exactly as it would in a real session. Writes stay
   confined to the sandbox, so a test still can never mutate the skill it's exercising. (The
   "Reading …" line for such a file now shows its full path instead of a `../../../../` tangle.)
+- **Typing in the Plugin Studio test/chat composer no longer lags behind a long transcript.**
+  The composer lives in the same component as the transcript, so every keystroke re-rendered
+  the parent. Because chat bubbles weren't memoized, that re-rendered *every* message and made
+  each one re-parse its Markdown (react-markdown rebuilds a full AST per render) on every key —
+  so after a couple of streamed replies, characters took seconds to appear. `ChatBubble` and
+  `Markdown` are now `React.memo`-wrapped; since the store swaps only the one item that changes,
+  typing (which never touches the store) skips the whole transcript and only the streaming
+  bubble re-renders. Fixes the lag in the Test tab and the authoring Chat alike.
 
 ### Added
 - **Plugin Studio model picker.** Choose the Claude model for a skill — used for both the
