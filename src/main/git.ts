@@ -58,9 +58,14 @@ export interface GitStatusEntry {
   y: string
 }
 
-/** Every changed path under the repo, parsed from `git status --porcelain -z`. */
+/**
+ * Every changed path under the repo, parsed from `git status --porcelain -z`.
+ * `-uall` lists every untracked file individually; without it git collapses a
+ * wholly-untracked directory into one entry, so a brand-new folder of files would
+ * show as a single dir row instead of its contents.
+ */
 export async function status(cwd: string): Promise<GitStatusEntry[]> {
-  const out = await git(cwd, ['status', '--porcelain', '-z'])
+  const out = await git(cwd, ['status', '--porcelain', '-uall', '-z'])
   const parts = out.split('\0')
   const entries: GitStatusEntry[] = []
   for (let i = 0; i < parts.length; i++) {

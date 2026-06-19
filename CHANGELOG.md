@@ -6,6 +6,20 @@ All notable changes to Fabulist are documented here. The format follows
 ## [Unreleased]
 
 ### Fixed
+- **Plugin Studio: the Changes tab now lists every new file, not a collapsed folder.** Git status
+  was read with `git status --porcelain -z`, which collapses a wholly-untracked directory into a
+  single entry — so creating a new plugin (or a new subfolder of files) showed up as one folder row
+  (e.g. `skills/logos-copywriting-agent/`) instead of the files inside it, and those files had no
+  diff. Status is now read with `-uall`, listing each untracked file individually so Changes matches
+  the Files tab and every file gets a real diff.
+- **Plugin Studio: the Files panel sizes to its content instead of a fixed 196px.** Deeply nested
+  file names were truncated (`always-veri…`) because the panel column was hardcoded narrow. It now
+  uses `fit-content` (capped at 420px) so full names are visible without crowding out the editor.
+- **Plugin Studio: the Files tab now lists folders before files at every level.** The file tree
+  was sorted by full path with a single lexicographic compare, which interleaved folders and files
+  alphabetically together (e.g. `.claude-plugin/`, `.gitignore`, `.mcp.json`, `agents/`, `skills/`).
+  Each directory's entries are now sorted folders-first, then files, alphabetically within each
+  group, matching the convention in editors like VS Code.
 - **Plugin Studio: focused text selection no longer turns into a harsh pale-lavender block.** The
   studio editor theme is declared as a light theme (`{ dark: false }`), so CodeMirror's base theme
   painted the *focused* selection with its light-theme default (`#d7d4f0`, pale lavender) via a

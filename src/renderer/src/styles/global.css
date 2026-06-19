@@ -2203,7 +2203,10 @@ body.is-col-resizing .studio {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 196px minmax(0, 1fr);
+  /* The files panel sizes to its content (full file names, no truncation) instead of a
+     fixed width, capped at 420px so a deep tree can't crowd out the editor. The editor
+     takes the rest. */
+  grid-template-columns: fit-content(420px) minmax(0, 1fr);
   transition: grid-template-columns 280ms var(--ease-out);
 }
 .studio .studio-main-body.files-closed {
