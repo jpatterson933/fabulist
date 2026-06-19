@@ -5,6 +5,17 @@ All notable changes to Fabulist are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+- **Plugin Studio: focused text selection no longer turns into a harsh pale-lavender block.** The
+  studio editor theme is declared as a light theme (`{ dark: false }`), so CodeMirror's base theme
+  painted the *focused* selection with its light-theme default (`#d7d4f0`, pale lavender) via a
+  high-specificity selector. The studio theme styled `.cm-selectionBackground` without
+  `!important`, so that default won whenever the editor was focused and the `--selection` color was
+  ignored — hence the high-contrast block on active selection that calmed down only after clicking
+  away. The studio theme now sets the drawn selection layer with `!important` (matching the
+  document editor in `extensions.ts`), so `--selection` applies focused or not. The studio
+  `--selection` color was also softened (lower opacity and saturation) for a calmer wash.
+
 ### Added
 - **Plugin Studio: export a plugin as a .zip.** An Export icon sits in the file panel header
   next to the Changes tab. Clicking it bundles the active plugin's whole folder (`.claude-plugin`,
