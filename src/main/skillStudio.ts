@@ -1,6 +1,8 @@
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
-import { shell } from 'electron'
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
+import { app, shell } from 'electron'
 import {
   MAX_ARCHIVED_TESTS,
   type ArchivedTest,
@@ -369,4 +371,30 @@ export async function deleteFile(slug: string, rel: string): Promise<void> {
 export async function reveal(slug?: string): Promise<void> {
   await ensureStudio()
   await shell.openPath(slug ? pluginPath(slug) : STUDIO_ROOT)
+}
+
+const exec = promisify(execFile)
+
+/**
+ * Bundle a skill's plugin folder into a .zip in the user's Downloads, ready to
+ * drop into a Claude plugin marketplace. Mirrors the hand-rolled build script:
+ * zip the whole plugin (.claude-plugin, skills, agents, .mcp.json, scripts,
+ * README, …) minus the per-skill git repo and macOS cruft, running from inside
+ * the folder so the archived paths are plugin-relative. The output never clobbers
+ * a previous export (a counter disambiguates), and Finder is opened on the result.
+ * Returns the absolute path of the written archive.
+ */
+export async function exportPlugin(slug: string): Promise<string> {
+  const dir = pluginPath(slug)
+  if (!(await exists(dir))) throw new Error(`No such plugin: ${slug}`)
+  const downloads = app.getPath('downloads')
+  let out = path.join(downloads, `${slug}.zip`)
+  for (let n = 1; await exists(out); n++) out = path.join(downloads, `${slug}-${n}.zip`)
+  // -r recurse, -X strip extra file attributes; exclude the git repo + .DS_Store.
+  await exec('zip', ['-r', '-X', out, '.', '-x', '.git/*', '.git/', '*.DS_Store', '*/.DS_Store'], {
+    cwd: dir,
+    maxBuffer: 32 * 1024 * 1024
+  })
+  shell.showItemInFolder(out)
+  return out
 }

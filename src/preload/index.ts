@@ -76,6 +76,7 @@ const api = {
     create: (name: string) => invoke('skillStudio:create', name),
     remove: (slug: string) => invoke('skillStudio:delete', slug),
     reveal: (slug?: string) => invoke('skillStudio:reveal', slug),
+    export: (slug: string) => invoke('skillStudio:export', slug),
     listFiles: (slug: string) => invoke('skillStudio:listFiles', slug),
     listPluginSkills: (slug: string) => invoke('skillStudio:listPluginSkills', slug),
     readFile: (slug: string, rel: string) => invoke('skillStudio:readFile', slug, rel),

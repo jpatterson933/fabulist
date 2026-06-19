@@ -204,7 +204,9 @@ function SkillEditor({ slug }: { slug: string }): React.JSX.Element {
   const panel = useStore((s) => s.studioPanel)
   const setStudioPanel = useStore((s) => s.setStudioPanel)
   const studioDiff = useStore((s) => s.studioDiff)
+  const exportStudioPlugin = useStore((s) => s.exportStudioPlugin)
   const [selText, setSelText] = useState('')
+  const [exporting, setExporting] = useState(false)
 
   // Claude's pending edit to the open file, rendered inline (green/red strike-through)
   // exactly like the document editor; null when nothing is awaiting review for this file
@@ -369,6 +371,22 @@ function SkillEditor({ slug }: { slug: string }): React.JSX.Element {
             aria-label="Changes"
           >
             <ChangesIcon />
+          </button>
+          <button
+            className="studio-files-tab"
+            disabled={exporting}
+            onClick={async () => {
+              setExporting(true)
+              try {
+                await exportStudioPlugin()
+              } finally {
+                setExporting(false)
+              }
+            }}
+            title="Export the plugin as a .zip to Downloads"
+            aria-label="Export plugin"
+          >
+            <ExportIcon />
           </button>
         </div>
         {panel === 'changes' ? (
@@ -608,6 +626,28 @@ function ChangesIcon(): React.JSX.Element {
       <circle cx="11.5" cy="6" r="1.8" stroke="currentColor" strokeWidth="1.3" />
       <path d="M4.5 5.8v4.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
       <path d="M11.5 7.8c0 2.2-1.8 3-3.2 3.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function ExportIcon(): React.JSX.Element {
+  return (
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden>
+      <path d="M8 2.5v7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      <path
+        d="M5.3 5.2 8 2.5l2.7 2.7"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M3.5 9.5v2.5a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1V9.5"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   )
 }

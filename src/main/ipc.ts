@@ -120,6 +120,7 @@ function registerSkillStudio(win: BrowserWindow): void {
   handle('skillStudio:create', (_e, name) => skillStudio.createSkill(name))
   handle('skillStudio:delete', (_e, slug) => skillStudio.deleteSkill(slug))
   handle('skillStudio:reveal', (_e, slug) => skillStudio.reveal(slug))
+  handle('skillStudio:export', (_e, slug) => skillStudio.exportPlugin(slug))
   handle('skillStudio:listFiles', (_e, slug) => skillStudio.listFiles(slug))
   handle('skillStudio:listPluginSkills', (_e, slug) => skillStudio.listPluginSkills(slug))
   handle('skillStudio:readFile', (_e, slug, rel) => skillStudio.readFile(slug, rel))
