@@ -45,8 +45,14 @@ export const studioEditorTheme = EditorView.theme(
       caretColor: 'var(--accent)'
     },
     '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--accent)' },
-    '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection': {
-      backgroundColor: 'var(--selection)'
+    // The visible selection is drawSelection's drawn `.cm-selectionBackground` layer. Because
+    // this theme is declared `{ dark: false }`, CodeMirror's base theme paints the FOCUSED
+    // selection with its light-theme default (#d7d4f0, pale lavender) via a high-specificity
+    // selector (`&light.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground`).
+    // `!important` is what lets `--selection` win over it — same as the document editor
+    // (extensions.ts). Without it, focused selection ignored --selection and went pale/harsh.
+    '&.cm-focused .cm-selectionBackground, .cm-selectionBackground': {
+      backgroundColor: 'var(--selection) !important'
     }
   },
   { dark: false }
