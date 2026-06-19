@@ -69,6 +69,8 @@ export interface InvokeChannels {
   'skillStudio:create': (name: string) => StudioSkill
   'skillStudio:delete': (slug: string) => void
   'skillStudio:reveal': (slug?: string) => void
+  /** bundle the plugin folder into a .zip in Downloads; returns the archive's absolute path */
+  'skillStudio:export': (slug: string) => string
   'skillStudio:listFiles': (slug: string) => StudioFile[]
   /** the skills the plugin ships (name + description) — for the Test tab "/" picker */
   'skillStudio:listPluginSkills': (slug: string) => { name: string; description: string }[]

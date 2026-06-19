@@ -234,6 +234,18 @@ export const createSkillStudioSlice: StateCreator<Store, [], [], SkillStudioSlic
     }
   },
 
+  exportStudioPlugin: async () => {
+    const slug = get().activeSkill
+    if (!slug) return
+    // get the latest open-file edits onto disk before the folder is zipped
+    await get().flushStudioFile()
+    try {
+      await window.fabulist.skillStudio.export(slug)
+    } catch (e) {
+      get().reportError(e, 'Couldn’t export the plugin')
+    }
+  },
+
   createStudioSkill: async (name) => {
     if (!name.trim()) return
     try {

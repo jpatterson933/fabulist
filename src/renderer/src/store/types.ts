@@ -277,6 +277,8 @@ export interface SkillStudioSlice {
   setStudioSidebarWidth: (w: number) => void
   setStudioTab: (tab: StudioTab) => void
   loadStudioSkills: () => Promise<void>
+  /** bundle the active skill's plugin folder into a .zip in Downloads and reveal it in Finder */
+  exportStudioPlugin: () => Promise<void>
   createStudioSkill: (name: string) => Promise<void>
   deleteStudioSkill: (slug: string) => Promise<void>
   openStudioSkill: (slug: string) => Promise<void>

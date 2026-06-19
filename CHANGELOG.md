@@ -6,6 +6,12 @@ All notable changes to Fabulist are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- **Plugin Studio: export a plugin as a .zip.** An Export icon sits in the file panel header
+  next to the Changes tab. Clicking it bundles the active plugin's whole folder (`.claude-plugin`,
+  `skills`, `agents`, `.mcp.json`, `scripts`, `README`, …) into `<slug>.zip` in your Downloads —
+  minus the per-skill git repo and `.DS_Store` cruft — and reveals it in Finder. Re-exporting never
+  overwrites a previous archive (a counter disambiguates), and any unsaved edits in the open file are
+  flushed to disk first so the bundle is current.
 - **Plugin Studio: git-backed version control (Changes / Staged / Commit).** The file panel now has
   Files and Changes tabs at its top. The Changes panel mirrors VS Code's
   Source Control: a collapsible "Changes" section (stage all / discard all, plus per-file stage,
