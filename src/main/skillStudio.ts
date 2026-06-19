@@ -328,8 +328,16 @@ export async function listFiles(slug: string): Promise<StudioFile[]> {
   const out: StudioFile[] = []
   const walk = async (dir: string, depth: number): Promise<void> => {
     if (depth > MAX_DEPTH || out.length > MAX_FILES) return
-    for (const e of await fs.readdir(dir, { withFileTypes: true }).catch(() => [])) {
-      if (SKIP.has(e.name)) continue
+    const entries = (await fs.readdir(dir, { withFileTypes: true }).catch(() => []))
+      .filter((e) => !SKIP.has(e.name))
+      // Folders first, then files; each group alphabetical at this level.
+      .sort((a, b) => {
+        const ad = a.isDirectory()
+        const bd = b.isDirectory()
+        if (ad !== bd) return ad ? -1 : 1
+        return a.name.localeCompare(b.name)
+      })
+    for (const e of entries) {
       const abs = path.join(dir, e.name)
       const rel = path.relative(root, abs).split(path.sep).join('/')
       out.push({ rel, isDir: e.isDirectory() })
@@ -337,7 +345,7 @@ export async function listFiles(slug: string): Promise<StudioFile[]> {
     }
   }
   await walk(root, 0)
-  return out.sort((a, b) => a.rel.localeCompare(b.rel))
+  return out
 }
 
 export async function readFile(slug: string, rel: string): Promise<string> {
