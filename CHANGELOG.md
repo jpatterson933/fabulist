@@ -74,6 +74,39 @@ All notable changes to Fabulist are documented here. The format follows
   caret via the app's `--selection` / `--accent` colors instead of the browser defaults.)
 
 ### Changed
+- **Plugin Studio: `.json` files get an "Auto-format" button too.** The editor's Auto-format
+  affordance — previously `.md`-only — now also appears for `.json`, pretty-printing via the
+  platform's own `JSON.parse`/`stringify` (2-space indent). No new dependency and no bundle
+  weight (deliberately not Prettier's `json` parser, which would pull in ~600KB of plugins).
+  Python is unchanged: there's no zero-dependency formatter for it, and syntax-coloring either
+  file type would need a new CodeMirror language package, so both remain plain (readable)
+  monospace text.
+- **Plugin Studio: the diff view now shows just the changes, wraps lines, and scrolls as one.**
+  Opening a change used to render the entire file with a separate horizontal mini-scrollbar on
+  every line (1,000-line file → 1,000 scrollbars). Now long runs of unchanged context collapse to
+  a "⋯ N unchanged lines" marker (3 lines of context kept around each change), lines wrap by
+  default so there's no horizontal scrolling at all, and when wrapping is off the whole diff gets a
+  single shared horizontal scrollbar with both columns staying aligned. A new app-wide shortcut,
+  **⌥Z**, toggles line-wrapping for both the diff view and the file editor; it defaults to on and
+  resets that way each launch. The diff now also shows line-number gutters (original numbers on the
+  left, new numbers on the right), and the per-row **Open file** button opens the file scrolled to
+  the line you were looking at in the diff — not the top.
+- **Plugin Studio: the authoring chat can now use every tool, not just file edits.** The
+  authoring agent was hard-limited to read-only tools, file edits, and clarifying questions —
+  any command, web fetch, or MCP-server call was denied outright ("Only file edits are available
+  while authoring a skill here"), even though those tools were available to the engine (the test
+  chat could already call them). The authoring gate now auto-runs non-edit tools (Bash, web,
+  connected MCP servers) without a prompt, matching the test chat, so authoring has a real
+  session's reach — e.g. pulling source material from a connected Google Doc while building a
+  skill. The path guard is unchanged: file reads/edits are still confined to the skill's own
+  folder, and edits still surface as approval diffs (or auto-apply when that's on).
+- **Plugin Studio: refreshed file-panel icons, modularized.** The hand-drawn toolbar/tab glyphs
+  are replaced with a crisper VS Code-style set — New file, New folder, Refresh, Collapse-all, the
+  Files / Changes (git-branch) / Export tabs, the files-panel toggle, Open-changes/Open-staged
+  (file-diff), and the per-row Open-file. Every studio icon now lives in one module
+  (`src/renderer/src/studio/icons.tsx`) instead of being defined inline across `SkillStudio`,
+  `StudioChanges`, and `StudioDiff` (the disclosure chevron was triplicated); each paints with
+  `currentColor` so it keeps tracking the dark theme. No behavior changed.
 - **Plugin Studio: the chat sidebar resizes freely.** Its left edge previously only let you drag
   the panel *wider* (it was pinned between 380px and 820px); now you can drag it to any width in
   either direction. It still loads at a 380px default and double-click still snaps back — the only

@@ -161,61 +161,52 @@ describe('studio authoring gate', () => {
     cwd: string,
     tool: string,
     input: Record<string, unknown>,
-    edits: { count: number },
     signal: AbortSignal
-  ) => Promise<{ behavior: string }>
+  ) => Promise<{ behavior: string; updatedInput?: Record<string, unknown> }>
 
   it('auto-applies an edit when auto-apply is on and records it', async () => {
     const { manager, events } = await loadManager(true)
     const authGate = (manager as unknown as { authGate: AuthGate }).authGate.bind(manager)
-    const edits = { count: 0 }
     const result = await authGate(
       'skill',
       cwd,
       'Edit',
       { file_path: 'skills/skill/SKILL.md', old_string: 'a', new_string: 'b' },
-      edits,
       new AbortController().signal
     )
     expect(result.behavior).toBe('allow')
-    expect(edits.count).toBe(1)
     expect(events.some((e) => e.event.kind === 'edit-applied' && e.channel === 'skillStudio:authEvent')).toBe(true)
   })
 
   it('asks before applying an edit when auto-apply is off', async () => {
     const { manager, events } = await loadManager()
     const authGate = (manager as unknown as { authGate: AuthGate }).authGate.bind(manager)
-    const edits = { count: 0 }
     const p = authGate(
       'skill',
       cwd,
       'Edit',
       { file_path: 'skills/skill/SKILL.md', old_string: 'a', new_string: 'b' },
-      edits,
       new AbortController().signal
     )
     await flush()
-    // an approval card was surfaced; the edit has NOT applied or committed yet
+    // an approval card was surfaced; the edit has NOT been recorded as applied yet
     expect(events.some((e) => e.event.kind === 'permission-request')).toBe(true)
-    expect(edits.count).toBe(0)
+    expect(events.some((e) => e.event.kind === 'edit-applied')).toBe(false)
 
     manager.resolvePermission('req', true)
     const result = await p
     expect(result.behavior).toBe('allow')
-    expect(edits.count).toBe(1)
     expect(events.some((e) => e.event.kind === 'edit-applied')).toBe(true)
   })
 
   it('declining an edit denies it and applies nothing', async () => {
     const { manager, events } = await loadManager()
     const authGate = (manager as unknown as { authGate: AuthGate }).authGate.bind(manager)
-    const edits = { count: 0 }
     const p = authGate(
       'skill',
       cwd,
       'Write',
       { file_path: 'skills/skill/SKILL.md', content: 'x' },
-      edits,
       new AbortController().signal
     )
     // the Write payload reads the file before surfacing the card, so a single tick isn't
@@ -225,20 +216,34 @@ describe('studio authoring gate', () => {
     }
     manager.resolvePermission('req', false)
     expect((await p).behavior).toBe('deny')
-    expect(edits.count).toBe(0)
+    expect(events.some((e) => e.event.kind === 'edit-applied')).toBe(false)
   })
 
-  it('still denies non-edit tools like Bash while authoring', async () => {
+  it('auto-allows non-edit tools (Bash, MCP) so authoring matches the test chat', async () => {
     const { manager } = await loadManager()
     const authGate = (manager as unknown as { authGate: AuthGate }).authGate.bind(manager)
-    const result = await authGate(
+    const bash = await authGate('skill', cwd, 'Bash', { command: 'ls' }, new AbortController().signal)
+    expect(bash.behavior).toBe('allow')
+    const mcp = await authGate(
       'skill',
       cwd,
-      'Bash',
-      { command: 'rm -rf /' },
-      { count: 0 },
+      'mcp__claude_ai_AE_Google_MCP__read_doc',
+      { documentId: 'abc' },
       new AbortController().signal
     )
-    expect(result.behavior).toBe('deny')
+    expect(mcp.behavior).toBe('allow')
+  })
+
+  it('still confines file edits to the skill folder', async () => {
+    const { manager } = await loadManager()
+    const authGate = (manager as unknown as { authGate: AuthGate }).authGate.bind(manager)
+    const outside = await authGate(
+      'skill',
+      cwd,
+      'Write',
+      { file_path: path.join(path.sep, 'etc', 'passwd'), content: 'x' },
+      new AbortController().signal
+    )
+    expect(outside.behavior).toBe('deny')
   })
 })

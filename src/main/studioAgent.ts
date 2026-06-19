@@ -48,7 +48,9 @@ state, then make focused edits with Write/Edit. ${
     ? 'Your file edits are applied immediately without review,'
     : 'Every file edit you make is shown to the user as a diff for approval before it is applied,'
 } so make edits confidently but keep them minimal and well-scoped. Briefly say what you changed.
-You can only edit files inside this folder; other tools (e.g. running commands) are unavailable here.`
+File reads and edits stay inside this folder, but the full toolset is available — Bash, web
+fetch/search, and any connected MCP servers — so use them when they help (e.g. pulling source
+material from a connected doc).`
 
 interface ActiveRun {
   abort: AbortController
@@ -367,8 +369,9 @@ export class StudioAgentManager {
    * tools pass; file edits are shown to the user as a diff for approval before they
    * apply, UNLESS auto-apply is on (then they apply immediately for fast iteration);
    * either way an applied edit is recorded as a collapsed diff in chat. A clarifying
-   * AskUserQuestion is surfaced and waited on. The path guard still confines edits to
-   * the skill's own folder, and everything else (e.g. Bash) is denied.
+   * AskUserQuestion is surfaced and waited on. The path guard still confines file reads/
+   * edits to the skill's own folder; everything else (Bash, web, MCP servers) runs without
+   * a prompt, matching the test chat, so the authoring agent has a real session's tool reach.
    */
   private async authGate(
     slug: string,
@@ -403,9 +406,10 @@ export class StudioAgentManager {
       if (approved) return { behavior: 'allow', updatedInput: answers ? { ...input, answers } : input }
       return { behavior: 'deny', message: 'The author skipped the question. Proceed with your best judgment.' }
     }
-    const message = 'Only file edits are available while authoring a skill here.'
-    logToolDenied(`skill-author ${slug}`, tool, message)
-    return { behavior: 'deny', message }
+    // Anything else (Bash, web, MCP servers, …) runs without a prompt — matching the test
+    // chat, so the authoring agent has the same tool reach as a real session. The path
+    // guard above still confines file reads/edits to the skill's own folder.
+    return { behavior: 'allow', updatedInput: input }
   }
 
   private async buildRequest(

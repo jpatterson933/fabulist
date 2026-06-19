@@ -169,10 +169,24 @@ function makeStudioEventReducer(t: StudioEventTarget): (e: AgentEvent) => void {
   }
 }
 
+/**
+ * A zero-width reveal at the start of a 1-based line — the editor scrolls it into view
+ * (centered) without painting a highlight (to === from). Used to land "Open file" on the
+ * spot you were looking at in the diff.
+ */
+function lineReveal(content: string, line: number): { from: number; to: number; seq: number } {
+  const lines = content.split('\n')
+  const target = Math.min(Math.max(line, 1), lines.length)
+  let offset = 0
+  for (let i = 0; i < target - 1; i++) offset += lines[i].length + 1
+  return { from: offset, to: offset, seq: nextSeq() }
+}
+
 export const createSkillStudioSlice: StateCreator<Store, [], [], SkillStudioSlice> = (set, get) => ({
   mode: 'doc',
   studioRailOpen: true,
   studioFilesOpen: true,
+  studioWrap: true,
   studioPanel: 'files',
   studioSidebarWidth: DEFAULT_SIDEBAR,
   studioTab: 'chat',
@@ -214,6 +228,8 @@ export const createSkillStudioSlice: StateCreator<Store, [], [], SkillStudioSlic
   toggleStudioRail: () => set({ studioRailOpen: !get().studioRailOpen }),
 
   toggleStudioFiles: () => set({ studioFilesOpen: !get().studioFilesOpen }),
+
+  toggleStudioWrap: () => set({ studioWrap: !get().studioWrap }),
 
   setStudioPanel: (panel) => {
     // the tabs live inside the panel and only switch views; the header files button
@@ -324,7 +340,7 @@ export const createSkillStudioSlice: StateCreator<Store, [], [], SkillStudioSlic
     }
   },
 
-  openStudioFile: async (rel) => {
+  openStudioFile: async (rel, atLine) => {
     const slug = get().activeSkill
     if (!slug) return
     await get().flushStudioFile()
@@ -332,8 +348,10 @@ export const createSkillStudioSlice: StateCreator<Store, [], [], SkillStudioSlic
       const content = await window.fabulist.skillStudio.readFile(slug, rel)
       // drop any prior "Show in file" highlight so it can't bleed onto the file we're
       // opening (revealStudioEdit sets a fresh one right after, for the right file), and
-      // leave the diff view — opening a file for editing replaces the diff in the viewport
-      set({ openFilePath: rel, fileContent: content, fileDirty: false, studioRevealPos: null, studioDiff: null })
+      // leave the diff view — opening a file for editing replaces the diff in the viewport.
+      // `atLine` (1-based) lands the editor on the line you were viewing in the diff.
+      const studioRevealPos = atLine ? lineReveal(content, atLine) : null
+      set({ openFilePath: rel, fileContent: content, fileDirty: false, studioRevealPos, studioDiff: null })
     } catch (e) {
       get().reportError(e, 'Couldn’t open the file')
     }
