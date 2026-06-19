@@ -224,6 +224,35 @@ export interface StudioFile {
 }
 
 /**
+ * A changed file in the studio's version control, as shown in a Changes/Staged row.
+ * `status` is derived from git: an uncommitted new file is `created`, a content change is
+ * `modified`, a removed file is `deleted`, a moved file is `renamed`. The same file can be
+ * both staged and unstaged at once (git's `MM`), so it may appear in both lists.
+ */
+export interface StudioChange {
+  rel: string
+  status: 'created' | 'modified' | 'deleted' | 'renamed'
+}
+
+/** The studio working copy split into unstaged ("Changes") and staged ("Staged changes"). */
+export interface StudioChanges {
+  changes: StudioChange[]
+  staged: StudioChange[]
+}
+
+/**
+ * The two sides of a file's diff, resolved by git. For a "changes" row, `after` is the
+ * working tree and `before` is the staged copy (else the committed copy); for a "staged"
+ * row, `after` is the staged copy and `before` is the committed copy. A created file has
+ * an empty `before`; a deleted file an empty `after`. `binary` files carry no text.
+ */
+export interface StudioFileDiff {
+  before: string
+  after: string
+  binary: boolean
+}
+
+/**
  * Per-skill Studio settings — the studio analogue of DocSettings. Persisted under
  * .skill-studio/.state/<slug>.json and read by the main process when it launches the
  * authoring or test agent, so the choice survives a restart exactly like the document

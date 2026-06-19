@@ -106,26 +106,33 @@ async function writeMarketplace(): Promise<void> {
   )
 }
 
-/** Create the studio root + marketplace if absent (idempotent). */
+/** Create the studio root + marketplace if absent, and ensure each skill is its own git repo. */
 export async function ensureStudio(): Promise<void> {
-  const fresh = !(await exists(STUDIO_ROOT))
   await fs.mkdir(MARKET_DIR, { recursive: true })
-  await ensureGitignore()
   await writeMarketplace()
-  if (fresh) {
-    await initRepo(STUDIO_ROOT).catch(() => {})
-    await commitAll(STUDIO_ROOT, 'Initialize Plugin Studio').catch(() => {})
-  }
+  await migrateRepos()
 }
 
-/** Keep .DS_Store and the .state/ app-state dir out of git, without clobbering manual edits. */
-async function ensureGitignore(): Promise<void> {
-  const giPath = path.join(STUDIO_ROOT, '.gitignore')
-  const cur = await fs.readFile(giPath, 'utf8').catch(() => '')
-  const lines = cur.split(/\r?\n/)
-  const missing = ['.DS_Store', '.state/'].filter((w) => !lines.includes(w))
-  if (missing.length === 0) return
-  await fs.writeFile(giPath, (cur && !cur.endsWith('\n') ? cur + '\n' : cur) + missing.join('\n') + '\n')
+/**
+ * Version control lives in a git repo PER SKILL (.skill-studio/<slug>/.git), so staging,
+ * diffing, and committing are naturally scoped to one skill. This moves any legacy single
+ * root repo over to that model: drop the root .git, then give every skill its own repo with
+ * a baseline commit. Idempotent — the root teardown is skipped once it's gone, and a skill
+ * that already has its own repo is left alone.
+ */
+async function migrateRepos(): Promise<void> {
+  const rootGit = path.join(STUDIO_ROOT, '.git')
+  if (await exists(rootGit)) await fs.rm(rootGit, { recursive: true, force: true })
+  for (const slug of await listPluginSlugs()) await ensureSkillRepo(slug)
+}
+
+/** Give a skill its own git repo with a baseline commit — the "committed" copy starts here. */
+async function ensureSkillRepo(slug: string): Promise<void> {
+  const dir = pluginPath(slug)
+  if (await exists(path.join(dir, '.git'))) return
+  await initRepo(dir).catch(() => {})
+  await fs.writeFile(path.join(dir, '.gitignore'), '.DS_Store\n').catch(() => {})
+  await commitAll(dir, 'Baseline').catch(() => {})
 }
 
 // --- per-skill app state under .skill-studio/.state/<slug>.json ---
@@ -283,8 +290,8 @@ export async function createSkill(name: string): Promise<StudioSkill> {
   )
   await fs.writeFile(skillMdPath(slug), skillMd(slug, clean))
   await fs.writeFile(path.join(dir, '.mcp.json'), '{\n  "mcpServers": {}\n}\n')
+  await ensureSkillRepo(slug)
   await writeMarketplace()
-  await commitAll(STUDIO_ROOT, `Add skill ${slug}`).catch(() => {})
   return { slug, name: slug, description: clean }
 }
 
@@ -292,7 +299,6 @@ export async function deleteSkill(slug: string): Promise<void> {
   await fs.rm(pluginPath(slug), { recursive: true, force: true })
   await fs.rm(statePath(slug), { force: true }).catch(() => {})
   await writeMarketplace()
-  await commitAll(STUDIO_ROOT, `Remove skill ${slug}`).catch(() => {})
 }
 
 /**
