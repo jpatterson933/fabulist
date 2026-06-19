@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import type { StudioChange } from '@shared/types'
 import { useStore } from '@/store'
+import { Chevron, FileDiff, OpenFile, Discard, Check, Plus, Minus } from '@/studio/icons'
+import { diffTopLine } from '@/studio/StudioDiff'
 
 const NO_CHANGES: StudioChange[] = []
 
@@ -32,7 +34,7 @@ export default function StudioChanges(): React.JSX.Element {
     <div className="studio-changes">
       {staged.length > 0 && (
         <button className="studio-commit" onClick={() => void commitStaged()} title="Commit staged changes">
-          <CheckIcon />
+          <Check width={14} height={14} />
           Commit
         </button>
       )}
@@ -49,10 +51,10 @@ export default function StudioChanges(): React.JSX.Element {
                 title="Open staged changes"
                 onClick={() => openStudioDiff('staged', staged.map((c) => c.rel))}
               >
-                <OpenDiffIcon />
+                <FileDiff width={14} height={14} />
               </ActionButton>
               <ActionButton title="Unstage all changes" onClick={() => void unstageAllChanges()}>
-                <MinusIcon />
+                <Minus width={14} height={14} />
               </ActionButton>
             </>
           }
@@ -75,17 +77,17 @@ export default function StudioChanges(): React.JSX.Element {
               onClick={() => openStudioDiff('changes', changes.map((c) => c.rel))}
               disabled={changes.length === 0}
             >
-              <OpenDiffIcon />
+              <FileDiff width={14} height={14} />
             </ActionButton>
             <ActionButton
               title="Discard all changes"
               onClick={() => setConfirm('*')}
               disabled={changes.length === 0}
             >
-              <DiscardIcon />
+              <Discard width={14} height={14} />
             </ActionButton>
             <ActionButton title="Stage all changes" onClick={() => void stageAllChanges()} disabled={changes.length === 0}>
-              <PlusIcon />
+              <Plus width={14} height={14} />
             </ActionButton>
           </>
         }
@@ -168,14 +170,14 @@ function ChangeRow({
         <ConfirmActions onConfirm={() => void discardChange(change.rel)} onCancel={onCancelDiscard} />
       ) : (
         <>
-          <RowButton title="Open file" onClick={() => void openStudioFile(change.rel)}>
-            <EditIcon />
+          <RowButton title="Open file" onClick={() => void openStudioFile(change.rel, diffTopLine(change.rel))}>
+            <OpenFile width={14} height={14} />
           </RowButton>
           <RowButton title="Discard changes" onClick={onAskDiscard}>
-            <DiscardIcon />
+            <Discard width={14} height={14} />
           </RowButton>
           <RowButton title="Stage changes" onClick={() => void stageChange(change.rel)}>
-            <PlusIcon />
+            <Plus width={14} height={14} />
           </RowButton>
         </>
       )}
@@ -189,11 +191,11 @@ function StagedRow({ change }: { change: StudioChange }): React.JSX.Element {
   const unstageChange = useStore((s) => s.unstageChange)
   return (
     <Row change={change} onOpen={() => openStudioDiff('staged', [change.rel])}>
-      <RowButton title="Open file" onClick={() => void openStudioFile(change.rel)}>
-        <EditIcon />
+      <RowButton title="Open file" onClick={() => void openStudioFile(change.rel, diffTopLine(change.rel))}>
+        <OpenFile width={14} height={14} />
       </RowButton>
       <RowButton title="Unstage changes" onClick={() => void unstageChange(change.rel)}>
-        <MinusIcon />
+        <Minus width={14} height={14} />
       </RowButton>
     </Row>
   )
@@ -299,86 +301,4 @@ const STATUS_GLYPH: Record<StudioChange['status'], string> = {
   modified: 'M',
   deleted: 'D',
   renamed: 'R'
-}
-
-function Chevron({ open }: { open: boolean }): React.JSX.Element {
-  return (
-    <svg
-      className={`studio-file-chevron ${open ? '' : 'is-collapsed'}`}
-      width="10"
-      height="10"
-      viewBox="0 0 12 12"
-      fill="none"
-      aria-hidden
-    >
-      <path d="M3 4.5 6 7.5 9 4.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
-
-function OpenDiffIcon(): React.JSX.Element {
-  return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
-      <rect x="2" y="3" width="5" height="10" rx="1" stroke="currentColor" strokeWidth="1.2" />
-      <rect x="9" y="3" width="5" height="10" rx="1" stroke="currentColor" strokeWidth="1.2" />
-    </svg>
-  )
-}
-
-function EditIcon(): React.JSX.Element {
-  return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
-      <path
-        d="M10.5 3.5l2 2L6 12l-2.5.5L4 10l6.5-6.5Z"
-        stroke="currentColor"
-        strokeWidth="1.2"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
-
-function PlusIcon(): React.JSX.Element {
-  return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
-      <path d="M8 3.5v9M3.5 8h9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
-  )
-}
-
-function MinusIcon(): React.JSX.Element {
-  return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
-      <path d="M3.5 8h9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
-  )
-}
-
-function DiscardIcon(): React.JSX.Element {
-  return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
-      <path d="M5 4.5 3 6.5l2 2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-      <path
-        d="M3 6.5h6.5a3 3 0 0 1 0 6H6"
-        stroke="currentColor"
-        strokeWidth="1.3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
-
-function CheckIcon(): React.JSX.Element {
-  return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
-      <path
-        d="M3.5 8.5 6.5 11.5 12.5 4.5"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
 }

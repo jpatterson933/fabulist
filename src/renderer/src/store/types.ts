@@ -217,6 +217,8 @@ export interface SkillStudioSlice {
   studioRailOpen: boolean
   /** files panel open (collapsible, mirrors the skill rail) */
   studioFilesOpen: boolean
+  /** wrap long lines in the editor + diff view (default on); toggled app-wide with ⌥Z */
+  studioWrap: boolean
   /** which left panel the Files/Changes buttons show */
   studioPanel: 'files' | 'changes'
   /** width (px) of the right sidebar (chat/comments/test); loads at the default, drag to resize */
@@ -271,6 +273,8 @@ export interface SkillStudioSlice {
   closeStudio: () => void
   toggleStudioRail: () => void
   toggleStudioFiles: () => void
+  /** flip line-wrapping for the editor + diff view (⌥Z) */
+  toggleStudioWrap: () => void
   /** show the Files tree or the Changes panel; re-selecting the open panel collapses the column */
   setStudioPanel: (panel: 'files' | 'changes') => void
   /** set the sidebar width (px); the layout keeps it on-screen */
@@ -283,7 +287,7 @@ export interface SkillStudioSlice {
   deleteStudioSkill: (slug: string) => Promise<void>
   openStudioSkill: (slug: string) => Promise<void>
   loadStudioFiles: (slug: string) => Promise<void>
-  openStudioFile: (rel: string) => Promise<void>
+  openStudioFile: (rel: string, atLine?: number) => Promise<void>
   /** show a side-by-side diff of one or more changed files in the main viewport */
   openStudioDiff: (scope: 'changes' | 'staged', rels: string[]) => void
   setFileContent: (text: string) => void

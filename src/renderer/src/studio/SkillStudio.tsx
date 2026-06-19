@@ -1,13 +1,28 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import type { PermissionRequest } from '@shared/types'
 import { useStore } from '@/store'
-import { formatMarkdown } from '@/lib/markdown'
+import { formatForPath } from '@/lib/markdown'
 import { studioInlineEdit } from '@/studio/inlineEdit'
 import WorkspaceSwitcher from '@/studio/WorkspaceSwitcher'
 import StudioSidebar from '@/studio/StudioSidebar'
 import StudioCodeEditor from '@/studio/StudioCodeEditor'
 import StudioChanges from '@/studio/StudioChanges'
 import StudioDiff from '@/studio/StudioDiff'
+import {
+  Rail,
+  FileTypeLightTree,
+  Files,
+  GitBranch,
+  Export,
+  NewFile,
+  NewFolder,
+  Refresh,
+  CollapseAll,
+  Chevron,
+  Plus,
+  Close,
+  PluginStudio
+} from '@/studio/icons'
 
 const NO_PERMISSIONS: PermissionRequest[] = []
 
@@ -23,11 +38,26 @@ export default function SkillStudio(): React.JSX.Element {
   const sidebarWidth = useStore((s) => s.studioSidebarWidth)
   const toggleStudioRail = useStore((s) => s.toggleStudioRail)
   const toggleStudioFiles = useStore((s) => s.toggleStudioFiles)
+  const toggleStudioWrap = useStore((s) => s.toggleStudioWrap)
   const loadStudioSkills = useStore((s) => s.loadStudioSkills)
 
   useEffect(() => {
     void loadStudioSkills()
   }, [loadStudioSkills])
+
+  // ⌥Z flips line-wrapping app-wide for the editor + diff view. `e.code` is keyboard-
+  // layout-independent, so we match the physical Z key rather than the 'Ω' that Option+Z
+  // emits on macOS; preventDefault keeps that character out of any focused input.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.altKey && !e.metaKey && !e.ctrlKey && e.code === 'KeyZ') {
+        e.preventDefault()
+        toggleStudioWrap()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [toggleStudioWrap])
 
   return (
     <div
@@ -43,11 +73,11 @@ export default function SkillStudio(): React.JSX.Element {
               onClick={toggleStudioRail}
               title="Toggle plugins  ⌘\"
             >
-              <RailIcon />
+              <Rail width={15} height={15} />
             </button>
             {activeSkill && (
               <button className="btn-ghost btn-icon" onClick={toggleStudioFiles} title="Toggle files">
-                <FilesIcon />
+                <FileTypeLightTree width={15} height={15} />
               </button>
             )}
             {activeSkill && <h1>{activeSkill}</h1>}
@@ -76,7 +106,7 @@ function StudioEmpty(): React.JSX.Element {
     <div className="studio-empty">
       <div className="empty-state-inner">
         <span className="empty-state-glyph" aria-hidden>
-          <PluginStudioIcon />
+          <PluginStudio />
         </span>
         <h2>Create a production-ready plugin.</h2>
         <p>
@@ -120,7 +150,7 @@ function SkillRail(): React.JSX.Element {
           title="New plugin"
           aria-label="New plugin"
         >
-          <PlusIcon />
+          <Plus width={15} height={15} />
         </button>
       </div>
       {creating && (
@@ -161,7 +191,7 @@ function SkillRail(): React.JSX.Element {
               aria-label={`Delete ${s.name}`}
               onClick={() => setConfirmDel(s.slug)}
             >
-              <XIcon />
+              <Close width={14} height={14} />
             </button>
             {confirmDel === s.slug && (
               <div className="library-item-confirm">
@@ -362,7 +392,7 @@ function SkillEditor({ slug }: { slug: string }): React.JSX.Element {
             title="Files"
             aria-label="Files"
           >
-            <FilesSectionIcon />
+            <Files width={15} height={15} />
           </button>
           <button
             className={`studio-files-tab ${panel === 'changes' ? 'is-active' : ''}`}
@@ -370,7 +400,7 @@ function SkillEditor({ slug }: { slug: string }): React.JSX.Element {
             title="Changes"
             aria-label="Changes"
           >
-            <ChangesIcon />
+            <GitBranch width={15} height={15} />
           </button>
           <button
             className="studio-files-tab"
@@ -386,7 +416,7 @@ function SkillEditor({ slug }: { slug: string }): React.JSX.Element {
             title="Export the plugin as a .zip to Downloads"
             aria-label="Export plugin"
           >
-            <ExportIcon />
+            <Export width={15} height={15} />
           </button>
         </div>
         {panel === 'changes' ? (
@@ -400,7 +430,7 @@ function SkillEditor({ slug }: { slug: string }): React.JSX.Element {
             title="New file"
             aria-label="New file"
           >
-            <NewFileIcon />
+            <NewFile width={16} height={16} />
           </button>
           <button
             className="btn-ghost btn-icon"
@@ -408,7 +438,7 @@ function SkillEditor({ slug }: { slug: string }): React.JSX.Element {
             title="New folder"
             aria-label="New folder"
           >
-            <NewFolderIcon />
+            <NewFolder width={16} height={16} />
           </button>
           <button
             className="btn-ghost btn-icon"
@@ -416,7 +446,7 @@ function SkillEditor({ slug }: { slug: string }): React.JSX.Element {
             title="Refresh files"
             aria-label="Refresh files"
           >
-            <RefreshIcon />
+            <Refresh width={15} height={15} />
           </button>
           <button
             className="btn-ghost btn-icon"
@@ -424,7 +454,7 @@ function SkillEditor({ slug }: { slug: string }): React.JSX.Element {
             title="Collapse folders"
             aria-label="Collapse all folders"
           >
-            <CollapseAllIcon />
+            <CollapseAll width={15} height={15} />
           </button>
         </div>
         <ul className="studio-file-list" onContextMenu={(e) => openMenu(e, '', null)}>
@@ -483,7 +513,7 @@ function SkillEditor({ slug }: { slug: string }): React.JSX.Element {
                     aria-label={`Delete ${base}`}
                     onClick={() => void removeStudioFile(f.rel)}
                   >
-                    <XIcon />
+                    <Close width={14} height={14} />
                   </button>
                 </li>
               )
@@ -560,14 +590,14 @@ function SkillEditor({ slug }: { slug: string }): React.JSX.Element {
                 >
                   Comment
                 </button>
-                {openFilePath.endsWith('.md') && (
+                {(openFilePath.endsWith('.md') || openFilePath.endsWith('.json')) && (
                   <button
                     className="btn-ghost btn-small"
-                    title="Auto-format this Markdown file (Prettier)"
+                    title={`Auto-format this ${openFilePath.endsWith('.json') ? 'JSON' : 'Markdown'} file (Prettier)`}
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => {
-                      formatMarkdown(fileContent)
-                        .then(setFileContent)
+                      formatForPath(openFilePath, fileContent)
+                        ?.then(setFileContent)
                         .catch((e) => reportError(e, 'Couldn’t format the file'))
                     }}
                   >
@@ -593,199 +623,5 @@ function SkillEditor({ slug }: { slug: string }): React.JSX.Element {
         )}
       </div>
     </div>
-  )
-}
-
-function RailIcon(): React.JSX.Element {
-  return (
-    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden>
-      <rect x="1.5" y="2.5" width="13" height="11" rx="2" stroke="currentColor" strokeWidth="1.3" />
-      <path d="M6 2.5v11" stroke="currentColor" strokeWidth="1.3" />
-    </svg>
-  )
-}
-
-function FilesIcon(): React.JSX.Element {
-  return (
-    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden>
-      <path
-        d="M3 4h10M3 8h10M3 12h7"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-      />
-    </svg>
-  )
-}
-
-function ChangesIcon(): React.JSX.Element {
-  return (
-    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden>
-      <circle cx="4.5" cy="4" r="1.8" stroke="currentColor" strokeWidth="1.3" />
-      <circle cx="4.5" cy="12" r="1.8" stroke="currentColor" strokeWidth="1.3" />
-      <circle cx="11.5" cy="6" r="1.8" stroke="currentColor" strokeWidth="1.3" />
-      <path d="M4.5 5.8v4.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-      <path d="M11.5 7.8c0 2.2-1.8 3-3.2 3.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-    </svg>
-  )
-}
-
-function ExportIcon(): React.JSX.Element {
-  return (
-    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden>
-      <path d="M8 2.5v7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-      <path
-        d="M5.3 5.2 8 2.5l2.7 2.7"
-        stroke="currentColor"
-        strokeWidth="1.3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M3.5 9.5v2.5a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1V9.5"
-        stroke="currentColor"
-        strokeWidth="1.3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
-
-function FilesSectionIcon(): React.JSX.Element {
-  return (
-    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden>
-      <path
-        d="M4.5 2.5h5L12.5 5.5V13a.5.5 0 0 1-.5.5H4.5a.5.5 0 0 1-.5-.5V3a.5.5 0 0 1 .5-.5Z"
-        stroke="currentColor"
-        strokeWidth="1.2"
-        strokeLinejoin="round"
-      />
-      <path d="M9.25 2.5V6h3.25" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
-    </svg>
-  )
-}
-
-function NewFileIcon(): React.JSX.Element {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
-      <path
-        d="M6 2.6h3.8L12.4 5.2V12a1 1 0 0 1-1 1H7"
-        stroke="currentColor"
-        strokeWidth="1.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path d="M9.6 2.6v2.8h2.8" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
-      <path d="M3.4 9.4v3.4M1.7 11.1h3.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-    </svg>
-  )
-}
-
-function NewFolderIcon(): React.JSX.Element {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
-      <path
-        d="M6.4 5h1.2l1.1 1.4h4.3a1 1 0 0 1 1 1V12a1 1 0 0 1-1 1H7"
-        stroke="currentColor"
-        strokeWidth="1.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path d="M3.4 9.4v3.4M1.7 11.1h3.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-    </svg>
-  )
-}
-
-function RefreshIcon(): React.JSX.Element {
-  return (
-    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden>
-      <path d="M12.5 8a4.5 4.5 0 1 1-1.3-3.2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-      <path
-        d="M12.7 2.8v2.4h-2.4"
-        stroke="currentColor"
-        strokeWidth="1.3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
-
-function CollapseAllIcon(): React.JSX.Element {
-  return (
-    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden>
-      <path
-        d="M4.5 7.5 8 4.5l3.5 3"
-        stroke="currentColor"
-        strokeWidth="1.3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M4.5 11.5 8 8.5l3.5 3"
-        stroke="currentColor"
-        strokeWidth="1.3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
-
-function Chevron({ open }: { open: boolean }): React.JSX.Element {
-  return (
-    <svg
-      className={`studio-file-chevron ${open ? '' : 'is-collapsed'}`}
-      width="10"
-      height="10"
-      viewBox="0 0 12 12"
-      fill="none"
-      aria-hidden
-    >
-      <path d="M3 4.5 6 7.5 9 4.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
-
-function PlusIcon(): React.JSX.Element {
-  return (
-    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden>
-      <path
-        d="M8 3.25v9.5M3.25 8h9.5"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
-    </svg>
-  )
-}
-
-function XIcon(): React.JSX.Element {
-  return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
-      <path
-        d="M4.25 4.25l7.5 7.5M11.75 4.25l-7.5 7.5"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-    </svg>
-  )
-}
-
-function PluginStudioIcon(): React.JSX.Element {
-  return (
-    <svg width="38" height="38" viewBox="0 0 38 38" fill="none" aria-hidden>
-      <rect x="5" y="6" width="28" height="26" rx="6" stroke="currentColor" strokeWidth="1.7" />
-      <path d="M12 15.5h14M12 22.5h9" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-      <path
-        d="M27 21.5l3 3-3 3"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
   )
 }

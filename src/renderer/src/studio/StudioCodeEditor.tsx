@@ -4,6 +4,7 @@ import { EditorState, Compartment, type Extension } from '@codemirror/state'
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
 import { markdown } from '@codemirror/lang-markdown'
 import { syntaxHighlighting } from '@codemirror/language'
+import { useStore } from '@/store'
 import { setReveal, revealField, setSuggestion, suggestionField, externalChange } from '@/editor/extensions'
 import { editorPowerFeatures } from '@/editor/powerEditing'
 import { minimalReplace } from '@/lib/externalMerge'
@@ -57,6 +58,11 @@ export default function StudioCodeEditor({
 }): React.JSX.Element {
   const host = useRef<HTMLDivElement>(null)
   const view = useRef<EditorView | null>(null)
+  // line-wrapping is an app-wide toggle (⌥Z), reconfigured live via its own compartment
+  const wrap = useStore((s) => s.studioWrap)
+  const wrapComp = useRef(new Compartment()).current
+  const wrapRef = useRef(wrap)
+  wrapRef.current = wrap
   // toggles the buffer read-only while a suggestion is under review (same as the doc editor)
   const editable = useRef(new Compartment()).current
   // keep latest callbacks/props reachable from the (once-created) effects
@@ -88,7 +94,7 @@ export default function StudioCodeEditor({
         extensions: [
           history(),
           keymap.of([...defaultKeymap, ...historyKeymap]),
-          EditorView.lineWrapping,
+          wrapComp.of(wrapRef.current ? EditorView.lineWrapping : []),
           lang,
           syntaxHighlighting(neonMarkdownHighlight),
           studioEditorTheme,
@@ -134,6 +140,11 @@ export default function StudioCodeEditor({
     // value is the initial doc only; later changes flow through the effect below
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [path])
+
+  // live ⌥Z wrap toggle — reconfigure the compartment in place, no editor rebuild
+  useEffect(() => {
+    view.current?.dispatch({ effects: wrapComp.reconfigure(wrap ? EditorView.lineWrapping : []) })
+  }, [wrap, wrapComp])
 
   // external content changes (agent edits, auto-format, reloads) — sync the doc in place.
   // Use a minimal single-span replace, not a whole-doc swap, so CodeMirror maps the scroll

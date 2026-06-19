@@ -2577,25 +2577,47 @@ body.is-col-resizing .studio {
   color: var(--ink-faint);
 }
 .studio-diff {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  /* old-line gutter | removed content | new-line gutter | added content */
+  grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
   font-family: var(--font-mono);
   font-size: 12px;
   line-height: 1.55;
+  /* One horizontal scrollbar for the whole diff when unwrapped — never one per line.
+     overflow-y must be hidden (not visible) so the x-axis can scroll; the grid has no
+     fixed height, so nothing is actually clipped — the viewport above scrolls vertically. */
+  overflow-x: auto;
+  overflow-y: hidden;
 }
-.studio-diff-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1px;
+/* Unwrapped: each content column sizes to its longest line, so the grid overflows its
+   container and scrolls as one unit, with the columns staying aligned across every row. */
+.studio-diff.is-nowrap {
+  grid-template-columns: auto max-content auto max-content;
+}
+/* Line-number gutters — muted, right-aligned, non-selectable so copy skips them. */
+.studio-diff-ln {
+  padding: 0 8px;
+  min-height: 1.55em;
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-faint);
+  background: var(--paper-deeper);
+  border-right: 1px solid var(--line-soft);
+  user-select: none;
 }
 .studio-diff-cell {
   margin: 0;
   padding: 0 10px;
   min-height: 1.55em;
-  white-space: pre;
-  overflow-x: auto;
+  white-space: pre-wrap; /* wrapped is the default */
+  overflow-wrap: anywhere; /* break a long unbroken token rather than overflow */
   color: var(--ink-soft);
   font: inherit;
+}
+.studio-diff.is-nowrap .studio-diff-cell {
+  white-space: pre;
+  overflow-wrap: normal;
 }
 .studio-diff-cell.is-del {
   background: var(--diff-del-bg);
@@ -2607,6 +2629,16 @@ body.is-col-resizing .studio {
 }
 .studio-diff-cell.is-empty {
   background: var(--paper-deeper);
+}
+/* A collapsed run of unchanged lines, spanning both columns. */
+.studio-diff-gap {
+  grid-column: 1 / -1;
+  padding: 3px 12px;
+  font-size: 11px;
+  color: var(--ink-faint);
+  background: var(--paper-deeper);
+  border-top: 1px solid var(--line-soft);
+  border-bottom: 1px solid var(--line-soft);
 }
 
 /* ─── token/cost usage (Plugin Studio) ─── */
