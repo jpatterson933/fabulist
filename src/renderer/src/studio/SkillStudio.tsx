@@ -6,6 +6,8 @@ import { studioInlineEdit } from '@/studio/inlineEdit'
 import WorkspaceSwitcher from '@/studio/WorkspaceSwitcher'
 import StudioSidebar from '@/studio/StudioSidebar'
 import StudioCodeEditor from '@/studio/StudioCodeEditor'
+import StudioChanges from '@/studio/StudioChanges'
+import StudioDiff from '@/studio/StudioDiff'
 
 const NO_PERMISSIONS: PermissionRequest[] = []
 
@@ -199,6 +201,9 @@ function SkillEditor({ slug }: { slug: string }): React.JSX.Element {
   const respondStudioPermission = useStore((s) => s.respondStudioPermission)
   const reportError = useStore((s) => s.reportError)
   const filesOpen = useStore((s) => s.studioFilesOpen)
+  const panel = useStore((s) => s.studioPanel)
+  const setStudioPanel = useStore((s) => s.setStudioPanel)
+  const studioDiff = useStore((s) => s.studioDiff)
   const [selText, setSelText] = useState('')
 
   // Claude's pending edit to the open file, rendered inline (green/red strike-through)
@@ -349,8 +354,27 @@ function SkillEditor({ slug }: { slug: string }): React.JSX.Element {
     <div className={`studio-main-body ${filesOpen ? '' : 'files-closed'}`}>
       <div className="studio-files">
         <div className="studio-files-head">
-          <FilesSectionIcon />
+          <button
+            className={`studio-files-tab ${panel === 'files' ? 'is-active' : ''}`}
+            onClick={() => setStudioPanel('files')}
+            title="Files"
+            aria-label="Files"
+          >
+            <FilesSectionIcon />
+          </button>
+          <button
+            className={`studio-files-tab ${panel === 'changes' ? 'is-active' : ''}`}
+            onClick={() => setStudioPanel('changes')}
+            title="Changes"
+            aria-label="Changes"
+          >
+            <ChangesIcon />
+          </button>
         </div>
+        {panel === 'changes' ? (
+          <StudioChanges />
+        ) : (
+          <>
         <div className="studio-files-toolbar">
           <button
             className="btn-ghost btn-icon"
@@ -477,9 +501,13 @@ function SkillEditor({ slug }: { slug: string }): React.JSX.Element {
             </div>
           </>
         )}
+          </>
+        )}
       </div>
       <div className="studio-editor">
-        {openFilePath ? (
+        {studioDiff ? (
+          <StudioDiff slug={slug} scope={studioDiff.scope} rels={studioDiff.rels} />
+        ) : openFilePath ? (
           <>
             {inline && (
               <div className="suggest-bar">
@@ -568,6 +596,18 @@ function FilesIcon(): React.JSX.Element {
         strokeWidth="1.4"
         strokeLinecap="round"
       />
+    </svg>
+  )
+}
+
+function ChangesIcon(): React.JSX.Element {
+  return (
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden>
+      <circle cx="4.5" cy="4" r="1.8" stroke="currentColor" strokeWidth="1.3" />
+      <circle cx="4.5" cy="12" r="1.8" stroke="currentColor" strokeWidth="1.3" />
+      <circle cx="11.5" cy="6" r="1.8" stroke="currentColor" strokeWidth="1.3" />
+      <path d="M4.5 5.8v4.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      <path d="M11.5 7.8c0 2.2-1.8 3-3.2 3.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
     </svg>
   )
 }

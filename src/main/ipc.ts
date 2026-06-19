@@ -7,6 +7,7 @@ import * as comments from './comments'
 import { agentManager } from './agent'
 import * as skills from './skills'
 import * as skillStudio from './skillStudio'
+import * as studioVcs from './studioVcs'
 import { studioAgent } from './studioAgent'
 import { watchFiles, type DocWatcher } from './docWatcher'
 
@@ -170,6 +171,16 @@ function registerSkillStudio(win: BrowserWindow): void {
     await studioAgent.resetAuth(slug)
     await skillStudio.resetAuthChat(slug)
   })
+
+  handle('skillStudio:changes', (_e, slug) => studioVcs.changes(slug))
+  handle('skillStudio:diff', (_e, slug, rel, scope) => studioVcs.diff(slug, rel, scope))
+  handle('skillStudio:stage', (_e, slug, rel) => studioVcs.stage(slug, rel))
+  handle('skillStudio:stageAll', (_e, slug) => studioVcs.stageEverything(slug))
+  handle('skillStudio:unstage', (_e, slug, rel) => studioVcs.unstage(slug, rel))
+  handle('skillStudio:unstageAll', (_e, slug) => studioVcs.unstageEverything(slug))
+  handle('skillStudio:discard', (_e, slug, rel) => studioVcs.discard(slug, rel))
+  handle('skillStudio:discardAll', (_e, slug) => studioVcs.discardEverything(slug))
+  handle('skillStudio:commit', (_e, slug) => studioVcs.commit(slug))
 
   onSend('skillStudio:permission-response', (_e, requestId, approved, answers) => {
     studioAgent.resolvePermission(requestId, approved, answers)

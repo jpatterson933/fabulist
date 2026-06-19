@@ -449,6 +449,10 @@ input::placeholder {
 .btn-icon:hover {
   color: var(--ink);
 }
+.btn-icon:disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
 
 .workspace-title h1 {
   font-family: var(--font-display);
@@ -2219,8 +2223,24 @@ body.is-col-resizing .studio {
 .studio-files-head {
   display: flex;
   align-items: center;
-  padding: 14px 14px 8px;
-  color: var(--ink-soft);
+  gap: 2px;
+  padding: 8px 8px 4px;
+}
+.studio-files-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 9px;
+  border-radius: 7px;
+  color: var(--ink-faint);
+  transition: all 130ms ease;
+}
+.studio-files-tab:hover {
+  color: var(--ink);
+}
+.studio-files-tab.is-active {
+  color: var(--ink);
+  background: var(--paper-deeper);
 }
 .studio-files-toolbar {
   display: flex;
@@ -2351,6 +2371,242 @@ body.is-col-resizing .studio {
 .ctx-menu button.danger:hover {
   background: var(--bad);
   color: var(--danger-ink);
+}
+
+/* ─── version control panel (Changes / Staged) ─── */
+.studio-changes {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0 16px;
+}
+.studio-commit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin: 6px 10px 10px;
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--accent-ink, #fff);
+  font-size: 12.5px;
+  font-weight: 560;
+  transition: filter 130ms ease;
+}
+.studio-commit:hover {
+  filter: brightness(1.06);
+}
+.studio-changes-section {
+  display: flex;
+  flex-direction: column;
+}
+.studio-changes-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px 4px 10px;
+}
+.studio-changes-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.studio-changes-count {
+  color: var(--ink-faint);
+  font-weight: 500;
+}
+.studio-changes-actions {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+.studio-changes-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 2px 8px 8px;
+}
+.studio-change {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: 7px;
+  transition: background 130ms ease;
+}
+.studio-change:hover {
+  background: var(--paper-deeper);
+}
+.studio-change-main {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  padding: 7px 6px 7px 10px;
+}
+.studio-change-badge {
+  flex: none;
+  width: 15px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+}
+.studio-change-badge.status-created {
+  color: var(--diff-add-ink);
+}
+.studio-change-badge.status-modified {
+  color: var(--accent);
+}
+.studio-change-badge.status-deleted,
+.studio-change-badge.status-renamed {
+  color: var(--diff-del-ink);
+}
+.studio-change-name {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.studio-change-path {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.studio-change-actions {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding-right: 6px;
+  opacity: 0;
+  transition: opacity 130ms ease;
+}
+.studio-change:hover .studio-change-actions {
+  opacity: 1;
+}
+.studio-change-act {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  color: var(--ink-faint);
+  transition: all 130ms ease;
+}
+.studio-change-act:hover {
+  background: var(--paper);
+  color: var(--ink);
+}
+.studio-change-confirm {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-right: 6px;
+}
+.studio-change-confirm button {
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  background: var(--paper);
+}
+.studio-change-confirm button.danger {
+  background: var(--bad);
+  color: var(--danger-ink);
+}
+.studio-change-confirm-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+.studio-changes-empty {
+  padding: 16px 14px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-faint);
+}
+
+/* ─── side-by-side diff viewport (Changes / Staged) ─── */
+.studio-diffview {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px 16px 24px;
+}
+.studio-diff-file {
+  margin-bottom: 16px;
+  border: 1px solid var(--line-soft);
+  border-radius: 9px;
+  overflow: hidden;
+}
+.studio-diff-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 12px;
+  text-align: left;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line-soft);
+}
+.studio-diff-path {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink);
+}
+.studio-diff-note {
+  padding: 12px 14px;
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+.studio-diff {
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.55;
+}
+.studio-diff-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+}
+.studio-diff-cell {
+  margin: 0;
+  padding: 0 10px;
+  min-height: 1.55em;
+  white-space: pre;
+  overflow-x: auto;
+  color: var(--ink-soft);
+  font: inherit;
+}
+.studio-diff-cell.is-del {
+  background: var(--diff-del-bg);
+  color: var(--diff-del-ink);
+}
+.studio-diff-cell.is-add {
+  background: var(--diff-add-bg);
+  color: var(--diff-add-ink);
+}
+.studio-diff-cell.is-empty {
+  background: var(--paper-deeper);
 }
 
 /* ─── token/cost usage (Plugin Studio) ─── */

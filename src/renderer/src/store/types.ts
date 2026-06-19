@@ -9,6 +9,7 @@ import type {
   DocMeta,
   ModelChoice,
   PermissionRequest,
+  StudioChange,
   StudioFile,
   StudioSkill
 } from '@shared/types'
@@ -216,6 +217,8 @@ export interface SkillStudioSlice {
   studioRailOpen: boolean
   /** files panel open (collapsible, mirrors the skill rail) */
   studioFilesOpen: boolean
+  /** which left panel the Files/Changes buttons show */
+  studioPanel: 'files' | 'changes'
   /** width (px) of the right sidebar (chat/comments/test); loads at the default, drag to resize */
   studioSidebarWidth: number
   /** which sidebar tab (chat / comments / test) is showing */
@@ -257,11 +260,19 @@ export interface SkillStudioSlice {
   archivedTests: Record<string, ArchivedTest[]>
   /** opt-in request to scroll to + transiently highlight an applied edit in the file editor */
   studioRevealPos: { from: number; to: number; seq: number } | null
+  /** unstaged working-tree changes for the active skill ("Changes" section) */
+  studioChanges: StudioChange[]
+  /** staged changes for the active skill ("Staged changes" section) */
+  studioStaged: StudioChange[]
+  /** when set, the main viewport shows a diff of these files instead of the editor */
+  studioDiff: { scope: 'changes' | 'staged'; rels: string[] } | null
 
   openStudio: () => Promise<void>
   closeStudio: () => void
   toggleStudioRail: () => void
   toggleStudioFiles: () => void
+  /** show the Files tree or the Changes panel; re-selecting the open panel collapses the column */
+  setStudioPanel: (panel: 'files' | 'changes') => void
   /** set the sidebar width (px); the layout keeps it on-screen */
   setStudioSidebarWidth: (w: number) => void
   setStudioTab: (tab: StudioTab) => void
@@ -271,11 +282,26 @@ export interface SkillStudioSlice {
   openStudioSkill: (slug: string) => Promise<void>
   loadStudioFiles: (slug: string) => Promise<void>
   openStudioFile: (rel: string) => Promise<void>
+  /** show a side-by-side diff of one or more changed files in the main viewport */
+  openStudioDiff: (scope: 'changes' | 'staged', rels: string[]) => void
   setFileContent: (text: string) => void
   flushStudioFile: () => Promise<void>
   addStudioFile: (rel: string) => Promise<void>
   addStudioFolder: (rel: string) => Promise<void>
   removeStudioFile: (rel: string) => Promise<void>
+  /** recompute the Changes/Staged lists from git (after edits, agent runs, or a VCS op) */
+  refreshChanges: () => Promise<void>
+  /** stage one file / everything (working tree → index) */
+  stageChange: (rel: string) => Promise<void>
+  stageAllChanges: () => Promise<void>
+  /** send one file / everything back to Changes (index → working tree); non-destructive */
+  unstageChange: (rel: string) => Promise<void>
+  unstageAllChanges: () => Promise<void>
+  /** discard one file's / all unstaged changes (destructive — the UI confirms first) */
+  discardChange: (rel: string) => Promise<void>
+  discardAllChanges: () => Promise<void>
+  /** commit the staged changes — the only thing that advances the committed copy */
+  commitStaged: () => Promise<void>
   /**
    * Authoring chat: ask Claude to build/refine the skill (it edits the skill's files).
    * With `{ testRef: true }`, the current test thread's transcript is woven into the

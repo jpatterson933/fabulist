@@ -12,7 +12,6 @@ import type { AgentEvent, DisplayOptions, PermissionRequest } from '@shared/type
 import { newId } from './library'
 import { decideTool, isFileEditTool } from './toolPolicy'
 import { describeTool, buildToolPayload } from './toolRegistry'
-import { commitAll } from './git'
 import { parseSdkMessages, type ParsedRun, type SdkMessage } from './sdkStream'
 import { PermissionBroker } from './permissionBroker'
 import { ENGINE_BINARY } from './engineBinary'
@@ -295,7 +294,6 @@ export class StudioAgentManager {
     }
 
     const abort = new AbortController()
-    const edits = { count: 0 }
     async function* input(): AsyncGenerator<SDKUserMessage> {
       yield {
         type: 'user',
@@ -316,7 +314,7 @@ export class StudioAgentManager {
       systemPrompt: { type: 'preset', preset: 'claude_code', append: AUTHOR_APPEND(autoApprove) },
       permissionMode: 'default',
       canUseTool: (tool, ti, { signal }) =>
-        this.authGate(slug, cwd, tool, ti as Record<string, unknown>, edits, signal),
+        this.authGate(slug, cwd, tool, ti as Record<string, unknown>, signal),
       stderr: (line) => {
         if (process.env.FABULIST_DEBUG) console.error('[studio:author]', line)
       }
@@ -347,9 +345,9 @@ export class StudioAgentManager {
       this.authSessions.set(slug, run.sessionId)
       await saveAuthSessionId(slug, run.sessionId).catch(() => {})
     }
-    if (edits.count > 0) {
-      await commitAll(cwd, `Author: ${prompt.replace(/\s+/g, ' ').slice(0, 60)}`).catch(() => {})
-    }
+    // Authoring edits land in the working tree only; they surface as "Changes" for the
+    // user to stage/commit. Nothing here advances the committed copy (HEAD) — only the
+    // studio's explicit Commit does.
     logUsage('skill-author', slug, run)
     this.emitAuth({
       kind: 'result',
@@ -377,7 +375,6 @@ export class StudioAgentManager {
     cwd: string,
     tool: string,
     input: Record<string, unknown>,
-    edits: { count: number },
     signal: AbortSignal
   ): Promise<PermissionResult> {
     const decision = decideTool(cwd, tool, input)
@@ -398,7 +395,6 @@ export class StudioAgentManager {
       // approved edits leave the same collapsed diff card in chat that auto-applied
       // ones do — the record shouldn't depend on the mode
       this.emitAuth({ kind: 'edit-applied', docId: slug, request })
-      edits.count++
       return { behavior: 'allow', updatedInput: input }
     }
     if (tool === 'AskUserQuestion') {

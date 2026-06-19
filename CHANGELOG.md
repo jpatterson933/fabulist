@@ -6,6 +6,20 @@ All notable changes to Fabulist are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- **Plugin Studio: git-backed version control (Changes / Staged / Commit).** The file panel now has
+  Files and Changes tabs at its top. The Changes panel mirrors VS Code's
+  Source Control: a collapsible "Changes" section (stage all / discard all, plus per-file stage,
+  discard, and open) and a "Staged changes" section (unstage all, per-file unstage), with a Commit
+  button that writes the committed copy. Clicking a row — or "Open changes" / "Open staged" — shows a
+  side-by-side diff (removals soft-red on the left, additions soft-green on the right) in the main
+  viewport, one collapsible header per file; it's a separate component that doesn't touch the editor's
+  Claude inline-suggestion view. Each skill is its own local git repo
+  (`.skill-studio/<slug>/`): the working tree is "Changes", the index is "Staged", and the last
+  commit is the safe copy — nothing is pushed anywhere. Discard is destructive and confirms first;
+  unstage just moves changes back down. The authoring agent no longer auto-commits — its edits show
+  up as Changes for you to stage and commit yourself. Existing skills are migrated to per-skill repos
+  on first launch. The whole feature is self-contained (`src/main/studioVcs.ts`,
+  `src/renderer/src/studio/StudioChanges.tsx`) and the writing app is untouched.
 - **Plugin Studio: the Files panel is now collapsible.** A files toggle sits in the editor
   header next to the plugins toggle — fold either panel away to give the editor the full width,
   click again to bring it back. It mirrors the rail's collapse exactly (the same 280ms slide)

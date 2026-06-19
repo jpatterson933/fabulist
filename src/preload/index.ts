@@ -103,6 +103,16 @@ const api = {
     authBusy: (slug: string) => invoke('skillStudio:authBusy', slug),
     resetAuth: (slug: string) => invoke('skillStudio:resetAuth', slug),
     onAuthEvent: (cb: (event: AgentEvent) => void) => subscribe('skillStudio:authEvent', cb),
+    changes: (slug: string) => invoke('skillStudio:changes', slug),
+    diff: (slug: string, rel: string, scope: 'changes' | 'staged') =>
+      invoke('skillStudio:diff', slug, rel, scope),
+    stage: (slug: string, rel: string) => invoke('skillStudio:stage', slug, rel),
+    stageAll: (slug: string) => invoke('skillStudio:stageAll', slug),
+    unstage: (slug: string, rel: string) => invoke('skillStudio:unstage', slug, rel),
+    unstageAll: (slug: string) => invoke('skillStudio:unstageAll', slug),
+    discard: (slug: string, rel: string) => invoke('skillStudio:discard', slug, rel),
+    discardAll: (slug: string) => invoke('skillStudio:discardAll', slug),
+    commit: (slug: string) => invoke('skillStudio:commit', slug),
     respondPermission: (requestId: string, approved: boolean, answers?: Record<string, string>): void => {
       ipcRenderer.send('skillStudio:permission-response', requestId, approved, answers)
     }

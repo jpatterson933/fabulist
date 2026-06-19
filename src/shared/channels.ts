@@ -20,7 +20,9 @@ import type {
   ModelChoice,
   SendOptions,
   SkillMeta,
+  StudioChanges,
   StudioFile,
+  StudioFileDiff,
   StudioSettings,
   StudioSettingKey,
   StudioSkill
@@ -113,6 +115,20 @@ export interface InvokeChannels {
   'skillStudio:authBusy': (slug: string) => boolean
   /** start a fresh authoring conversation: clears the transcript + rotates the SDK resume session, leaving the skill's files intact */
   'skillStudio:resetAuth': (slug: string) => void
+
+  // Version control — git-backed, one repo per skill: working tree = Changes,
+  // index = Staged, HEAD = the committed copy. Every op is scoped to the active skill.
+  'skillStudio:changes': (slug: string) => StudioChanges
+  /** before/after text for one file's diff, in the Changes or Staged scope */
+  'skillStudio:diff': (slug: string, rel: string, scope: 'changes' | 'staged') => StudioFileDiff
+  'skillStudio:stage': (slug: string, rel: string) => void
+  'skillStudio:stageAll': (slug: string) => void
+  'skillStudio:unstage': (slug: string, rel: string) => void
+  'skillStudio:unstageAll': (slug: string) => void
+  'skillStudio:discard': (slug: string, rel: string) => void
+  'skillStudio:discardAll': (slug: string) => void
+  /** commit the staged index; returns false when nothing is staged */
+  'skillStudio:commit': (slug: string) => boolean
 
   'history:log': (id: string) => CommitInfo[]
   'history:show': (id: string, rev: string) => string

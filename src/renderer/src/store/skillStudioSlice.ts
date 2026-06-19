@@ -173,6 +173,7 @@ export const createSkillStudioSlice: StateCreator<Store, [], [], SkillStudioSlic
   mode: 'doc',
   studioRailOpen: true,
   studioFilesOpen: true,
+  studioPanel: 'files',
   studioSidebarWidth: DEFAULT_SIDEBAR,
   studioTab: 'chat',
   studioSkills: [],
@@ -196,6 +197,9 @@ export const createSkillStudioSlice: StateCreator<Store, [], [], SkillStudioSlic
   testVersion: {},
   archivedTests: {},
   studioRevealPos: null,
+  studioChanges: [],
+  studioStaged: [],
+  studioDiff: null,
 
   openStudio: async () => {
     set({ mode: 'skillStudio' })
@@ -210,6 +214,13 @@ export const createSkillStudioSlice: StateCreator<Store, [], [], SkillStudioSlic
   toggleStudioRail: () => set({ studioRailOpen: !get().studioRailOpen }),
 
   toggleStudioFiles: () => set({ studioFilesOpen: !get().studioFilesOpen }),
+
+  setStudioPanel: (panel) => {
+    // the tabs live inside the panel and only switch views; the header files button
+    // owns show/hide, so selecting a tab always leaves the panel open
+    set({ studioPanel: panel, studioFilesOpen: true })
+    if (panel === 'changes') void get().refreshChanges()
+  },
 
   setStudioSidebarWidth: (w) => set({ studioSidebarWidth: Math.round(w) }),
 
@@ -238,7 +249,15 @@ export const createSkillStudioSlice: StateCreator<Store, [], [], SkillStudioSlic
     try {
       await window.fabulist.skillStudio.remove(slug)
       if (get().activeSkill === slug) {
-        set({ activeSkill: null, studioFiles: [], openFilePath: null, fileContent: '', fileDirty: false })
+        set({
+          activeSkill: null,
+          studioFiles: [],
+          openFilePath: null,
+          fileContent: '',
+          fileDirty: false,
+          studioChanges: [],
+          studioStaged: []
+        })
       }
       await get().loadStudioSkills()
     } catch (e) {
@@ -248,13 +267,23 @@ export const createSkillStudioSlice: StateCreator<Store, [], [], SkillStudioSlic
 
   openStudioSkill: async (slug) => {
     await get().flushStudioFile()
-    set({ activeSkill: slug, openFilePath: null, fileContent: '', fileDirty: false, studioDraft: null })
+    set({
+      activeSkill: slug,
+      openFilePath: null,
+      fileContent: '',
+      fileDirty: false,
+      studioDraft: null,
+      studioChanges: [],
+      studioStaged: [],
+      studioDiff: null
+    })
     // load this skill's persisted model + auto-apply (mirrors the doc app's loadSettings)
     const settings = await window.fabulist.skillStudio
       .getSettings(slug)
       .catch(() => ({ model: '', autoApprove: false }))
     set({ studioModel: settings.model, studioAutoApprove: settings.autoApprove })
     await get().loadStudioFiles(slug)
+    void get().refreshChanges()
     // Restore persisted transcripts the first time a skill is opened this session, so
     // they survive an app restart. Re-opening keeps the in-memory threads (which may
     // hold a live background run) rather than clobbering them with the last-saved copy.
@@ -290,11 +319,17 @@ export const createSkillStudioSlice: StateCreator<Store, [], [], SkillStudioSlic
     try {
       const content = await window.fabulist.skillStudio.readFile(slug, rel)
       // drop any prior "Show in file" highlight so it can't bleed onto the file we're
-      // opening (revealStudioEdit sets a fresh one right after, for the right file)
-      set({ openFilePath: rel, fileContent: content, fileDirty: false, studioRevealPos: null })
+      // opening (revealStudioEdit sets a fresh one right after, for the right file), and
+      // leave the diff view — opening a file for editing replaces the diff in the viewport
+      set({ openFilePath: rel, fileContent: content, fileDirty: false, studioRevealPos: null, studioDiff: null })
     } catch (e) {
       get().reportError(e, 'Couldn’t open the file')
     }
+  },
+
+  openStudioDiff: (scope, rels) => {
+    if (rels.length === 0) return
+    set({ studioDiff: { scope, rels } })
   },
 
   setFileContent: (text) => {
@@ -306,7 +341,10 @@ export const createSkillStudioSlice: StateCreator<Store, [], [], SkillStudioSlic
       fileTimer = null
       window.fabulist.skillStudio
         .writeFile(activeSkill, openFilePath, get().fileContent)
-        .then(() => set({ fileDirty: false }))
+        .then(() => {
+          set({ fileDirty: false })
+          void get().refreshChanges()
+        })
         .catch((e) => get().reportError(e, 'Couldn’t save the file'))
     }, 400)
   },
@@ -320,7 +358,10 @@ export const createSkillStudioSlice: StateCreator<Store, [], [], SkillStudioSlic
     }
     await window.fabulist.skillStudio
       .writeFile(activeSkill, openFilePath, get().fileContent)
-      .then(() => set({ fileDirty: false }))
+      .then(() => {
+        set({ fileDirty: false })
+        void get().refreshChanges()
+      })
       .catch((e) => get().reportError(e, 'Couldn’t save the file'))
   },
 
@@ -331,6 +372,7 @@ export const createSkillStudioSlice: StateCreator<Store, [], [], SkillStudioSlic
       await window.fabulist.skillStudio.createFile(slug, rel.trim())
       await get().loadStudioFiles(slug)
       await get().openStudioFile(rel.trim())
+      void get().refreshChanges()
     } catch (e) {
       get().reportError(e, 'Couldn’t create the file')
     }
@@ -364,8 +406,132 @@ export const createSkillStudioSlice: StateCreator<Store, [], [], SkillStudioSlic
         set({ openFilePath: null, fileContent: '', fileDirty: false })
       }
       await get().loadStudioFiles(slug)
+      void get().refreshChanges()
     } catch (e) {
       get().reportError(e, 'Couldn’t delete the file')
+    }
+  },
+
+  // --- version control: working tree = Changes, index = Staged, HEAD = committed ---
+
+  refreshChanges: async () => {
+    const slug = get().activeSkill
+    if (!slug) return
+    try {
+      const { changes, staged } = await window.fabulist.skillStudio.changes(slug)
+      // only apply if we're still on the same skill (the read is async)
+      if (get().activeSkill === slug) set({ studioChanges: changes, studioStaged: staged })
+    } catch {
+      // a skill mid-migration may not have its repo yet; leave the lists as they are
+    }
+  },
+
+  stageChange: async (rel) => {
+    const slug = get().activeSkill
+    if (!slug) return
+    await get().flushStudioFile()
+    try {
+      await window.fabulist.skillStudio.stage(slug, rel)
+      await get().refreshChanges()
+    } catch (e) {
+      get().reportError(e, 'Couldn’t stage the change')
+    }
+  },
+
+  stageAllChanges: async () => {
+    const slug = get().activeSkill
+    if (!slug) return
+    await get().flushStudioFile()
+    try {
+      await window.fabulist.skillStudio.stageAll(slug)
+      await get().refreshChanges()
+    } catch (e) {
+      get().reportError(e, 'Couldn’t stage the changes')
+    }
+  },
+
+  unstageChange: async (rel) => {
+    const slug = get().activeSkill
+    if (!slug) return
+    try {
+      await window.fabulist.skillStudio.unstage(slug, rel)
+      await get().refreshChanges()
+    } catch (e) {
+      get().reportError(e, 'Couldn’t unstage the change')
+    }
+  },
+
+  unstageAllChanges: async () => {
+    const slug = get().activeSkill
+    if (!slug) return
+    try {
+      await window.fabulist.skillStudio.unstageAll(slug)
+      await get().refreshChanges()
+    } catch (e) {
+      get().reportError(e, 'Couldn’t unstage the changes')
+    }
+  },
+
+  discardChange: async (rel) => {
+    const slug = get().activeSkill
+    if (!slug) return
+    // discarding the open file throws away its unsaved buffer too — drop it, and cancel
+    // the pending autosave so it can't re-write the file right after the discard
+    if (get().openFilePath === rel) {
+      if (fileTimer) {
+        clearTimeout(fileTimer)
+        fileTimer = null
+      }
+      set({ fileDirty: false })
+    } else {
+      await get().flushStudioFile()
+    }
+    try {
+      await window.fabulist.skillStudio.discard(slug, rel)
+      await get().loadStudioFiles(slug)
+      await get().refreshChanges()
+      // the file on disk just changed under the editor — reload it, or drop the buffer
+      // if the discard removed it (a discarded created file)
+      const open = get().openFilePath
+      if (open) {
+        if (get().studioFiles.some((f) => f.rel === open)) await get().openStudioFile(open)
+        else set({ openFilePath: null, fileContent: '', fileDirty: false })
+      }
+    } catch (e) {
+      get().reportError(e, 'Couldn’t discard the change')
+    }
+  },
+
+  discardAllChanges: async () => {
+    const slug = get().activeSkill
+    if (!slug) return
+    if (fileTimer) {
+      clearTimeout(fileTimer)
+      fileTimer = null
+    }
+    set({ fileDirty: false })
+    try {
+      await window.fabulist.skillStudio.discardAll(slug)
+      await get().loadStudioFiles(slug)
+      await get().refreshChanges()
+      const open = get().openFilePath
+      if (open) {
+        if (get().studioFiles.some((f) => f.rel === open)) await get().openStudioFile(open)
+        else set({ openFilePath: null, fileContent: '', fileDirty: false })
+      }
+    } catch (e) {
+      get().reportError(e, 'Couldn’t discard the changes')
+    }
+  },
+
+  commitStaged: async () => {
+    const slug = get().activeSkill
+    if (!slug) return
+    try {
+      await window.fabulist.skillStudio.commit(slug)
+      await get().refreshChanges()
+    } catch (e) {
+      get().reportError(e, 'Couldn’t commit the changes')
     }
   },
 
@@ -486,6 +652,7 @@ export const createSkillStudioSlice: StateCreator<Store, [], [], SkillStudioSlic
     onResult: (slug) => {
       if (get().activeSkill !== slug) return
       void get().loadStudioFiles(slug)
+      void get().refreshChanges()
       const open = get().openFilePath
       if (open && !get().fileDirty) {
         window.fabulist.skillStudio
