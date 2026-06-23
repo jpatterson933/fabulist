@@ -14,6 +14,10 @@ All notable changes to Fabulist are documented here. The format follows
   of blanking out during the async load.
 
 ### Changed
+- **Commenting now goes straight to the conversation.** The separate Comments sidebar tab is
+  gone. Highlighting a passage and clicking "Comment" opens a small composer right at the
+  selection; your note and the quoted passage are sent into the open Claude conversation,
+  where the reply appears — instead of living in a parallel comment thread.
 - The right-hand sidebar now slides open and closed with the same animation as the library
   rail, instead of popping in and out abruptly. It stays mounted and collapses via an
   animated grid column.

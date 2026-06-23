@@ -85,8 +85,8 @@ export default function ChatPanel({ docId }: { docId: string }): React.JSX.Eleme
               Ask for a read-through, a rewrite, research, or a sharper opening line.
             </p>
             <p className="chat-empty-hint">
-              Or highlight any passage and comment on it — Claude reads every comment and
-              replies in the thread.
+              Or highlight any passage and comment on it — the passage and your note go
+              straight into this conversation.
             </p>
           </div>
         )}

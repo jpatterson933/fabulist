@@ -3,7 +3,6 @@ import { EditorView } from '@codemirror/view'
 import { EditorState, Compartment } from '@codemirror/state'
 import { FONT_CHOICES } from '@shared/types'
 import { useStore } from '@/store'
-import { makeAnchor } from '@/lib/anchors'
 import { computeSuggestion } from '@/lib/suggest'
 import {
   baseExtensions,
@@ -25,8 +24,12 @@ export default function Editor({ docId }: { docId: string }): React.JSX.Element 
   const hostRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
   const [selection, setSelection] = useState<SelectionInfo | null>(null)
+  const [composer, setComposer] = useState<{ left: number; top: number; quote: string } | null>(null)
+  const [composerText, setComposerText] = useState('')
+  const composerRef = useRef<HTMLTextAreaElement>(null)
   const selTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const editable = useRef(new Compartment()).current
+  const askClaude = useStore((s) => s.askClaude)
 
   const external = useStore((s) => s.external)
   const threads = useStore((s) => s.threads)
@@ -199,12 +202,36 @@ export default function Editor({ docId }: { docId: string }): React.JSX.Element 
     view.dispatch({ effects: EditorView.scrollIntoView(t.anchor.from, { y: 'center' }) })
   }, [scrollTo])
 
+  // commenting on a passage opens a small composer that sends the passage and
+  // the note straight into the open agent thread — there is no comments sidebar
   const onComment = (): void => {
     if (!selection) return
     const content = useStore.getState().content
-    useStore.getState().startDraftComment(makeAnchor(content, selection.from, selection.to))
+    setComposer({
+      left: selection.left,
+      top: selection.top,
+      quote: content.slice(selection.from, selection.to)
+    })
+    setComposerText('')
     setSelection(null)
   }
+
+  const submitComposer = (): void => {
+    if (!composer || !composerText.trim()) return
+    askClaude(composerText.trim(), { quote: composer.quote })
+    setComposer(null)
+    setComposerText('')
+  }
+
+  const cancelComposer = (): void => {
+    setComposer(null)
+    setComposerText('')
+  }
+
+  // focus the composer textarea as it opens
+  useEffect(() => {
+    if (composer) composerRef.current?.focus()
+  }, [composer])
 
   const font = useStore((s) => s.font)
   const fontStack = (FONT_CHOICES.find((f) => f.value === font) ?? FONT_CHOICES[0]).stack
@@ -237,18 +264,60 @@ export default function Editor({ docId }: { docId: string }): React.JSX.Element 
           </button>
         </div>
       )}
-      {selection && !suggestion && (
+      {selection && !composer && !suggestion && (
         <div
           className="selection-toolbar"
           style={{ left: selection.left, top: Math.max(8, selection.top - 46) }}
         >
-          <button onClick={onComment} title="Comment — Claude reads every comment and replies in the thread">
+          <button onClick={onComment} title="Comment — sends this passage and your note to Claude">
             <MarkIcon /> Comment
           </button>
         </div>
       )}
+      {composer && !suggestion && (
+        <div
+          className="selection-composer"
+          style={{ left: composer.left, top: Math.max(8, composer.top - 8) }}
+        >
+          <div className="selection-composer-quote">{truncate(composer.quote, 120)}</div>
+          <textarea
+            ref={composerRef}
+            rows={Math.min(5, Math.max(2, composerText.split('\n').length))}
+            value={composerText}
+            placeholder="Say something about this passage…"
+            onChange={(e) => setComposerText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                submitComposer()
+              } else if (e.key === 'Escape') {
+                e.preventDefault()
+                cancelComposer()
+              }
+            }}
+          />
+          <div className="selection-composer-actions">
+            <button className="btn-ghost btn-small" onClick={cancelComposer}>
+              Cancel
+            </button>
+            <button
+              className="chat-send"
+              onClick={submitComposer}
+              disabled={!composerText.trim()}
+              title="Send to Claude  ⏎"
+            >
+              ↑
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
+}
+
+function truncate(s: string, n: number): string {
+  const clean = s.replace(/\s+/g, ' ').trim()
+  return clean.length > n ? clean.slice(0, n) + '…' : clean
 }
 
 function MarkIcon(): React.JSX.Element {

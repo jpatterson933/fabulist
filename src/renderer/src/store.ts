@@ -387,8 +387,6 @@ export const useStore = create<FabulistStore>((set, get) => ({
   jumpToThread: (threadId) => {
     set({
       activeThreadId: threadId,
-      tab: 'comments',
-      sidebarOpen: true,
       scrollTo: { threadId, seq: extSeq++ }
     })
   },
