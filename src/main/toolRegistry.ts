@@ -17,7 +17,7 @@ export interface ToolBuildCtx {
 }
 
 export interface ToolSpec {
-  /** read = auto-allow; edit = file mutation (diff + auto-approve eligible); ask = always prompt */
+  /** read = auto-allow; edit = local file mutation (auto-apply eligible); ask = always prompt */
   policy: 'read' | 'edit' | 'ask'
   /** which input field carries the target path, for escape-checking and diffs */
   pathField?: 'file_path' | 'notebook_path' | 'path'

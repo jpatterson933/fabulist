@@ -21,7 +21,8 @@ interface PluginSkill {
  * (its skills and sub-agents spin up with it), and the transcript streams here. Type "/" to
  * invoke a specific skill — the model gets a "use the <name> skill" directive, the
  * same way a user would call it, and the skill drives what it reads from there. If the
- * skill asks the user a question, it surfaces here as a card to answer (not auto-skipped).
+ * skill asks the user a question, or runs a Bash command / MCP call / sandbox file write,
+ * it surfaces here as an approval card (not auto-run).
  */
 export default function TestThread({ slug }: { slug: string }): React.JSX.Element {
   const chat = useStore(selectTestChat(slug))

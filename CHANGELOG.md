@@ -6,6 +6,20 @@ All notable changes to Fabulist are documented here. The format follows
 ## [Unreleased]
 
 ### Fixed
+- **Auto-apply now applies only to local file edits.** The document and Plugin Studio
+  authoring gates consult the auto-apply setting exclusively for Write/Edit/MultiEdit
+  (and similar) against project files. Bash, MCP, questions, and every other tool still
+  surfaces an approval card even when auto-apply is on. The document gate also no longer
+  records a non-edit approval as an applied edit in chat.
+- **AskUserQuestion cards now include a free-text field when the options don't fit.**
+  Every question in an approval card (document chat, Plugin Studio authoring, and test
+  threads) shows an "Or type your own answer…" input below the choices. Typed answers
+  replace a selected option for that question and travel back to the agent the same way.
+- **Plugin Studio: Bash, MCP, and other destructive tool calls now require approval.**
+  Both the authoring chat and the test thread had been auto-allowing anything
+  `decideTool` marked as `ask` (commands, MCP connectors, sandbox file writes) without
+  surfacing an approval card — only file edits and `AskUserQuestion` waited on the user.
+  Those tools now show the same approval cards as the document app before they run.
 - **Plugin Studio: the Changes tab now lists every new file, not a collapsed folder.** Git status
   was read with `git status --porcelain -z`, which collapses a wholly-untracked directory into a
   single entry — so creating a new plugin (or a new subfolder of files) showed up as one folder row

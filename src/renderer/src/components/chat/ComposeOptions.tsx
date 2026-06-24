@@ -53,7 +53,7 @@ export function AutoApproveToggle(): React.JSX.Element {
   return (
     <label
       className="auto-approve"
-      title="Apply Claude's edits to this document immediately, without approval cards. Commands still ask. Every run is committed, so History can undo anything."
+      title="Apply Claude's edits to this document immediately, without approval cards. Bash, MCP, and other tools still ask."
     >
       <input
         type="checkbox"
@@ -71,7 +71,7 @@ export function StudioAutoApproveToggle(): React.JSX.Element {
   return (
     <label
       className="auto-approve"
-      title="Apply the authoring agent's edits to the plugin's files immediately, without approval cards. Otherwise each edit waits for your approval."
+      title="Apply the authoring agent's file edits immediately, without approval cards. Bash, MCP, and other tools still ask."
     >
       <input
         type="checkbox"
