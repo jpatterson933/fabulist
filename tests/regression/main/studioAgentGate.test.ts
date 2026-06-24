@@ -3,8 +3,8 @@ import path from 'node:path'
 import type { AgentEvent } from '../../../src/shared/types'
 
 // The Plugin Studio gates mirror the document app's gate (src/main/agent.ts): the
-// authoring gate asks before applying edits unless auto-apply is on, and a test run
-// surfaces AskUserQuestion instead of letting the engine treat it as skipped.
+// authoring gate asks before applying edits unless auto-apply is on, and both gates
+// ask before Bash, MCP, and other destructive tools decideTool marks as `ask`.
 
 afterEach(() => {
   vi.resetModules()
@@ -91,15 +91,32 @@ describe('studio test gate', () => {
     expect((await p).behavior).toBe('deny')
   })
 
-  it('auto-allows non-question tools in the sandbox', async () => {
-    const { manager } = await loadManager()
+  it('asks before Bash and MCP tools in the sandbox', async () => {
+    const { manager, events } = await loadManager()
     const gate = (
       manager as unknown as {
         gate: (s: string, c: string, t: string, i: Record<string, unknown>, sig: AbortSignal) => Promise<{ behavior: string }>
       }
     ).gate.bind(manager)
-    const result = await gate('skill', cwd, 'Bash', { command: 'ls' }, new AbortController().signal)
-    expect(result.behavior).toBe('allow')
+
+    const bash = gate('skill', cwd, 'Bash', { command: 'ls' }, new AbortController().signal)
+    await flush()
+    expect(events.some((e) => e.event.kind === 'permission-request' && e.channel === 'skillStudio:event')).toBe(true)
+    manager.resolvePermission('req', true)
+    expect((await bash).behavior).toBe('allow')
+
+    events.length = 0
+    const mcp = gate(
+      'skill',
+      cwd,
+      'mcp__claude_ai_AE_Google_MCP__read_doc',
+      { documentId: 'abc' },
+      new AbortController().signal
+    )
+    await flush()
+    expect(events.some((e) => e.event.kind === 'permission-request')).toBe(true)
+    manager.resolvePermission('req', true)
+    expect((await mcp).behavior).toBe('allow')
   })
 
   it("lets a skill READ its own bundled files from the plugin folder, but not write them", async () => {
@@ -219,19 +236,40 @@ describe('studio authoring gate', () => {
     expect(events.some((e) => e.event.kind === 'edit-applied')).toBe(false)
   })
 
-  it('auto-allows non-edit tools (Bash, MCP) so authoring matches the test chat', async () => {
-    const { manager } = await loadManager()
+  it('asks before Bash and MCP tools in authoring even when auto-apply is on', async () => {
+    const { manager, events } = await loadManager(true)
     const authGate = (manager as unknown as { authGate: AuthGate }).authGate.bind(manager)
-    const bash = await authGate('skill', cwd, 'Bash', { command: 'ls' }, new AbortController().signal)
-    expect(bash.behavior).toBe('allow')
-    const mcp = await authGate(
+
+    const bash = authGate('skill', cwd, 'Bash', { command: 'ls' }, new AbortController().signal)
+    await flush()
+    expect(events.some((e) => e.event.kind === 'permission-request')).toBe(true)
+    manager.resolvePermission('req', true)
+    expect((await bash).behavior).toBe('allow')
+    expect(events.some((e) => e.event.kind === 'edit-applied')).toBe(false)
+  })
+
+  it('asks before Bash and MCP tools in authoring', async () => {
+    const { manager, events } = await loadManager()
+    const authGate = (manager as unknown as { authGate: AuthGate }).authGate.bind(manager)
+
+    const bash = authGate('skill', cwd, 'Bash', { command: 'ls' }, new AbortController().signal)
+    await flush()
+    expect(events.some((e) => e.event.kind === 'permission-request' && e.channel === 'skillStudio:authEvent')).toBe(true)
+    manager.resolvePermission('req', true)
+    expect((await bash).behavior).toBe('allow')
+
+    events.length = 0
+    const mcp = authGate(
       'skill',
       cwd,
       'mcp__claude_ai_AE_Google_MCP__read_doc',
       { documentId: 'abc' },
       new AbortController().signal
     )
-    expect(mcp.behavior).toBe('allow')
+    await flush()
+    expect(events.some((e) => e.event.kind === 'permission-request')).toBe(true)
+    manager.resolvePermission('req', true)
+    expect((await mcp).behavior).toBe('allow')
   })
 
   it('still confines file edits to the skill folder', async () => {

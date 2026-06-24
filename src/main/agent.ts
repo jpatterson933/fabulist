@@ -251,29 +251,25 @@ export class AgentManager {
     }
 
     const filePath = decision.filePath
-    if (isFileEditTool(tool)) {
+    // Auto-apply applies ONLY to local file edits — never to Bash, MCP, or other tools.
+    if (isFileEditTool(tool) && filePath) {
       const { autoApprove } = await readState(docId).catch(() => ({ autoApprove: false }))
+      const request = await this.buildRequest(docId, cwd, tool, input, filePath)
       if (autoApprove) {
-        if (filePath) {
-          onEditApplied()
-          // leave a record in chat: same diff data an approval card would carry
-          const request = await this.buildRequest(docId, cwd, tool, input, filePath)
-          this.emit({ kind: 'edit-applied', docId, request })
-        }
+        onEditApplied()
+        this.emit({ kind: 'edit-applied', docId, request })
         return { behavior: 'allow', updatedInput: input }
       }
+      const { approved } = await this.askHuman(docId, request, signal)
+      if (!approved) return { behavior: 'deny', message: 'The author declined this change.' }
+      onEditApplied()
+      this.emit({ kind: 'edit-applied', docId, request })
+      return { behavior: 'allow', updatedInput: input }
     }
 
     const request = await this.buildRequest(docId, cwd, tool, input, filePath)
     const { approved, answers } = await this.askHuman(docId, request, signal)
     if (approved) {
-      if (filePath) {
-        onEditApplied()
-        // approved edits leave the same collapsed diff card in chat that
-        // auto-applied ones do — the record shouldn't depend on the mode
-        this.emit({ kind: 'edit-applied', docId, request })
-      }
-      // AskUserQuestion answers travel back to the engine inside the input
       const updatedInput = answers ? { ...input, answers } : input
       return { behavior: 'allow', updatedInput }
     }

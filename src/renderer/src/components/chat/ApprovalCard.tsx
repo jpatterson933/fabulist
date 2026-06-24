@@ -20,28 +20,48 @@ function QuestionCard({
 }): React.JSX.Element {
   const questions = request.questions!
   const [picked, setPicked] = useState<Record<string, string[]>>({})
+  const [custom, setCustom] = useState<Record<string, string>>({})
 
-  const submit = (sel: Record<string, string[]>): void => {
-    const answers = Object.fromEntries(
-      questions.map((q) => [q.question, (sel[q.question] ?? []).join(', ')])
+  const resolveAnswers = (
+    sel: Record<string, string[]>,
+    customAnswers: Record<string, string>
+  ): Record<string, string> =>
+    Object.fromEntries(
+      questions.map((q) => {
+        const typed = customAnswers[q.question]?.trim()
+        return [q.question, typed || (sel[q.question] ?? []).join(', ')]
+      })
     )
-    respond(request.requestId, true, answers)
+
+  const submitAnswers = (sel: Record<string, string[]>, customAnswers: Record<string, string>): void => {
+    respond(request.requestId, true, resolveAnswers(sel, customAnswers))
   }
 
   const toggle = (q: (typeof questions)[number], label: string): void => {
-    const next = { ...picked }
-    const cur = next[q.question] ?? []
-    if (q.multiSelect) {
-      next[q.question] = cur.includes(label) ? cur.filter((l) => l !== label) : [...cur, label]
-    } else {
-      next[q.question] = [label]
-      // a lone single-choice question answers on click — no extra Send step
-      if (questions.length === 1) return submit(next)
-    }
-    setPicked(next)
+    const cur = picked[q.question] ?? []
+    const nextSel = { ...picked, [q.question]: q.multiSelect
+      ? cur.includes(label) ? cur.filter((l) => l !== label) : [...cur, label]
+      : [label] }
+    const nextCustom = { ...custom, [q.question]: '' }
+    setPicked(nextSel)
+    setCustom(nextCustom)
+    // a lone single-choice question answers on click — no extra Send step
+    if (!q.multiSelect && questions.length === 1) submitAnswers(nextSel, nextCustom)
   }
 
-  const complete = questions.every((q) => (picked[q.question] ?? []).length > 0)
+  const setCustomAnswer = (question: string, text: string): void => {
+    setCustom((prev) => ({ ...prev, [question]: text }))
+    if (text.trim()) setPicked((prev) => ({ ...prev, [question]: [] }))
+  }
+
+  const complete = questions.every((q) => {
+    const typed = custom[q.question]?.trim()
+    return Boolean(typed) || (picked[q.question] ?? []).length > 0
+  })
+  const needsSendButton =
+    questions.length > 1 ||
+    questions.some((q) => q.multiSelect) ||
+    questions.some((q) => (custom[q.question] ?? '').trim().length > 0)
 
   return (
     <div className="approval approval-question">
@@ -69,11 +89,24 @@ function QuestionCard({
               )
             })}
           </div>
+          <input
+            className="question-custom-input"
+            type="text"
+            value={custom[q.question] ?? ''}
+            placeholder="Or type your own answer…"
+            onChange={(e) => setCustomAnswer(q.question, e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && complete && needsSendButton) {
+                e.preventDefault()
+                submitAnswers(picked, custom)
+              }
+            }}
+          />
         </div>
       ))}
       <div className="approval-actions">
-        {(questions.length > 1 || questions.some((q) => q.multiSelect)) && (
-          <button className="btn-primary" disabled={!complete} onClick={() => submit(picked)}>
+        {needsSendButton && (
+          <button className="btn-primary" disabled={!complete} onClick={() => submitAnswers(picked, custom)}>
             Send answers
           </button>
         )}

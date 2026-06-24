@@ -37,7 +37,8 @@ You are running inside Fabulist's Plugin Studio, testing the skill(s) under deve
 loaded as a local plugin and enabled for this session. Behave as you would for any real
 user: let the relevant skill and its own instructions drive what you read and do; don't
 pre-read the whole skill folder. The working directory is a throwaway sandbox — you may
-create or edit files there freely. Keep chat replies focused on the result.`
+create or edit files there once the user approves. Bash commands and MCP tool calls also
+wait for approval before they run. Keep chat replies focused on the result.`
 
 const AUTHOR_APPEND = (autoApprove: boolean): string => `
 You are helping the user AUTHOR a Claude skill inside Fabulist's Plugin Studio. The working
@@ -48,9 +49,9 @@ state, then make focused edits with Write/Edit. ${
     ? 'Your file edits are applied immediately without review,'
     : 'Every file edit you make is shown to the user as a diff for approval before it is applied,'
 } so make edits confidently but keep them minimal and well-scoped. Briefly say what you changed.
-File reads and edits stay inside this folder, but the full toolset is available — Bash, web
-fetch/search, and any connected MCP servers — so use them when they help (e.g. pulling source
-material from a connected doc).`
+File reads stay inside this folder, but the full toolset is available — Bash, web fetch/search,
+and any connected MCP servers — so use them when they help (e.g. pulling source material from a
+connected doc). Bash commands and MCP tool calls are shown to the user for approval before they run.`
 
 interface ActiveRun {
   abort: AbortController
@@ -61,7 +62,8 @@ interface ActiveRun {
  * Runs a skill against a test prompt in a disposable sandbox, with the studio plugin
  * loaded straight off disk (skills + sub-agents + .mcp.json all come along). Wholly
  * independent of the document AgentManager: its own sessions (keyed by skill slug),
- * its own "auto-approve inside the jail" gate, streamed over skillStudio:event.
+ * its own gate that asks before destructive tools (Bash, MCP, sandbox writes, questions),
+ * streamed over skillStudio:event.
  */
 export class StudioAgentManager {
   private active = new Map<string, ActiveRun>()
@@ -210,12 +212,10 @@ export class StudioAgentManager {
   }
 
   /**
-   * The jail gate: auto-approve everything so iteration is friction-free, EXCEPT
-   * (a) path escapes / app-managed files, which decideTool denies — so a test run
-   * can never reach outside its throwaway sandbox — and (b) AskUserQuestion, which
-   * is the skill genuinely asking the user a question: surface it and WAIT for the
-   * tester's answer. (Auto-allowing it answer-less makes the engine treat the
-   * question as skipped, so the skill silently proceeds on defaults — not a real test.)
+   * The jail gate: read-only tools pass; everything decideTool marks as `ask` (Bash, MCP,
+   * sandbox file writes, AskUserQuestion, …) surfaces an approval card and waits. Path
+   * escapes and writes to the plugin folder itself are denied so a test run can never
+   * mutate the skill it is exercising.
    */
   private async gate(
     slug: string,
@@ -231,13 +231,20 @@ export class StudioAgentManager {
       logToolDenied(`skill-test ${slug}`, tool, decision.message)
       return { behavior: 'deny', message: decision.message }
     }
-    if (tool === 'AskUserQuestion') {
-      const request = await this.buildRequest(slug, cwd, tool, input)
-      const { approved, answers } = await this.askHuman((e) => this.emit(e), slug, request, signal)
-      if (approved) return { behavior: 'allow', updatedInput: answers ? { ...input, answers } : input }
-      return { behavior: 'deny', message: 'The tester skipped the question. Proceed with your best judgment.' }
-    }
-    return { behavior: 'allow', updatedInput: input }
+    if (decision.kind === 'allow') return { behavior: 'allow', updatedInput: input }
+    return this.promptForApproval(
+      (e) => this.emit(e),
+      slug,
+      cwd,
+      tool,
+      input,
+      signal,
+      decision.filePath,
+      {
+        skippedQuestion: 'The tester skipped the question. Proceed with your best judgment.',
+        declined: 'The tester declined this action.'
+      }
+    )
   }
 
   // ── Authoring chat: an agent that reads/edits the skill IN its own folder ──
@@ -367,11 +374,11 @@ export class StudioAgentManager {
   /**
    * Authoring gate — mirrors the document app's gate (src/main/agent.ts). Read-only
    * tools pass; file edits are shown to the user as a diff for approval before they
-   * apply, UNLESS auto-apply is on (then they apply immediately for fast iteration);
-   * either way an applied edit is recorded as a collapsed diff in chat. A clarifying
-   * AskUserQuestion is surfaced and waited on. The path guard still confines file reads/
-   * edits to the skill's own folder; everything else (Bash, web, MCP servers) runs without
-   * a prompt, matching the test chat, so the authoring agent has a real session's tool reach.
+   * apply, UNLESS auto-apply is on — and auto-apply applies only to those file edits,
+   * never to Bash, MCP, or any other tool. Either way an applied edit is recorded as a
+   * collapsed diff in chat. Everything else decideTool marks as `ask` (Bash, MCP,
+   * AskUserQuestion, …) waits on an approval card. The path guard confines file reads/
+   * edits to the skill's own folder.
    */
   private async authGate(
     slug: string,
@@ -386,11 +393,14 @@ export class StudioAgentManager {
       return { behavior: 'deny', message: decision.message }
     }
     if (decision.kind === 'allow') return { behavior: 'allow', updatedInput: input }
-    if (isFileEditTool(tool) && decision.filePath) {
+
+    const filePath = decision.filePath
+    // Auto-apply applies ONLY to local file edits — never to Bash, MCP, or other tools.
+    if (isFileEditTool(tool) && filePath) {
       // re-read auto-apply per call (not captured at send) so toggling it mid-run takes
       // effect immediately — exactly like the document app's gateTool (src/main/agent.ts)
       const { autoApprove } = await readSettings(slug)
-      const request = await this.buildRequest(slug, cwd, tool, input, decision.filePath)
+      const request = await this.buildRequest(slug, cwd, tool, input, filePath)
       if (!autoApprove) {
         const { approved } = await this.askHuman((e) => this.emitAuth(e), slug, request, signal)
         if (!approved) return { behavior: 'deny', message: 'The author declined this change.' }
@@ -400,16 +410,42 @@ export class StudioAgentManager {
       this.emitAuth({ kind: 'edit-applied', docId: slug, request })
       return { behavior: 'allow', updatedInput: input }
     }
-    if (tool === 'AskUserQuestion') {
-      const request = await this.buildRequest(slug, cwd, tool, input)
-      const { approved, answers } = await this.askHuman((e) => this.emitAuth(e), slug, request, signal)
-      if (approved) return { behavior: 'allow', updatedInput: answers ? { ...input, answers } : input }
-      return { behavior: 'deny', message: 'The author skipped the question. Proceed with your best judgment.' }
+
+    return this.promptForApproval(
+      (e) => this.emitAuth(e),
+      slug,
+      cwd,
+      tool,
+      input,
+      signal,
+      filePath,
+      {
+        skippedQuestion: 'The author skipped the question. Proceed with your best judgment.',
+        declined: 'The author declined this action.'
+      }
+    )
+  }
+
+  /** Surface a decideTool `ask` to the renderer and block until the user responds. */
+  private async promptForApproval(
+    emit: (event: AgentEvent) => void,
+    slug: string,
+    cwd: string,
+    tool: string,
+    input: Record<string, unknown>,
+    signal: AbortSignal,
+    filePath: string | undefined,
+    messages: { skippedQuestion: string; declined: string }
+  ): Promise<PermissionResult> {
+    const request = await this.buildRequest(slug, cwd, tool, input, filePath)
+    const { approved, answers } = await this.askHuman(emit, slug, request, signal)
+    if (approved) {
+      return { behavior: 'allow', updatedInput: answers ? { ...input, answers } : input }
     }
-    // Anything else (Bash, web, MCP servers, …) runs without a prompt — matching the test
-    // chat, so the authoring agent has the same tool reach as a real session. The path
-    // guard above still confines file reads/edits to the skill's own folder.
-    return { behavior: 'allow', updatedInput: input }
+    if (tool === 'AskUserQuestion') {
+      return { behavior: 'deny', message: messages.skippedQuestion }
+    }
+    return { behavior: 'deny', message: messages.declined }
   }
 
   private async buildRequest(
