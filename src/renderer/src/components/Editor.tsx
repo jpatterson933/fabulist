@@ -18,6 +18,7 @@ interface SelectionInfo {
   to: number
   left: number
   top: number
+  bottom: number
 }
 
 export default function Editor({
@@ -30,9 +31,16 @@ export default function Editor({
   const hostRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
   const [selection, setSelection] = useState<SelectionInfo | null>(null)
-  const [composer, setComposer] = useState<{ left: number; top: number; quote: string } | null>(null)
+  const [composer, setComposer] = useState<{
+    left: number
+    top: number
+    from: number
+    to: number
+    quote: string
+  } | null>(null)
   const [composerText, setComposerText] = useState('')
   const composerRef = useRef<HTMLTextAreaElement>(null)
+  const composerBoxRef = useRef<HTMLDivElement>(null)
   const selTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const editable = useRef(new Compartment()).current
   const askClaude = useStore((s) => s.askClaude)
@@ -87,14 +95,20 @@ export default function Editor({
                 }
                 const view2 = viewRef.current
                 if (!view2) return
-                const start = view2.coordsAtPos(Math.min(sel.from, sel.to))
+                const from = Math.min(sel.from, sel.to)
+                const to = Math.max(sel.from, sel.to)
+                const start = view2.coordsAtPos(from)
+                // side -1 keeps a selection ending at a line boundary anchored to the
+                // line it actually covers, instead of jumping to the next line's top
+                const end = view2.coordsAtPos(to, -1)
                 const box = host.getBoundingClientRect()
-                if (!start) return setSelection(null)
+                if (!start || !end) return setSelection(null)
                 setSelection({
                   from: sel.from,
                   to: sel.to,
                   left: Math.max(12, start.left - box.left),
-                  top: start.top - box.top
+                  top: start.top - box.top,
+                  bottom: end.bottom - box.top
                 })
               }, 120)
             }
@@ -156,8 +170,13 @@ export default function Editor({
         active: true
       })
     }
+    // keep the passage visibly highlighted while its composer is open —
+    // the native selection disappears once the textarea takes focus
+    if (composer) {
+      out.push({ id: '__composing', from: composer.from, to: composer.to, active: true })
+    }
     return out
-  }, [threads, activeThreadId, draftComment])
+  }, [threads, activeThreadId, draftComment, composer])
 
   useEffect(() => {
     viewRef.current?.dispatch({ effects: setThreadRanges.of(ranges) })
@@ -215,7 +234,9 @@ export default function Editor({
     const content = useStore.getState().content
     setComposer({
       left: selection.left,
-      top: selection.top,
+      top: selection.bottom,
+      from: selection.from,
+      to: selection.to,
       quote: content.slice(selection.from, selection.to)
     })
     setComposerText('')
@@ -237,6 +258,16 @@ export default function Editor({
   // focus the composer textarea as it opens
   useEffect(() => {
     if (composer) composerRef.current?.focus()
+  }, [composer])
+
+  // dismiss the composer when clicking anywhere outside it
+  useEffect(() => {
+    if (!composer) return
+    const onDown = (e: MouseEvent): void => {
+      if (!composerBoxRef.current?.contains(e.target as Node)) cancelComposer()
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
   }, [composer])
 
   const font = useStore((s) => s.font)
@@ -282,10 +313,10 @@ export default function Editor({
       )}
       {composer && !suggestion && (
         <div
+          ref={composerBoxRef}
           className="selection-composer"
-          style={{ left: composer.left, top: Math.max(8, composer.top - 8) }}
+          style={{ left: composer.left, top: composer.top + 6 }}
         >
-          <div className="selection-composer-quote">{truncate(composer.quote, 120)}</div>
           <textarea
             ref={composerRef}
             rows={Math.min(5, Math.max(2, composerText.split('\n').length))}
@@ -321,11 +352,6 @@ export default function Editor({
   )
 }
 
-
-function truncate(s: string, n: number): string {
-  const clean = s.replace(/\s+/g, ' ').trim()
-  return clean.length > n ? clean.slice(0, n) + '…' : clean
-}
 
 function MarkIcon(): React.JSX.Element {
   return (

@@ -17,6 +17,10 @@ All notable changes to Fabulist are documented here. The format follows
   automatically into one-document projects, keeping their chat, comments, model, and history.
 
 ### Fixed
+- The passage-comment composer no longer covers the text you selected — it opens just below the
+  selection, the passage stays highlighted while you write (instead of deselecting when the box
+  takes focus), the redundant quoted-passage line is gone, and clicking anywhere outside the box
+  dismisses it.
 - Editing a document's title (or content) now updates its sidebar entry — title, preview,
   and word count — instead of leaving the library list stale until the next create/delete or
   agent edit.
