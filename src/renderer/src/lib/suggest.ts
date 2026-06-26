@@ -84,8 +84,12 @@ export function suggestionSegments(current: string, proposed: string): SuggestSe
   return segments
 }
 
-export function computeSuggestion(current: string, req: PermissionRequest): SuggestSegment[] | null {
-  if (req.filePath !== 'document.md') return null
+export function computeSuggestion(
+  current: string,
+  req: PermissionRequest,
+  docFile: string
+): SuggestSegment[] | null {
+  if (req.filePath !== docFile) return null
   const proposed = buildProposed(current, req)
   if (proposed === null) return null
   const segments = suggestionSegments(current, proposed)

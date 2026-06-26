@@ -12,7 +12,8 @@ import {
   type CommitInfo,
   type DocMeta,
   type ModelChoice,
-  type PermissionRequest
+  type PermissionRequest,
+  type ProjectMeta
 } from '@shared/types'
 import { locateAnchor } from './lib/anchors'
 
@@ -33,20 +34,33 @@ interface ExternalUpdate {
 }
 
 interface FabulistStore {
+  projects: ProjectMeta[]
+  activeProjectId: string | null
+  /** docs of the active project */
   docs: DocMeta[]
-  activeId: string | null
+  /** open tab filenames for the active project */
+  openDocs: string[]
+  /** active tab filename */
+  activeDoc: string | null
+  /** cached content of open tabs, keyed by doc filename */
+  docContents: Record<string, string>
+  /** the active doc's live content (the editor binds to this) */
   content: string
   external: ExternalUpdate | null
+  /** comment threads for the active doc */
   threads: CommentThread[]
   /** chat transcripts keyed by agent thread id */
   chats: Record<string, ChatItem[]>
-  /** agent conversation list keyed by doc id */
+  /** agent conversation list keyed by project id */
   agentThreads: Record<string, AgentThread[]>
-  /** active agent thread id keyed by doc id */
+  /** active agent thread id keyed by project id */
   activeThread: Record<string, string>
   permissions: PermissionRequest[]
+  /** agent status keyed by project id */
   agent: Record<string, AgentState>
   tab: SidebarTab
+  /** what the left rail shows: the project list, or the active project's docs */
+  railView: 'projects' | 'docs'
   sidebarOpen: boolean
   libraryOpen: boolean
   commits: CommitInfo[]
@@ -56,34 +70,36 @@ interface FabulistStore {
   font: string
   draftComment: DraftComment | null
   activeThreadId: string | null
-  /** requestId of a permission currently rendered as an in-document suggestion */
   inlineSuggestionId: string | null
-  /** thread Claude is currently replying to */
   pendingCommentId: string | null
-  /** comment prompts waiting for the agent to free up */
   queuedCommentSends: { commentId: string; prompt: string; quote: string }[]
   scrollTo: { threadId: string; seq: number } | null
-  /** auto-accept Claude's document edits without prompting (Bash still prompts) */
   autoApprove: boolean
+
+  loadProjects: () => Promise<void>
+  createProject: (title: string) => Promise<void>
+  deleteProject: (id: string) => Promise<void>
+  openProject: (id: string) => Promise<void>
+  closeProject: () => Promise<void>
 
   loadDocs: () => Promise<void>
   createDoc: (title: string) => Promise<void>
-  deleteDoc: (id: string) => Promise<void>
-  openDoc: (id: string) => Promise<void>
-  closeDoc: () => Promise<void>
+  deleteDoc: (docFile: string) => Promise<void>
+  openTab: (docFile: string) => Promise<void>
+  closeTab: (docFile: string) => Promise<void>
+  setActiveDoc: (docFile: string) => Promise<void>
 
   setContent: (content: string) => void
   flushWrite: () => Promise<void>
   snapshot: (label?: string) => Promise<void>
 
   setTab: (tab: SidebarTab) => void
+  setRailView: (view: 'projects' | 'docs') => void
   toggleSidebar: () => void
   toggleLibrary: () => void
 
   reloadThreads: () => Promise<void>
-  persistAnchors: (
-    anchors: { id: string; from: number; to: number }[]
-  ) => void
+  persistAnchors: (anchors: { id: string; from: number; to: number }[]) => void
   startDraftComment: (anchor: CommentAnchor) => void
   cancelDraftComment: () => void
   submitDraftComment: (text: string) => Promise<void>
@@ -103,7 +119,6 @@ interface FabulistStore {
     prompt: string,
     opts?: { quote?: string; commentId?: string; attachments?: Attachment[] }
   ) => void
-  /** send a comment thread to Claude now, or queue it if the agent is busy */
   engageClaudeOnThread: (thread: CommentThread) => void
   setModel: (model: string) => void
   loadModels: () => Promise<void>
@@ -119,10 +134,12 @@ interface FabulistStore {
   restorePreview: () => Promise<void>
 
   handleAgentEvent: (e: AgentEvent) => void
-  handleExternalChange: (id: string, content: string) => void
+  handleExternalChange: (projectId: string, docFile: string, content: string) => void
 }
 
+// per-(project,doc) debounce timers, so a tab switch flushes the right file
 let writeTimer: ReturnType<typeof setTimeout> | null = null
+let writeTarget: { projectId: string; docFile: string } | null = null
 let idleCommitTimer: ReturnType<typeof setTimeout> | null = null
 let anchorTimer: ReturnType<typeof setTimeout> | null = null
 let extSeq = 1
@@ -142,8 +159,12 @@ function reanchor(threads: CommentThread[], content: string): CommentThread[] {
 }
 
 export const useStore = create<FabulistStore>((set, get) => ({
+  projects: [],
+  activeProjectId: null,
   docs: [],
-  activeId: null,
+  openDocs: [],
+  activeDoc: null,
+  docContents: {},
   content: '',
   external: null,
   threads: [],
@@ -153,6 +174,7 @@ export const useStore = create<FabulistStore>((set, get) => ({
   permissions: [],
   agent: {},
   tab: 'chat',
+  railView: 'projects',
   sidebarOpen: true,
   libraryOpen: true,
   commits: [],
@@ -168,51 +190,71 @@ export const useStore = create<FabulistStore>((set, get) => ({
   scrollTo: null,
   autoApprove: localStorage.getItem('fabulist:autoApprove') === '1',
 
-  loadDocs: async () => {
-    set({ docs: await window.fabulist.library.list() })
+  loadProjects: async () => {
+    set({ projects: await window.fabulist.library.projects() })
   },
 
-  createDoc: async (title) => {
-    const meta = await window.fabulist.library.create(title)
-    await get().loadDocs()
-    await get().openDoc(meta.id)
+  createProject: async (title) => {
+    const meta = await window.fabulist.library.createProject(title)
+    await get().loadProjects()
+    await get().openProject(meta.id)
   },
 
-  deleteDoc: async (id) => {
-    if (get().activeId === id) await get().closeDoc()
-    await window.fabulist.library.remove(id)
-    await get().loadDocs()
+  deleteProject: async (id) => {
+    if (get().activeProjectId === id) await get().closeProject()
+    await window.fabulist.library.deleteProject(id)
+    await get().loadProjects()
   },
 
-  openDoc: async (id) => {
-    // Persist the outgoing doc without blanking activeId — keeping the previous
-    // doc mounted until the new content loads avoids an empty-state flash. The
-    // watch(id) at the end of this fn supersedes the old doc's watch.
-    const prev = get().activeId
-    if (prev && prev !== id) {
-      await get().flushWrite()
-      await window.fabulist.doc.snapshot(prev, 'Edited').catch(() => {})
-    }
-    const [content, rawThreads, agentThreads, activeThreadId, commits, model, font] =
-      await Promise.all([
-        window.fabulist.doc.read(id),
-        window.fabulist.comments.list(id),
-        window.fabulist.agent.threads(id),
-        window.fabulist.agent.activeThread(id),
-        window.fabulist.history.log(id),
-        window.fabulist.doc.getModel(id),
-        window.fabulist.doc.getFont(id)
+  openProject: async (id) => {
+    const prev = get().activeProjectId
+    if (prev && prev !== id) await get().closeProject()
+
+    const [docs, meta, agentThreads, activeThreadId, commits, model] = await Promise.all([
+      window.fabulist.project.docs(id),
+      window.fabulist.project.meta(id),
+      window.fabulist.agent.threads(id),
+      window.fabulist.agent.activeThread(id),
+      window.fabulist.history.log(id),
+      window.fabulist.project.getModel(id)
+    ])
+
+    const present = new Set(docs.map((d) => d.file))
+    let openDocs = meta.openTabs.filter((f) => present.has(f))
+    if (openDocs.length === 0 && docs.length > 0) openDocs = [docs[0].file]
+    const activeDoc =
+      meta.activeDoc && openDocs.includes(meta.activeDoc)
+        ? meta.activeDoc
+        : openDocs[0] ?? null
+
+    let content = ''
+    let threads: CommentThread[] = []
+    let font = DEFAULT_FONT
+    if (activeDoc) {
+      const [c, rawThreads, f] = await Promise.all([
+        window.fabulist.doc.read(id, activeDoc),
+        window.fabulist.comments.list(id, activeDoc),
+        window.fabulist.doc.getFont(id, activeDoc)
       ])
-    const chat = await window.fabulist.agent.threadChat(id, activeThreadId)
-    const threads = reanchor(rawThreads, content)
+      content = c
+      threads = reanchor(rawThreads, c)
+      font = f || DEFAULT_FONT
+    }
+    const chat = activeThreadId ? await window.fabulist.agent.threadChat(id, activeThreadId) : []
+
     set({
-      activeId: id,
+      activeProjectId: id,
+      railView: 'docs',
+      docs,
+      openDocs,
+      activeDoc,
+      docContents: activeDoc ? { [activeDoc]: content } : {},
       content,
       external: { seq: extSeq++, content },
       threads,
       commits,
       model,
-      font: font || DEFAULT_FONT,
+      font,
       preview: null,
       draftComment: null,
       activeThreadId: null,
@@ -224,34 +266,140 @@ export const useStore = create<FabulistStore>((set, get) => ({
       activeThread: { ...get().activeThread, [id]: activeThreadId },
       chats: { ...get().chats, [activeThreadId]: chat ?? [] }
     })
-    // watching also re-emits any permission requests pending for this doc
-    await window.fabulist.doc.watch(id)
+    // watching also re-emits any permission requests pending for this project
+    await window.fabulist.project.watch(id)
   },
 
-  closeDoc: async () => {
-    const id = get().activeId
+  closeProject: async () => {
+    const id = get().activeProjectId
     if (!id) return
     await get().flushWrite()
     await window.fabulist.doc.snapshot(id, 'Edited').catch(() => {})
-    await window.fabulist.doc.watch(null)
-    set({ activeId: null, content: '', threads: [], commits: [], preview: null })
+    await window.fabulist.project.watch(null)
+    set({
+      activeProjectId: null,
+      railView: 'projects',
+      docs: [],
+      openDocs: [],
+      activeDoc: null,
+      docContents: {},
+      content: '',
+      threads: [],
+      commits: [],
+      preview: null
+    })
+  },
+
+  loadDocs: async () => {
+    const id = get().activeProjectId
+    if (!id) return
+    set({ docs: await window.fabulist.project.docs(id) })
+  },
+
+  createDoc: async (title) => {
+    const id = get().activeProjectId
+    if (!id) return
+    const meta = await window.fabulist.project.createDoc(id, title)
+    await get().loadDocs()
+    // add the tab but let setActiveDoc read the seeded file from disk (which also
+    // primes the watcher's echo-suppression so the create write doesn't bounce back)
+    set({ openDocs: [...get().openDocs.filter((f) => f !== meta.file), meta.file] })
+    await get().setActiveDoc(meta.file)
+    await get().loadProjects()
+  },
+
+  deleteDoc: async (docFile) => {
+    const id = get().activeProjectId
+    if (!id) return
+    await window.fabulist.project.deleteDoc(id, docFile)
+    const openDocs = get().openDocs.filter((f) => f !== docFile)
+    const { [docFile]: _gone, ...docContents } = get().docContents
+    set({ openDocs, docContents })
+    if (get().activeDoc === docFile) {
+      const next = openDocs[openDocs.length - 1] ?? null
+      if (next) await get().setActiveDoc(next)
+      else set({ activeDoc: null, content: '', threads: [], external: { seq: extSeq++, content: '' } })
+    }
+    await get().loadDocs()
+    await get().loadProjects()
+  },
+
+  openTab: async (docFile) => {
+    if (!get().openDocs.includes(docFile)) {
+      const openDocs = [...get().openDocs, docFile]
+      set({ openDocs })
+      const id = get().activeProjectId
+      if (id) void window.fabulist.project.setOpenTabs(id, openDocs)
+    }
+    await get().setActiveDoc(docFile)
+  },
+
+  closeTab: async (docFile) => {
+    const id = get().activeProjectId
+    if (!id) return
+    // flush the file being closed if it's the live one
+    if (get().activeDoc === docFile) await get().flushWrite()
+    const openDocs = get().openDocs.filter((f) => f !== docFile)
+    const { [docFile]: _gone, ...docContents } = get().docContents
+    set({ openDocs, docContents })
+    void window.fabulist.project.setOpenTabs(id, openDocs)
+    if (get().activeDoc === docFile) {
+      const next = openDocs[openDocs.length - 1] ?? null
+      if (next) await get().setActiveDoc(next)
+      else {
+        set({ activeDoc: null, content: '', threads: [], external: { seq: extSeq++, content: '' } })
+        void window.fabulist.project.setActiveDoc(id, null)
+      }
+    }
+  },
+
+  setActiveDoc: async (docFile) => {
+    const id = get().activeProjectId
+    if (!id || get().activeDoc === docFile) return
+    // stash the outgoing doc's live content and flush its pending write
+    const prevDoc = get().activeDoc
+    if (prevDoc) {
+      set({ docContents: { ...get().docContents, [prevDoc]: get().content } })
+      await get().flushWrite()
+    }
+    const cached = get().docContents[docFile]
+    const content = cached ?? (await window.fabulist.doc.read(id, docFile))
+    const [rawThreads, font] = await Promise.all([
+      window.fabulist.comments.list(id, docFile),
+      window.fabulist.doc.getFont(id, docFile)
+    ])
+    set({
+      activeDoc: docFile,
+      content,
+      docContents: { ...get().docContents, [docFile]: content },
+      external: { seq: extSeq++, content },
+      threads: reanchor(rawThreads, content),
+      font: font || DEFAULT_FONT,
+      preview: null,
+      draftComment: null,
+      activeThreadId: null,
+      inlineSuggestionId: null
+    })
+    void window.fabulist.project.setActiveDoc(id, docFile)
   },
 
   setContent: (content) => {
-    const id = get().activeId
-    if (!id) return
-    set({ content })
+    const id = get().activeProjectId
+    const docFile = get().activeDoc
+    if (!id || !docFile) return
+    set({ content, docContents: { ...get().docContents, [docFile]: content } })
+    writeTarget = { projectId: id, docFile }
     if (writeTimer) clearTimeout(writeTimer)
     writeTimer = setTimeout(async () => {
       writeTimer = null
-      await window.fabulist.doc.write(id, get().content).catch(() => {})
-      // Refresh the library so the sidebar title/preview track edits
+      await window.fabulist.doc.write(id, docFile, get().content).catch(() => {})
       get().loadDocs()
+      get().loadProjects()
     }, 400)
     if (idleCommitTimer) clearTimeout(idleCommitTimer)
     idleCommitTimer = setTimeout(async () => {
       idleCommitTimer = null
-      if (get().activeId !== id) return
+      if (get().activeProjectId !== id) return
       await get().flushWrite()
       const committed = await window.fabulist.doc.snapshot(id, 'Edited').catch(() => false)
       if (committed) get().loadHistory()
@@ -259,18 +407,18 @@ export const useStore = create<FabulistStore>((set, get) => ({
   },
 
   flushWrite: async () => {
-    const id = get().activeId
-    if (!id) return
-    if (writeTimer) {
-      clearTimeout(writeTimer)
-      writeTimer = null
-      await window.fabulist.doc.write(id, get().content).catch(() => {})
-      get().loadDocs()
-    }
+    if (!writeTimer || !writeTarget) return
+    const { projectId, docFile } = writeTarget
+    clearTimeout(writeTimer)
+    writeTimer = null
+    const content = get().docContents[docFile] ?? get().content
+    await window.fabulist.doc.write(projectId, docFile, content).catch(() => {})
+    get().loadDocs()
+    get().loadProjects()
   },
 
   snapshot: async (label) => {
-    const id = get().activeId
+    const id = get().activeProjectId
     if (!id) return
     await get().flushWrite()
     await window.fabulist.doc.snapshot(id, label)
@@ -278,20 +426,22 @@ export const useStore = create<FabulistStore>((set, get) => ({
   },
 
   setTab: (tab) => set({ tab, sidebarOpen: true }),
+  setRailView: (railView) => set({ railView }),
   toggleSidebar: () => set({ sidebarOpen: !get().sidebarOpen }),
   toggleLibrary: () => set({ libraryOpen: !get().libraryOpen }),
 
   reloadThreads: async () => {
-    const id = get().activeId
-    if (!id) return
-    const raw = await window.fabulist.comments.list(id)
+    const id = get().activeProjectId
+    const docFile = get().activeDoc
+    if (!id || !docFile) return
+    const raw = await window.fabulist.comments.list(id, docFile)
     set({ threads: reanchor(raw, get().content) })
   },
 
-  // Editor reports mapped positions after edits; recompute context and persist.
   persistAnchors: (anchors) => {
-    const id = get().activeId
-    if (!id) return
+    const id = get().activeProjectId
+    const docFile = get().activeDoc
+    if (!id || !docFile) return
     const content = get().content
     const threads = get().threads.map((t) => {
       const a = anchors.find((x) => x.id === t.id)
@@ -299,7 +449,6 @@ export const useStore = create<FabulistStore>((set, get) => ({
       const text = content.slice(a.from, a.to)
       return {
         ...t,
-        status: text === t.anchor.text ? t.status : t.status, // text drift handled below
         anchor: {
           text: text || t.anchor.text,
           prefix: content.slice(Math.max(0, a.from - 32), a.from),
@@ -316,7 +465,10 @@ export const useStore = create<FabulistStore>((set, get) => ({
       window.fabulist.comments
         .updateAnchors(
           id,
-          threads.filter((t) => t.status !== 'resolved').map((t) => ({ id: t.id, anchor: t.anchor, status: t.status }))
+          docFile,
+          threads
+            .filter((t) => t.status !== 'resolved')
+            .map((t) => ({ id: t.id, anchor: t.anchor, status: t.status }))
         )
         .catch(() => {})
     }, 800)
@@ -326,26 +478,27 @@ export const useStore = create<FabulistStore>((set, get) => ({
   cancelDraftComment: () => set({ draftComment: null }),
 
   submitDraftComment: async (text) => {
-    const id = get().activeId
+    const id = get().activeProjectId
+    const docFile = get().activeDoc
     const draft = get().draftComment
-    if (!id || !draft || !text.trim()) return
-    const thread = await window.fabulist.comments.add(id, draft.anchor, text.trim())
+    if (!id || !docFile || !draft || !text.trim()) return
+    const thread = await window.fabulist.comments.add(id, docFile, draft.anchor, text.trim())
     set({ draftComment: null, activeThreadId: thread.id })
     await get().reloadThreads()
     get().engageClaudeOnThread(thread)
   },
 
   replyToThread: async (threadId, text) => {
-    const id = get().activeId
-    if (!id || !text.trim()) return
-    const thread = await window.fabulist.comments.reply(id, threadId, text.trim())
+    const id = get().activeProjectId
+    const docFile = get().activeDoc
+    if (!id || !docFile || !text.trim()) return
+    const thread = await window.fabulist.comments.reply(id, docFile, threadId, text.trim())
     await get().reloadThreads()
     if (thread) get().engageClaudeOnThread(thread)
   },
 
-  // every comment engages Claude; if it's mid-run, queue and send when free
   engageClaudeOnThread: (thread) => {
-    const id = get().activeId
+    const id = get().activeProjectId
     if (!id) return
     const prompt =
       thread.messages.length === 1
@@ -368,16 +521,18 @@ export const useStore = create<FabulistStore>((set, get) => ({
   },
 
   resolveThread: async (threadId, status) => {
-    const id = get().activeId
-    if (!id) return
-    await window.fabulist.comments.setStatus(id, threadId, status)
+    const id = get().activeProjectId
+    const docFile = get().activeDoc
+    if (!id || !docFile) return
+    await window.fabulist.comments.setStatus(id, docFile, threadId, status)
     await get().reloadThreads()
   },
 
   removeThread: async (threadId) => {
-    const id = get().activeId
-    if (!id) return
-    await window.fabulist.comments.remove(id, threadId)
+    const id = get().activeProjectId
+    const docFile = get().activeDoc
+    if (!id || !docFile) return
+    await window.fabulist.comments.remove(id, docFile, threadId)
     if (get().activeThreadId === threadId) set({ activeThreadId: null })
     await get().reloadThreads()
   },
@@ -385,21 +540,18 @@ export const useStore = create<FabulistStore>((set, get) => ({
   setActiveThread: (threadId) => set({ activeThreadId: threadId }),
 
   jumpToThread: (threadId) => {
-    set({
-      activeThreadId: threadId,
-      scrollTo: { threadId, seq: extSeq++ }
-    })
+    set({ activeThreadId: threadId, scrollTo: { threadId, seq: extSeq++ } })
   },
 
   loadAgentThreads: async () => {
-    const id = get().activeId
+    const id = get().activeProjectId
     if (!id) return
     const threads = await window.fabulist.agent.threads(id)
     set({ agentThreads: { ...get().agentThreads, [id]: threads } })
   },
 
   createAgentThread: async () => {
-    const id = get().activeId
+    const id = get().activeProjectId
     if (!id) return
     const thread = await window.fabulist.agent.createThread(id)
     set({
@@ -412,7 +564,7 @@ export const useStore = create<FabulistStore>((set, get) => ({
   },
 
   selectAgentThread: async (threadId) => {
-    const id = get().activeId
+    const id = get().activeProjectId
     if (!id || get().activeThread[id] === threadId) return
     await window.fabulist.agent.activateThread(id, threadId)
     let chats = get().chats
@@ -424,14 +576,14 @@ export const useStore = create<FabulistStore>((set, get) => ({
   },
 
   renameAgentThread: async (threadId, title) => {
-    const id = get().activeId
+    const id = get().activeProjectId
     if (!id || !title.trim()) return
     await window.fabulist.agent.renameThread(id, threadId, title.trim())
     await get().loadAgentThreads()
   },
 
   deleteAgentThread: async (threadId) => {
-    const id = get().activeId
+    const id = get().activeProjectId
     if (!id) return
     const { activeThreadId } = await window.fabulist.agent.deleteThread(id, threadId)
     let chats = get().chats
@@ -444,40 +596,37 @@ export const useStore = create<FabulistStore>((set, get) => ({
   },
 
   askClaude: (prompt, opts = {}) => {
-    const id = get().activeId
-    // allow attachment-only messages (no text)
+    const id = get().activeProjectId
     if (!id || (!prompt.trim() && !opts.attachments?.length)) return
     const threadId = get().activeThread[id]
     if (!threadId) return
-    // comment-initiated prompts reply into the thread — stay where the user is
     if (opts.commentId) set({ pendingCommentId: opts.commentId, sidebarOpen: true })
     else set({ tab: 'chat', sidebarOpen: true })
     void get().flushWrite()
-    window.fabulist.agent.send(id, threadId, prompt.trim(), opts)
+    window.fabulist.agent.send(id, threadId, prompt.trim(), {
+      ...opts,
+      docFile: get().activeDoc ?? undefined
+    })
   },
 
   setModel: (model) => {
-    const id = get().activeId
+    const id = get().activeProjectId
     if (!id) return
     set({ model })
-    window.fabulist.doc.setModel(id, model).catch(() => {})
+    window.fabulist.project.setModel(id, model).catch(() => {})
   },
 
   setFont: (font) => {
-    const id = get().activeId
-    if (!id) return
+    const id = get().activeProjectId
+    const docFile = get().activeDoc
+    if (!id || !docFile) return
     set({ font })
-    window.fabulist.doc.setFont(id, font).catch(() => {})
+    window.fabulist.doc.setFont(id, docFile, font).catch(() => {})
   },
 
   loadModels: async () => {
     const fromEngine = await window.fabulist.agent.models().catch(() => [])
     if (fromEngine.length === 0) return
-    // The engine's "default" row is a real model (e.g. Opus 4.8), not a "no
-    // choice" — so label it with the actual model name rather than the word
-    // "Default". The name comes from the engine's own description (everything
-    // before the first "·"), so nothing here is hardcoded. We still store it as
-    // the '' sentinel, which omits the model option and lets the engine resolve it.
     const engineDefault = fromEngine.find((m) => m.value === 'default')
     const rest = fromEngine.filter((m) => m.value !== 'default')
     const defaultChoice = engineDefault
@@ -491,7 +640,7 @@ export const useStore = create<FabulistStore>((set, get) => ({
   },
 
   interrupt: () => {
-    const id = get().activeId
+    const id = get().activeProjectId
     if (id) window.fabulist.agent.interrupt(id)
   },
 
@@ -509,29 +658,32 @@ export const useStore = create<FabulistStore>((set, get) => ({
   },
 
   loadHistory: async () => {
-    const id = get().activeId
+    const id = get().activeProjectId
     if (!id) return
     set({ commits: await window.fabulist.history.log(id) })
   },
 
   openPreview: async (commit) => {
-    const id = get().activeId
-    if (!id) return
-    const content = await window.fabulist.history.show(id, commit.hash)
+    const id = get().activeProjectId
+    const docFile = get().activeDoc
+    if (!id || !docFile) return
+    const content = await window.fabulist.history.show(id, docFile, commit.hash)
     set({ preview: { hash: commit.hash, content, subject: commit.subject } })
   },
 
   closePreview: () => set({ preview: null }),
 
   restorePreview: async () => {
-    const id = get().activeId
+    const id = get().activeProjectId
+    const docFile = get().activeDoc
     const preview = get().preview
-    if (!id || !preview) return
+    if (!id || !docFile || !preview) return
     await get().flushWrite()
-    const content = await window.fabulist.history.restore(id, preview.hash)
+    const content = await window.fabulist.history.restore(id, docFile, preview.hash)
     set({
       preview: null,
       content,
+      docContents: { ...get().docContents, [docFile]: content },
       external: { seq: extSeq++, content },
       threads: reanchor(get().threads, content)
     })
@@ -539,7 +691,7 @@ export const useStore = create<FabulistStore>((set, get) => ({
   },
 
   handleAgentEvent: (e) => {
-    const { activeId } = get()
+    const { activeProjectId } = get()
     const updateChat = (threadId: string, fn: (items: ChatItem[]) => ChatItem[]): void => {
       const chats = get().chats
       set({ chats: { ...chats, [threadId]: fn(chats[threadId] ?? []) } })
@@ -562,7 +714,7 @@ export const useStore = create<FabulistStore>((set, get) => ({
 
     switch (e.kind) {
       case 'status':
-        set({ agent: { ...get().agent, [e.docId]: { status: e.status, detail: e.detail } } })
+        set({ agent: { ...get().agent, [e.projectId]: { status: e.status, detail: e.detail } } })
         break
       case 'user-echo':
         updateChat(e.threadId, (items) => [
@@ -603,10 +755,13 @@ export const useStore = create<FabulistStore>((set, get) => ({
           get().respondPermission(e.request.requestId, true)
           break
         }
-        if (e.docId === activeId && !get().permissions.some((p) => p.requestId === e.request.requestId)) {
-          // document edits render inline in the editor — only pull the user to
-          // the chat tab for requests that have nowhere else to appear
-          const inline = e.request.filePath === 'document.md'
+        if (
+          e.projectId === activeProjectId &&
+          !get().permissions.some((p) => p.requestId === e.request.requestId)
+        ) {
+          // an edit to the focused doc renders inline in the editor; everything
+          // else (other docs, Bash) shows as a card in the chat tab
+          const inline = e.request.filePath === get().activeDoc
           set({
             permissions: [...get().permissions, e.request],
             sidebarOpen: true,
@@ -625,14 +780,15 @@ export const useStore = create<FabulistStore>((set, get) => ({
           ])
         }
         const chat = get().chats[e.threadId]
-        if (chat) window.fabulist.agent.saveChat(e.docId, e.threadId, chat.slice(-200)).catch(() => {})
+        if (chat) window.fabulist.agent.saveChat(e.projectId, e.threadId, chat.slice(-200)).catch(() => {})
         if (e.commentId === get().pendingCommentId) set({ pendingCommentId: null })
-        if (e.docId === activeId) {
+        if (e.projectId === activeProjectId) {
           get().loadHistory()
           get().loadDocs()
+          get().loadProjects()
           get().loadAgentThreads()
-          if (e.commentId) get().reloadThreads()
-          // a comment may have queued while Claude was busy — send it now
+          // reload comments if the reply landed on the focused doc
+          if (e.commentId && e.docFile === get().activeDoc) get().reloadThreads()
           const [next, ...rest] = get().queuedCommentSends
           if (next) {
             set({ queuedCommentSends: rest })
@@ -644,12 +800,19 @@ export const useStore = create<FabulistStore>((set, get) => ({
     }
   },
 
-  handleExternalChange: (id, content) => {
-    if (get().activeId !== id) return
-    set({
-      content,
-      external: { seq: extSeq++, content },
-      threads: reanchor(get().threads, content)
-    })
+  handleExternalChange: (projectId, docFile, content) => {
+    if (get().activeProjectId !== projectId) return
+    // cache for any open tab; only re-render the editor if it's the live doc
+    if (get().openDocs.includes(docFile) || get().activeDoc === docFile) {
+      set({ docContents: { ...get().docContents, [docFile]: content } })
+    }
+    if (get().activeDoc === docFile) {
+      set({
+        content,
+        external: { seq: extSeq++, content },
+        threads: reanchor(get().threads, content)
+      })
+    }
+    get().loadDocs()
   }
 }))

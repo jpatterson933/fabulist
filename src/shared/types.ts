@@ -1,9 +1,26 @@
 // Shared contract between main, preload, and renderer.
 
-export interface DocMeta {
+import type { DocType } from './docTypes'
+export type { DocType }
+
+/** A project is a folder under the library root; it holds one or more docs. */
+export interface ProjectMeta {
   id: string // folder name
   title: string
   path: string
+  docCount: number
+  createdAt: number
+  updatedAt: number
+  updatedLabel?: string // most-recent doc title, for the rail subtitle
+}
+
+export interface DocMeta {
+  /** filename within the project, e.g. "chapter-1.md" — the doc's stable id */
+  file: string
+  /** the kind of doc, derived from the extension; only 'markdown' today */
+  type: DocType
+  title: string
+  path: string // absolute path to the doc file
   createdAt: number
   updatedAt: number
   wordCount: number
@@ -49,7 +66,7 @@ export interface VersionPreview {
 /** A permission request surfaced to the user for approval */
 export interface PermissionRequest {
   requestId: string
-  docId: string
+  projectId: string
   tool: string
   /** Relative path of the file being changed, if a file tool */
   filePath?: string
@@ -65,21 +82,21 @@ export interface PermissionRequest {
 }
 
 export type AgentEvent =
-  | { kind: 'status'; docId: string; status: 'idle' | 'starting' | 'working' | 'done' | 'error'; detail?: string }
+  | { kind: 'status'; projectId: string; status: 'idle' | 'starting' | 'working' | 'done' | 'error'; detail?: string }
   | {
       kind: 'user-echo'
-      docId: string
+      projectId: string
       threadId: string
       itemId: string
       text: string
       quote?: string
       attachments?: string[]
     }
-  | { kind: 'text-delta'; docId: string; threadId: string; itemId: string; delta: string }
-  | { kind: 'assistant-text'; docId: string; threadId: string; itemId: string; text: string }
+  | { kind: 'text-delta'; projectId: string; threadId: string; itemId: string; delta: string }
+  | { kind: 'assistant-text'; projectId: string; threadId: string; itemId: string; text: string }
   | {
       kind: 'tool-note'
-      docId: string
+      projectId: string
       threadId: string
       itemId: string
       toolId: string
@@ -87,11 +104,11 @@ export type AgentEvent =
       done?: boolean
       ok?: boolean
     }
-  | { kind: 'permission-request'; docId: string; request: PermissionRequest }
-  | { kind: 'permission-resolved'; docId: string; requestId: string; approved: boolean }
+  | { kind: 'permission-request'; projectId: string; request: PermissionRequest }
+  | { kind: 'permission-resolved'; projectId: string; requestId: string; approved: boolean }
   | {
       kind: 'result'
-      docId: string
+      projectId: string
       threadId: string
       ok: boolean
       text?: string
@@ -99,9 +116,11 @@ export type AgentEvent =
       costUsd?: number
       durationMs?: number
       commentId?: string
+      /** the doc a comment reply belongs to, so the renderer reloads it */
+      docFile?: string
     }
 
-/** A named conversation with the agent, scoped to one document. */
+/** A named conversation with the agent, scoped to one project. */
 export interface AgentThread {
   id: string
   title: string
@@ -169,6 +188,8 @@ export interface Attachment {
 }
 
 export interface SendOptions {
+  /** The doc the author is focused on / that a quote or comment belongs to */
+  docFile?: string
   /** When set, Claude's final reply is also appended to this comment thread */
   commentId?: string
   /** Selected text the user is asking about */

@@ -7,8 +7,7 @@ import type { AgentEvent, ModelChoice, PermissionRequest, SendOptions } from '@s
 import {
   LIBRARY_ROOT,
   ensureLibraryRoot,
-  docPath,
-  DOC_FILE,
+  projectPath,
   COMMENTS_FILE,
   DEFAULT_THREAD_TITLE,
   readState,
@@ -20,12 +19,18 @@ import {
 import { commitAll } from './git'
 import * as comments from './comments'
 
-const SYSTEM_APPEND = `
+/** System prompt tail; the currently-focused doc (if any) is appended per send. */
+function systemAppend(docFile?: string): string {
+  const focus = docFile
+    ? `The author is currently focused on \`${docFile}\`; treat it as the primary document unless they say otherwise, but you may read and edit any document in the project.`
+    : `The author has not opened a specific document yet.`
+  return `
 You are operating inside Fabulist, a writing studio. The current working directory is a
-single document project; the document itself is document.md. Follow the project CLAUDE.md.
-Every file edit you make is shown to the author as a diff for approval before it is applied,
-so make edits confidently but keep them minimal and well-scoped. Keep chat replies short —
-the document is the deliverable, not the conversation.`
+project folder that holds one or more documents as Markdown files. ${focus} Follow the
+project CLAUDE.md. Every file edit you make is shown to the author as a diff for approval
+before it is applied, so make edits confidently but keep them minimal and well-scoped.
+Keep chat replies short — the documents are the deliverable, not the conversation.`
+}
 
 /**
  * In packaged builds the SDK resolves its native engine binary inside app.asar,
@@ -124,8 +129,8 @@ export class AgentManager {
     if (this.wc && !this.wc.isDestroyed()) this.wc.send('agent:event', event)
   }
 
-  isBusy(docId: string): boolean {
-    return this.active.has(docId)
+  isBusy(projectId: string): boolean {
+    return this.active.has(projectId)
   }
 
   resolvePermission(requestId: string, approved: boolean): void {
@@ -136,8 +141,8 @@ export class AgentManager {
     }
   }
 
-  async interrupt(docId: string): Promise<void> {
-    const run = this.active.get(docId)
+  async interrupt(projectId: string): Promise<void> {
+    const run = this.active.get(projectId)
     if (!run) return
     try {
       await run.q.interrupt()
@@ -146,29 +151,29 @@ export class AgentManager {
     }
   }
 
-  async send(docId: string, threadId: string, prompt: string, opts: SendOptions = {}): Promise<void> {
-    if (this.active.has(docId)) throw new Error('Claude is already working on this document')
-    const cwd = docPath(docId)
+  async send(projectId: string, threadId: string, prompt: string, opts: SendOptions = {}): Promise<void> {
+    if (this.active.has(projectId)) throw new Error('Claude is already working on this project')
+    const cwd = projectPath(projectId)
     const emit: Emitter = (e) => this.emit(e)
 
     const userItemId = newId()
     emit({
       kind: 'user-echo',
-      docId,
+      projectId,
       threadId,
       itemId: userItemId,
       text: prompt,
       quote: opts.quote,
       attachments: opts.attachments?.map((a) => a.name)
     })
-    emit({ kind: 'status', docId, status: 'starting' })
+    emit({ kind: 'status', projectId, status: 'starting' })
 
-    const state = await readState(docId)
-    const priorSession = await getThreadSession(docId, threadId)
+    const state = await readState(projectId)
+    const priorSession = await getThreadSession(projectId, threadId)
     // name a still-untitled, still-empty thread after its opening message
-    const meta = (await listThreads(docId)).find((t) => t.id === threadId)
+    const meta = (await listThreads(projectId)).find((t) => t.id === threadId)
     if (meta && meta.messageCount === 0 && meta.title === DEFAULT_THREAD_TITLE) {
-      await updateThread(docId, threadId, { title: titleFromPrompt(prompt) }).catch(() => {})
+      await updateThread(projectId, threadId, { title: titleFromPrompt(prompt) }).catch(() => {})
     }
     const abort = new AbortController()
     let editsApplied = 0
@@ -192,17 +197,17 @@ export class AgentManager {
       abortController: abort,
       includePartialMessages: true,
       settingSources: ['project'],
-      systemPrompt: { type: 'preset', preset: 'claude_code', append: SYSTEM_APPEND },
+      systemPrompt: { type: 'preset', preset: 'claude_code', append: systemAppend(opts.docFile) },
       permissionMode: 'default',
       canUseTool: (tool, input, { signal }) =>
-        this.gateTool(docId, cwd, tool, input as Record<string, unknown>, signal, () => editsApplied++),
+        this.gateTool(projectId, cwd, tool, input as Record<string, unknown>, signal, () => editsApplied++),
       stderr: (line) => {
         if (process.env.FABULIST_DEBUG) console.error('[claude]', line)
       }
     }
 
     const q = query({ prompt: input(), options })
-    this.active.set(docId, { abort, q })
+    this.active.set(projectId, { abort, q })
 
     let sessionId: string | undefined
     let currentItemId = newId()
@@ -227,8 +232,8 @@ export class AgentManager {
             }
             if (ev.type === 'content_block_delta' && ev.delta?.type === 'text_delta' && ev.delta.text) {
               streamedText += ev.delta.text
-              emit({ kind: 'text-delta', docId, threadId, itemId: currentItemId, delta: ev.delta.text })
-              emit({ kind: 'status', docId, status: 'working' })
+              emit({ kind: 'text-delta', projectId, threadId, itemId: currentItemId, delta: ev.delta.text })
+              emit({ kind: 'status', projectId, status: 'working' })
             }
             break
           }
@@ -246,7 +251,7 @@ export class AgentManager {
               .map((b) => b.text ?? '')
               .join('\n')
             if (text.trim()) {
-              emit({ kind: 'assistant-text', docId, threadId, itemId: currentItemId, text })
+              emit({ kind: 'assistant-text', projectId, threadId, itemId: currentItemId, text })
               finalText = text
               streamedText = ''
             }
@@ -254,13 +259,13 @@ export class AgentManager {
               if (b.type === 'tool_use' && b.id && b.name) {
                 emit({
                   kind: 'tool-note',
-                  docId,
+                  projectId,
                   threadId,
                   itemId: currentItemId,
                   toolId: b.id,
                   note: describeTool(b.name, b.input as Record<string, unknown>, cwd)
                 })
-                emit({ kind: 'status', docId, status: 'working', detail: b.name })
+                emit({ kind: 'status', projectId, status: 'working', detail: b.name })
               }
             }
             break
@@ -273,7 +278,7 @@ export class AgentManager {
                 if (b.type === 'tool_result' && typeof b.tool_use_id === 'string') {
                   emit({
                     kind: 'tool-note',
-                    docId,
+                    projectId,
                     threadId,
                     itemId: currentItemId,
                     toolId: b.tool_use_id,
@@ -303,43 +308,44 @@ export class AgentManager {
       resultOk = false
       resultError = err instanceof Error ? err.message : String(err)
     } finally {
-      this.active.delete(docId)
+      this.active.delete(projectId)
       // fail any approval cards still open
       for (const [id, resolve] of this.pendingPermissions) {
         resolve(false)
-        emit({ kind: 'permission-resolved', docId, requestId: id, approved: false })
+        emit({ kind: 'permission-resolved', projectId, requestId: id, approved: false })
       }
       this.pendingPermissions.clear()
     }
 
-    if (sessionId) await updateThread(docId, threadId, { sessionId }).catch(() => {})
+    if (sessionId) await updateThread(projectId, threadId, { sessionId }).catch(() => {})
 
     if (editsApplied > 0) {
       const label = prompt.replace(/\s+/g, ' ').slice(0, 64)
       await commitAll(cwd, `Claude: ${label}`).catch(() => {})
     }
 
-    if (opts.commentId && resultOk && finalText.trim()) {
-      await comments.reply(docId, opts.commentId, 'claude', finalText.trim()).catch(() => {})
+    if (opts.commentId && opts.docFile && resultOk && finalText.trim()) {
+      await comments.reply(projectId, opts.docFile, opts.commentId, 'claude', finalText.trim()).catch(() => {})
     }
 
     emit({
       kind: 'result',
-      docId,
+      projectId,
       threadId,
       ok: resultOk,
       text: finalText,
       error: resultError,
       costUsd,
       durationMs,
-      commentId: opts.commentId
+      commentId: opts.commentId,
+      docFile: opts.docFile
     })
-    emit({ kind: 'status', docId, status: resultOk ? 'done' : 'error', detail: resultError })
+    emit({ kind: 'status', projectId, status: resultOk ? 'done' : 'error', detail: resultError })
   }
 
   /** The approval gate. Decides per tool whether to allow, deny, or ask the human. */
   private async gateTool(
-    docId: string,
+    projectId: string,
     cwd: string,
     tool: string,
     input: Record<string, unknown>,
@@ -364,8 +370,8 @@ export class AgentManager {
       }
     }
 
-    const request = await this.buildRequest(docId, cwd, tool, input, filePath)
-    const approved = await this.askHuman(docId, request, signal)
+    const request = await this.buildRequest(projectId, cwd, tool, input, filePath)
+    const approved = await this.askHuman(projectId, request, signal)
     if (approved) {
       if (filePath) onEditApplied()
       return { behavior: 'allow', updatedInput: input }
@@ -374,7 +380,7 @@ export class AgentManager {
   }
 
   private async buildRequest(
-    docId: string,
+    projectId: string,
     cwd: string,
     tool: string,
     input: Record<string, unknown>,
@@ -382,7 +388,7 @@ export class AgentManager {
   ): Promise<PermissionRequest> {
     const request: PermissionRequest = {
       requestId: newId(),
-      docId,
+      projectId,
       tool,
       filePath,
       summary: describeTool(tool, input, cwd)
@@ -413,14 +419,14 @@ export class AgentManager {
     return request
   }
 
-  private askHuman(docId: string, request: PermissionRequest, signal: AbortSignal): Promise<boolean> {
-    this.emit({ kind: 'permission-request', docId, request })
+  private askHuman(projectId: string, request: PermissionRequest, signal: AbortSignal): Promise<boolean> {
+    this.emit({ kind: 'permission-request', projectId, request })
     this.pendingRequests.set(request.requestId, request)
     return new Promise<boolean>((resolve) => {
       const done = (approved: boolean): void => {
         this.pendingPermissions.delete(request.requestId)
         this.pendingRequests.delete(request.requestId)
-        this.emit({ kind: 'permission-resolved', docId, requestId: request.requestId, approved })
+        this.emit({ kind: 'permission-resolved', projectId, requestId: request.requestId, approved })
         resolve(approved)
       }
       this.pendingPermissions.set(request.requestId, done)
@@ -429,14 +435,14 @@ export class AgentManager {
   }
 
   /**
-   * Re-emit any unresolved permission requests for a document. Called when the
+   * Re-emit any unresolved permission requests for a project. Called when the
    * renderer (re)attaches — a reload mid-approval must not strand the agent
    * waiting on a request the UI no longer knows about.
    */
-  resendPending(docId: string): void {
+  resendPending(projectId: string): void {
     for (const request of this.pendingRequests.values()) {
-      if (request.docId === docId) {
-        this.emit({ kind: 'permission-request', docId, request })
+      if (request.projectId === projectId) {
+        this.emit({ kind: 'permission-request', projectId, request })
       }
     }
   }
@@ -451,12 +457,13 @@ function titleFromPrompt(prompt: string): string {
 
 function buildPrompt(prompt: string, opts: SendOptions): string {
   const parts: string[] = []
+  const where = opts.docFile ? ` in \`${opts.docFile}\`` : ''
   if (opts.quote) {
-    parts.push(`The author highlighted this passage in ${DOC_FILE}:\n\n"""\n${opts.quote}\n"""`)
+    parts.push(`The author highlighted this passage${where}:\n\n"""\n${opts.quote}\n"""`)
   }
   if (opts.commentId) {
     parts.push(
-      'This is a comment on that passage. Address it specifically. If a text change is warranted, edit document.md directly. Your chat reply will be recorded in the comment thread, so keep it self-contained and brief.'
+      `This is a comment on that passage. Address it specifically. If a text change is warranted, edit ${opts.docFile ?? 'the document'} directly. Your chat reply will be recorded in the comment thread, so keep it self-contained and brief.`
     )
   }
   parts.push(prompt)

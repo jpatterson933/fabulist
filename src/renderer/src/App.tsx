@@ -3,15 +3,17 @@ import { FONT_CHOICES } from '@shared/types'
 import { useStore } from '@/store'
 import Library from '@/components/Library'
 import Editor from '@/components/Editor'
+import Tabs from '@/components/Tabs'
 import Sidebar from '@/components/Sidebar'
 import VersionPreview from '@/components/VersionPreview'
 
 export default function App(): React.JSX.Element {
-  const activeId = useStore((s) => s.activeId)
+  const activeProjectId = useStore((s) => s.activeProjectId)
   const docs = useStore((s) => s.docs)
-  const doc = docs.find((d) => d.id === activeId)
+  const activeDoc = useStore((s) => s.activeDoc)
+  const doc = docs.find((d) => d.file === activeDoc)
   const preview = useStore((s) => s.preview)
-  const agent = useStore((s) => (activeId ? s.agent[activeId] : undefined))
+  const agent = useStore((s) => (activeProjectId ? s.agent[activeProjectId] : undefined))
   const sidebarOpen = useStore((s) => s.sidebarOpen)
   const toggleSidebar = useStore((s) => s.toggleSidebar)
   const libraryOpen = useStore((s) => s.libraryOpen)
@@ -29,10 +31,12 @@ export default function App(): React.JSX.Element {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
+  const projectOpen = Boolean(activeProjectId)
+
   return (
     <div
       className={`app ${libraryOpen ? '' : 'library-closed'} ${
-        doc && sidebarOpen ? '' : 'sidebar-closed'
+        projectOpen && sidebarOpen ? '' : 'sidebar-closed'
       }`}
     >
       <Library />
@@ -46,23 +50,23 @@ export default function App(): React.JSX.Element {
             >
               <RailIcon />
             </button>
-            {doc ? (
-              <>
-                <h1>{doc.title}</h1>
+            {projectOpen ? (
+              <Tabs />
+            ) : (
+              <h1 className="workspace-title-idle">Fabulist</h1>
+            )}
+          </div>
+          {projectOpen && (
+            <div className="workspace-actions">
+              {doc && (
                 <span className="workspace-meta">
                   {doc.wordCount.toLocaleString()} words
                   {agent && agent.status !== 'idle' && agent.status !== 'done' && (
                     <span className={`agent-dot agent-${agent.status}`} />
                   )}
                 </span>
-              </>
-            ) : (
-              <h1 className="workspace-title-idle">Fabulist</h1>
-            )}
-          </div>
-          {doc && (
-            <div className="workspace-actions">
-              <FontPicker />
+              )}
+              {doc && <FontPicker />}
               <button className="btn-ghost" onClick={() => snapshot()} title="Save a named point in history">
                 Snapshot
               </button>
@@ -77,17 +81,23 @@ export default function App(): React.JSX.Element {
           )}
         </header>
 
-        {doc ? (
-          preview ? (
+        {projectOpen ? (
+          preview && doc ? (
             <VersionPreview />
+          ) : doc ? (
+            doc.type === 'markdown' ? (
+              <Editor key={`${activeProjectId}:${doc.file}`} projectId={activeProjectId!} docFile={doc.file} />
+            ) : (
+              <UnsupportedDoc file={doc.file} />
+            )
           ) : (
-            <Editor key={doc.id} docId={doc.id} />
+            <NoDocOpen />
           )
         ) : (
           <EmptyState />
         )}
       </main>
-      {doc && <Sidebar docId={doc.id} />}
+      {projectOpen && <Sidebar projectId={activeProjectId!} />}
     </div>
   )
 }
@@ -131,19 +141,54 @@ function PanelIcon(): React.JSX.Element {
   )
 }
 
-function EmptyState(): React.JSX.Element {
+function NoDocOpen(): React.JSX.Element {
   const createDoc = useStore((s) => s.createDoc)
   return (
     <div className="empty-state">
       <div className="empty-state-inner">
         <span className="empty-state-glyph">❡</span>
-        <h2>Every document is a little world.</h2>
-        <p>
-          Each one is a Claude Code project under the hood — versioned, rewindable, and shared
-          with an agent that knows the work. Select a document on the left, or begin a new one.
-        </p>
+        <h2>No document open</h2>
+        <p>Open a document with the + in the tab bar, or start a new one.</p>
         <button className="btn-primary" onClick={() => createDoc('Untitled')}>
           New document
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function UnsupportedDoc({ file }: { file: string }): React.JSX.Element {
+  const activeProjectId = useStore((s) => s.activeProjectId)
+  return (
+    <div className="empty-state">
+      <div className="empty-state-inner">
+        <span className="empty-state-glyph">❡</span>
+        <h2>Can&rsquo;t open {file} here yet</h2>
+        <p>Fabulist edits Markdown documents for now. Open this file in Finder to view it.</p>
+        {activeProjectId && (
+          <button className="btn-ghost" onClick={() => window.fabulist.library.reveal(activeProjectId)}>
+            Reveal in Finder
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function EmptyState(): React.JSX.Element {
+  const createProject = useStore((s) => s.createProject)
+  return (
+    <div className="empty-state">
+      <div className="empty-state-inner">
+        <span className="empty-state-glyph">❡</span>
+        <h2>Every project is a little world.</h2>
+        <p>
+          A project gathers your documents in one place — each a Claude Code workspace under the
+          hood, versioned and rewindable, shared with an agent that reads across the whole project.
+          Select a project on the left, or begin a new one.
+        </p>
+        <button className="btn-primary" onClick={() => createProject('Untitled')}>
+          New project
         </button>
       </div>
     </div>

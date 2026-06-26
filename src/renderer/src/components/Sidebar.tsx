@@ -2,7 +2,7 @@ import { useStore } from '@/store'
 import ChatPanel from '@/components/ChatPanel'
 import HistoryPanel from '@/components/HistoryPanel'
 
-export default function Sidebar({ docId }: { docId: string }): React.JSX.Element {
+export default function Sidebar({ projectId }: { projectId: string }): React.JSX.Element {
   const tab = useStore((s) => s.tab)
   const setTab = useStore((s) => s.setTab)
 
@@ -18,7 +18,7 @@ export default function Sidebar({ docId }: { docId: string }): React.JSX.Element
           </button>
         </nav>
         <div className="sidebar-body">
-          {tab === 'chat' && <ChatPanel docId={docId} />}
+          {tab === 'chat' && <ChatPanel projectId={projectId} />}
           {tab === 'history' && <HistoryPanel />}
         </div>
       </div>

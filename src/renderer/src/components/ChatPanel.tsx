@@ -5,15 +5,15 @@ import DiffView from '@/components/DiffView'
 import Markdown from '@/components/Markdown'
 import { relativeTime } from '@/components/Library'
 
-export default function ChatPanel({ docId }: { docId: string }): React.JSX.Element {
-  const threadId = useStore((s) => s.activeThread[docId])
+export default function ChatPanel({ projectId }: { projectId: string }): React.JSX.Element {
+  const threadId = useStore((s) => s.activeThread[projectId])
   const chat = useStore((s) => (threadId ? s.chats[threadId] ?? [] : []))
   const allPermissions = useStore((s) => s.permissions)
   const permissions = useMemo(
-    () => allPermissions.filter((p) => p.docId === docId),
-    [allPermissions, docId]
+    () => allPermissions.filter((p) => p.projectId === projectId),
+    [allPermissions, projectId]
   )
-  const agent = useStore((s) => s.agent[docId])
+  const agent = useStore((s) => s.agent[projectId])
   const askClaude = useStore((s) => s.askClaude)
   const interrupt = useStore((s) => s.interrupt)
 
@@ -76,13 +76,13 @@ export default function ChatPanel({ docId }: { docId: string }): React.JSX.Eleme
       onDrop={onDrop}
     >
       {dragging && <div className="chat-dropzone">Drop files to attach</div>}
-      <ThreadBar docId={docId} busy={busy} />
+      <ThreadBar projectId={projectId} busy={busy} />
       <div className="chat-scroll" ref={scrollRef}>
         {chat.length === 0 && (
           <div className="chat-empty">
             <p>
-              Claude knows this document — it lives in the project folder Claude works from.
-              Ask for a read-through, a rewrite, research, or a sharper opening line.
+              Claude works across this whole project — every document in it. Ask for a
+              read-through, a rewrite, research, continuity across docs, or a sharper opening line.
             </p>
             <p className="chat-empty-hint">
               Or highlight any passage and comment on it — the passage and your note go
@@ -165,9 +165,9 @@ export default function ChatPanel({ docId }: { docId: string }): React.JSX.Eleme
   )
 }
 
-function ThreadBar({ docId, busy }: { docId: string; busy: boolean }): React.JSX.Element {
-  const threads = useStore((s) => s.agentThreads[docId] ?? [])
-  const activeThreadId = useStore((s) => s.activeThread[docId])
+function ThreadBar({ projectId, busy }: { projectId: string; busy: boolean }): React.JSX.Element {
+  const threads = useStore((s) => s.agentThreads[projectId] ?? [])
+  const activeThreadId = useStore((s) => s.activeThread[projectId])
   const createThread = useStore((s) => s.createAgentThread)
   const selectThread = useStore((s) => s.selectAgentThread)
   const renameThread = useStore((s) => s.renameAgentThread)
@@ -398,7 +398,8 @@ function ChatBubble({ item }: { item: ChatItem }): React.JSX.Element {
 function ApprovalCard({ request }: { request: PermissionRequest }): React.JSX.Element {
   const respond = useStore((s) => s.respondPermission)
   const shownInline = useStore((s) => s.inlineSuggestionId === request.requestId)
-  const isDocEdit = request.filePath === 'document.md'
+  const activeDoc = useStore((s) => s.activeDoc)
+  const isDocEdit = request.filePath === activeDoc
   const isWholeFile = request.tool === 'Write'
 
   // the suggestion is rendered in the document itself — keep chat compact

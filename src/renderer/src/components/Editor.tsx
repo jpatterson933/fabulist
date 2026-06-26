@@ -20,7 +20,13 @@ interface SelectionInfo {
   top: number
 }
 
-export default function Editor({ docId }: { docId: string }): React.JSX.Element {
+export default function Editor({
+  projectId,
+  docFile
+}: {
+  projectId: string
+  docFile: string
+}): React.JSX.Element {
   const hostRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
   const [selection, setSelection] = useState<SelectionInfo | null>(null)
@@ -42,13 +48,13 @@ export default function Editor({ docId }: { docId: string }): React.JSX.Element 
 
   const appliedSeq = useRef(0)
 
-  // a pending document.md permission rendered as an in-document suggestion
+  // a pending edit to the focused doc, rendered as an in-document suggestion
   const suggestion = useMemo(() => {
-    const req = permissions.find((p) => p.docId === docId && p.filePath === 'document.md')
+    const req = permissions.find((p) => p.projectId === projectId && p.filePath === docFile)
     if (!req) return null
-    const segments = computeSuggestion(content, req)
+    const segments = computeSuggestion(content, req, docFile)
     return segments ? { requestId: req.requestId, segments } : null
-  }, [permissions, content, docId])
+  }, [permissions, content, projectId, docFile])
 
   // create the view once per document
   useEffect(() => {
@@ -112,7 +118,7 @@ export default function Editor({ docId }: { docId: string }): React.JSX.Element 
       useStore.getState().setInlineSuggestion(null)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [docId])
+  }, [projectId, docFile])
 
   // apply external content updates (Claude edits, restores, doc switches)
   useEffect(() => {
@@ -314,6 +320,7 @@ export default function Editor({ docId }: { docId: string }): React.JSX.Element 
     </div>
   )
 }
+
 
 function truncate(s: string, n: number): string {
   const clean = s.replace(/\s+/g, ' ').trim()

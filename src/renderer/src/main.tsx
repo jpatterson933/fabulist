@@ -16,22 +16,22 @@ import { useStore } from './store'
 const store = useStore.getState()
 
 window.fabulist.agent.onEvent((e) => useStore.getState().handleAgentEvent(e))
-window.fabulist.doc.onExternalChange((id, content) =>
-  useStore.getState().handleExternalChange(id, content)
+window.fabulist.doc.onExternalChange((id, docFile, content) =>
+  useStore.getState().handleExternalChange(id, docFile, content)
 )
 window.fabulist.comments.onChanged((id) => {
-  if (useStore.getState().activeId === id) useStore.getState().reloadThreads()
+  if (useStore.getState().activeProjectId === id) useStore.getState().reloadThreads()
 })
 
 window.addEventListener('beforeunload', () => {
-  const { activeId } = useStore.getState()
-  if (activeId) {
+  const { activeProjectId } = useStore.getState()
+  if (activeProjectId) {
     void useStore.getState().flushWrite()
-    void window.fabulist.doc.snapshot(activeId, 'Edited')
+    void window.fabulist.doc.snapshot(activeProjectId, 'Edited')
   }
 })
 
-void store.loadDocs()
+void store.loadProjects()
 void store.loadModels()
 
 if (import.meta.env.DEV) {

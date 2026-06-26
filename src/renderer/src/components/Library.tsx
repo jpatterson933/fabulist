@@ -2,21 +2,8 @@ import { useState } from 'react'
 import { useStore } from '@/store'
 
 export default function Library(): React.JSX.Element {
-  const docs = useStore((s) => s.docs)
-  const activeId = useStore((s) => s.activeId)
-  const openDoc = useStore((s) => s.openDoc)
-  const createDoc = useStore((s) => s.createDoc)
-  const deleteDoc = useStore((s) => s.deleteDoc)
-  const [creating, setCreating] = useState(false)
-  const [title, setTitle] = useState('')
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
-
-  const submit = async (): Promise<void> => {
-    const t = title.trim()
-    setCreating(false)
-    setTitle('')
-    if (t) await createDoc(t)
-  }
+  const railView = useStore((s) => s.railView)
+  const activeProjectId = useStore((s) => s.activeProjectId)
 
   return (
     <aside className="library">
@@ -28,8 +15,135 @@ export default function Library(): React.JSX.Element {
           </span>
           <span className="library-brand-mark">Fabulist</span>
         </div>
+        {railView === 'docs' && activeProjectId ? <DocsView /> : <ProjectsView />}
+      </div>
+    </aside>
+  )
+}
 
-        <div className="library-head">
+function ProjectsView(): React.JSX.Element {
+  const projects = useStore((s) => s.projects)
+  const activeProjectId = useStore((s) => s.activeProjectId)
+  const openProject = useStore((s) => s.openProject)
+  const createProject = useStore((s) => s.createProject)
+  const deleteProject = useStore((s) => s.deleteProject)
+  const [creating, setCreating] = useState(false)
+  const [title, setTitle] = useState('')
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+
+  const submit = async (): Promise<void> => {
+    const t = title.trim()
+    setCreating(false)
+    setTitle('')
+    if (t) await createProject(t)
+  }
+
+  return (
+    <>
+      <div className="library-head">
+        <span className="library-label">Projects</span>
+        <button className="library-new" onClick={() => setCreating(true)} title="New project">
+          +
+        </button>
+      </div>
+
+      {creating && (
+        <form
+          className="library-create"
+          onSubmit={(e) => {
+            e.preventDefault()
+            void submit()
+          }}
+        >
+          <input
+            autoFocus
+            value={title}
+            placeholder="Project title…"
+            onChange={(e) => setTitle(e.target.value)}
+            onBlur={() => void submit()}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setCreating(false)
+                setTitle('')
+              }
+            }}
+          />
+        </form>
+      )}
+
+      <nav className="library-list">
+        {projects.length === 0 && !creating && (
+          <p className="library-empty">No projects yet. Start one with +</p>
+        )}
+        {projects.map((p) => (
+          <div key={p.id} className={`library-item ${p.id === activeProjectId ? 'is-active' : ''}`}>
+            <button className="library-item-main" onClick={() => void openProject(p.id)}>
+              <span className="library-item-title">{p.title}</span>
+              <span className="library-item-meta">
+                {relativeTime(p.updatedAt)} · {p.docCount} {p.docCount === 1 ? 'doc' : 'docs'}
+              </span>
+            </button>
+            {confirmDelete === p.id ? (
+              <div className="library-item-confirm">
+                <button
+                  className="danger"
+                  onClick={() => {
+                    setConfirmDelete(null)
+                    void deleteProject(p.id)
+                  }}
+                >
+                  Delete
+                </button>
+                <button onClick={() => setConfirmDelete(null)}>Keep</button>
+              </div>
+            ) : (
+              <button
+                className="library-item-x"
+                title="Delete project"
+                onClick={() => setConfirmDelete(p.id)}
+              >
+                ×
+              </button>
+            )}
+          </div>
+        ))}
+      </nav>
+    </>
+  )
+}
+
+function DocsView(): React.JSX.Element {
+  const projects = useStore((s) => s.projects)
+  const activeProjectId = useStore((s) => s.activeProjectId)
+  const docs = useStore((s) => s.docs)
+  const activeDoc = useStore((s) => s.activeDoc)
+  const openTab = useStore((s) => s.openTab)
+  const deleteDoc = useStore((s) => s.deleteDoc)
+  const createDoc = useStore((s) => s.createDoc)
+  const setRailView = useStore((s) => s.setRailView)
+  const [creating, setCreating] = useState(false)
+  const [title, setTitle] = useState('')
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+
+  const project = projects.find((p) => p.id === activeProjectId)
+
+  const submit = async (): Promise<void> => {
+    const t = title.trim()
+    setCreating(false)
+    setTitle('')
+    if (t) await createDoc(t)
+  }
+
+  return (
+    <>
+      <button className="library-crumb" onClick={() => setRailView('projects')} title="All projects">
+        <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden>
+          <path d="M7.5 3 4.5 6l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        <span className="library-crumb-title">{project?.title ?? 'Project'}</span>
+      </button>
+
+      <div className="library-head">
         <span className="library-label">Documents</span>
         <button className="library-new" onClick={() => setCreating(true)} title="New document">
           +
@@ -47,7 +161,7 @@ export default function Library(): React.JSX.Element {
           <input
             autoFocus
             value={title}
-            placeholder="Title…"
+            placeholder="Document title…"
             onChange={(e) => setTitle(e.target.value)}
             onBlur={() => void submit()}
             onKeyDown={(e) => {
@@ -62,24 +176,23 @@ export default function Library(): React.JSX.Element {
 
       <nav className="library-list">
         {docs.length === 0 && !creating && (
-          <p className="library-empty">No documents yet. Start one with +</p>
+          <p className="library-empty">No documents yet. Add one with +</p>
         )}
         {docs.map((d) => (
-          <div key={d.id} className={`library-item ${d.id === activeId ? 'is-active' : ''}`}>
-            <button className="library-item-main" onClick={() => void openDoc(d.id)}>
-              <span className="library-item-title">{d.title}</span>
-              <span className="library-item-preview">{d.preview || 'Empty'}</span>
-              <span className="library-item-meta">
-                {relativeTime(d.updatedAt)} · {d.wordCount.toLocaleString()} words
+          <div key={d.file} className={`library-doc ${d.file === activeDoc ? 'is-active' : ''}`}>
+            <button className="library-doc-main" onClick={() => void openTab(d.file)} title={d.file}>
+              <span className="library-doc-glyph" aria-hidden>
+                ❡
               </span>
+              <span className="library-doc-title">{d.title}</span>
             </button>
-            {confirmDelete === d.id ? (
+            {confirmDelete === d.file ? (
               <div className="library-item-confirm">
                 <button
                   className="danger"
                   onClick={() => {
                     setConfirmDelete(null)
-                    void deleteDoc(d.id)
+                    void deleteDoc(d.file)
                   }}
                 >
                   Delete
@@ -90,7 +203,7 @@ export default function Library(): React.JSX.Element {
               <button
                 className="library-item-x"
                 title="Delete document"
-                onClick={() => setConfirmDelete(d.id)}
+                onClick={() => setConfirmDelete(d.file)}
               >
                 ×
               </button>
@@ -99,15 +212,14 @@ export default function Library(): React.JSX.Element {
         ))}
       </nav>
 
-        <footer className="library-foot">
-          {activeId && (
-            <button className="btn-ghost" onClick={() => window.fabulist.library.reveal(activeId)}>
-              Reveal in Finder
-            </button>
-          )}
-        </footer>
-      </div>
-    </aside>
+      <footer className="library-foot">
+        {activeProjectId && (
+          <button className="btn-ghost" onClick={() => window.fabulist.library.reveal(activeProjectId)}>
+            Reveal in Finder
+          </button>
+        )}
+      </footer>
+    </>
   )
 }
 

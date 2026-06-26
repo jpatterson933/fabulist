@@ -5,6 +5,17 @@ All notable changes to Fabulist are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+- **Documents are now grouped into projects.** The library rail lists *projects*; opening one
+  shows its documents in tabs across the top of the workspace (with a + to create or open more).
+  A project is a single folder, git repo, and `CLAUDE.md`, and the writing agent now works from
+  the project root — so a single conversation can read and edit across every document in the
+  project (continuity between chapters, a shared story bible, callbacks). Agent conversation
+  threads are now project-scoped rather than per-document; the agent model is a project setting,
+  while the editor font stays per-document. History is one project-wide timeline, and
+  preview/restore acts on the focused document. Existing single-document folders migrate
+  automatically into one-document projects, keeping their chat, comments, model, and history.
+
 ### Fixed
 - Editing a document's title (or content) now updates its sidebar entry — title, preview,
   and word count — instead of leaving the library list stale until the next create/delete or
