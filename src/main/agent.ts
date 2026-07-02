@@ -67,6 +67,10 @@ ${schemaMarkdown()}
 Guidelines:
 - Start by interviewing the user briefly: what are they making, what does "good" look
   like, what do they keep doing by hand? Then propose a harness and build it.
+- Studios are not just for prose. docType globs can admit any textual file kind
+  (.html, .json, .py, …); panels can render markdown, code, images, or a live web page;
+  and \`commands\` can declare a dev server or build with a localhost preview the user
+  runs from the rail. Use these when the work is a website, an app, data, or slides.
 - Prefer several small, well-named skills over one sprawling prompt.
 - To give the studio external tools, define MCP servers in \`.mcp.json\` at the project
   root, enable them via \`enabledMcpjsonServers\` in \`.claude/settings.json\`, and set

@@ -1,0 +1,49 @@
+{
+  "$schema": "../../docs/fabulist.schema.json",
+  "name": "Website Studio",
+  "description": "A hand-built site: pages, styles, and a live preview while you work",
+  "version": 1,
+  "template": true,
+  "docTypes": [
+    {
+      "id": "page",
+      "match": "pages/*.html",
+      "label": "Page",
+      "icon": "🌐",
+      "titleFrom": "filename",
+      "template": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n  <title>{{title}}</title>\n  <link rel=\"stylesheet\" href=\"../assets/site.css\" />\n</head>\n<body>\n  <main>\n    <h1>{{title}}</h1>\n  </main>\n</body>\n</html>\n"
+    },
+    { "id": "style", "match": "assets/*.css", "label": "Stylesheet", "icon": "🎨", "titleFrom": "filename" },
+    { "id": "script", "match": "assets/*.js", "label": "Script", "icon": "⚙", "titleFrom": "filename" },
+    { "id": "note", "match": "notes/*.md", "label": "Note", "icon": "📝" }
+  ],
+  "actions": [
+    {
+      "label": "Design pass",
+      "surface": "doc",
+      "skill": "design-pass"
+    },
+    {
+      "label": "Make it responsive",
+      "surface": "doc",
+      "prompt": "Review this page and its stylesheet for small screens: fluid widths, readable font sizes, no horizontal scroll, sensible breakpoints. Edit the files directly."
+    },
+    {
+      "label": "Check links and assets",
+      "surface": "project",
+      "prompt": "Walk every page in pages/: verify each internal link points at a page that exists and each asset reference (css, js, images) resolves inside the project. Fix what's broken and list what you fixed."
+    }
+  ],
+  "panels": [
+    { "id": "home", "title": "Home Page", "source": "pages/index.html", "view": "web" },
+    { "id": "styles", "title": "Styles", "source": "assets/site.css", "view": "code" }
+  ],
+  "commands": [
+    {
+      "id": "serve",
+      "label": "Serve site",
+      "run": "python3 -m http.server 4321",
+      "preview": "http://localhost:4321/pages/"
+    }
+  ]
+}

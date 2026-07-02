@@ -19,7 +19,7 @@ export default function NewProjectDialog(): React.JSX.Element | null {
   const createProjectFromTemplate = useStore((s) => s.createProjectFromTemplate)
   const createProjectWithWorkshop = useStore((s) => s.createProjectWithWorkshop)
   const [title, setTitle] = useState('')
-  const [source, setSource] = useState('blank') // 'blank' | 'workshop' | template id
+  const [source, setSource] = useState('workshop') // 'workshop' | 'blank' | template id
   const [templates, setTemplates] = useState<TemplateInfo[]>([])
   const [busy, setBusy] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -27,7 +27,7 @@ export default function NewProjectDialog(): React.JSX.Element | null {
   useEffect(() => {
     if (open) {
       setTitle('')
-      setSource('blank')
+      setSource('workshop')
       setBusy(false)
       window.fabulist.templates
         .list()
@@ -83,7 +83,7 @@ export default function NewProjectDialog(): React.JSX.Element | null {
           void submit()
         }}
       >
-        <h2 className="dialog-title">New project</h2>
+        <h2 className="dialog-title">What do you want to make?</h2>
         <input
           ref={inputRef}
           className="dialog-input"
@@ -99,14 +99,14 @@ export default function NewProjectDialog(): React.JSX.Element | null {
         />
 
         <div className="dialog-types" role="radiogroup" aria-label="Start from">
-          {card('blank', '❡', 'Blank', 'an empty markdown project')}
           {card(
             'workshop',
             '✦',
             'Design with Claude',
-            'describe your work; the agent builds a custom studio around it'
+            'describe what you’re making — a novel, a website, a course, a campaign — and the agent builds a studio around it'
           )}
           {templates.map((t) => card(t.id, '▦', t.name, t.description))}
+          {card('blank', '❡', 'Blank', 'an empty project; just documents and the agent')}
         </div>
 
         <div className="dialog-actions">

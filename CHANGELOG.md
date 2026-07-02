@@ -6,6 +6,15 @@ All notable changes to Fabulist are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- **Website Studio** joins the built-in starters — the first non-writing one: HTML pages,
+  a shared stylesheet, a design-pass skill, live web/code panels, and a **Serve site**
+  command whose preview renders the site beside its server log while you and the agent
+  edit it. Proof that a studio can be a workspace for software, not just prose.
+- **The New Project chooser now leads with "What do you want to make?"** — Design with
+  Claude (the workshop) is the first and default card, starter studios follow, Blank moves
+  last. The workshop agent's guidelines now spell out the non-prose toolkit (any-extension
+  doc types, code/image/web panels, commands with live previews) so studios it designs for
+  websites, data, or apps use the full harness.
 - **Studios can run things.** A `commands` block in the manifest declares the processes the
   work needs — a dev server, a build, a test run. Each command appears in the rail with
   Run/Stop, streams its output into a log tab (● while running), and, with a `preview`
