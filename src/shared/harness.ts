@@ -77,6 +77,36 @@ function isSafeGlob(p: string): boolean {
 export type ActionSurface = 'selection' | 'file' | 'project'
 export type PanelViewKind = 'markdown' | 'code' | 'image' | 'web'
 
+/**
+ * The named accent palette: every accent is one oklch hue angle; the renderer
+ * derives the full accent ramp (button, wash, selection…) from it, so a themed
+ * studio re-tints coherently instead of skinning arbitrarily. Also the palette
+ * for per-file-type colors.
+ */
+export const ACCENT_HUES = {
+  orange: 42,
+  crimson: 20,
+  magenta: 345,
+  violet: 295,
+  blue: 255,
+  cyan: 215,
+  teal: 175,
+  green: 150,
+  amber: 80
+} as const
+export type AccentName = keyof typeof ACCENT_HUES
+export const ACCENT_NAMES = Object.keys(ACCENT_HUES) as AccentName[]
+
+/** Document typeface choices; the chrome always keeps the app faces. */
+export const DOC_FONTS = ['sans', 'serif', 'mono'] as const
+export type DocFontName = (typeof DOC_FONTS)[number]
+
+export interface ThemeDef {
+  accent?: AccentName
+  glyph?: string
+  docFont?: DocFontName
+}
+
 export interface FileTypeDef {
   id: string
   match: string
@@ -299,6 +329,41 @@ export const PERMISSION_FIELDS: FieldSpec[] = [
   }
 ]
 
+/** A single-object block (theme, layout) — same field machinery as lists. */
+export interface ObjectBlockSpec {
+  key: string
+  doc: string
+  fields: FieldSpec[]
+}
+
+export const THEME_BLOCK: ObjectBlockSpec = {
+  key: 'theme',
+  doc: 'How the studio looks. Parameterized, not raw CSS: an accent re-tints the whole UI coherently (buttons, focus rings, highlights), so every studio stays recognizably Fabulist. Looks only — never trust-gated, and fabulist.local.json may override it.',
+  fields: [
+    {
+      key: 'accent',
+      kind: 'enum',
+      values: ACCENT_NAMES,
+      doc: 'named accent color the UI derives its whole accent ramp from',
+      example: '"violet"'
+    },
+    {
+      key: 'glyph',
+      kind: 'string',
+      maxLen: 2,
+      doc: "1–2 characters/emoji shown as the studio's mark in the rail and project list",
+      example: '"🎓"'
+    },
+    {
+      key: 'docFont',
+      kind: 'enum',
+      values: DOC_FONTS,
+      doc: 'default document typeface for prose files; the app chrome keeps its own faces',
+      example: '"serif"'
+    }
+  ]
+}
+
 export const TOP_LEVEL_FIELDS: FieldSpec[] = [
   { key: 'name', kind: 'string', doc: 'studio name, shown in the rail and project list', example: '"Course Studio"' },
   { key: 'description', kind: 'string', doc: 'one line about the studio', example: '"A video course: lessons, scripts, and slides"' },
@@ -312,6 +377,7 @@ export const TOP_LEVEL_FIELDS: FieldSpec[] = [
 ]
 
 export const LIST_BLOCKS = [FILE_TYPES_BLOCK, ACTIONS_BLOCK, PANELS_BLOCK, COMMANDS_BLOCK] as const
+export const OBJECT_BLOCKS: ObjectBlockSpec[] = [THEME_BLOCK]
 
 // --- parsed shape ---
 
@@ -320,6 +386,7 @@ export interface HarnessConfig {
   description?: string
   /** this project is a studio template, meant to be instantiated rather than edited */
   template?: boolean
+  theme: ThemeDef
   fileTypes: FileTypeDef[]
   actions: ActionDef[]
   panels: PanelDef[]
@@ -346,6 +413,7 @@ export interface Harness {
 }
 
 export const EMPTY_CONFIG: HarnessConfig = {
+  theme: {},
   fileTypes: [],
   actions: [],
   panels: [],
@@ -443,6 +511,25 @@ export function parseHarnessConfig(raw: unknown, warnings: string[]): HarnessCon
     warnings.push('"docTypes" was renamed to "fileTypes"; rename the block in fabulist.json')
   }
 
+  /** Parse a single-object block's fields into a plain record. */
+  const parseObjectBlock = (block: ObjectBlockSpec): Record<string, string | undefined> => {
+    const out: Record<string, string | undefined> = {}
+    const raw = obj[block.key]
+    if (raw === undefined) return out
+    if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+      warnings.push(`${block.key} must be an object`)
+      return out
+    }
+    for (const f of block.fields) {
+      const v = parseField(f, (raw as Record<string, unknown>)[f.key], (m) => warnings.push(m), block.key)
+      // only set present keys, so spreading an overlay never clobbers with undefined
+      if (v !== undefined) out[f.key] = v
+    }
+    return out
+  }
+
+  const theme = parseObjectBlock(THEME_BLOCK) as ThemeDef
+
   const permissions: PermissionsDef = {}
   if (obj.permissions !== undefined) {
     if (typeof obj.permissions !== 'object' || obj.permissions === null) {
@@ -460,6 +547,7 @@ export function parseHarnessConfig(raw: unknown, warnings: string[]): HarnessCon
     name: top.name,
     description: top.description,
     template: top.template === 'true' ? true : undefined,
+    theme,
     fileTypes: parseListBlock(FILE_TYPES_BLOCK, obj.fileTypes, warnings),
     actions: parseListBlock(ACTIONS_BLOCK, obj.actions, warnings),
     panels: parseListBlock(PANELS_BLOCK, obj.panels, warnings),
@@ -483,6 +571,7 @@ export function mergeHarnessConfigs(base: HarnessConfig, local: HarnessConfig): 
     name: local.name ?? base.name,
     description: local.description ?? base.description,
     template: base.template,
+    theme: { ...base.theme, ...local.theme },
     fileTypes: mergeList(base.fileTypes, local.fileTypes),
     actions: mergeList(base.actions, local.actions),
     panels: mergeList(base.panels, local.panels),
@@ -581,6 +670,10 @@ export function schemaMarkdown(): string {
   const lines: string[] = []
   lines.push('Top-level fields (all optional; unknown fields are ignored):')
   for (const f of TOP_LEVEL_FIELDS) lines.push(fieldLine(f))
+  for (const block of OBJECT_BLOCKS) {
+    lines.push('', `\`${block.key}\` — ${block.doc}`)
+    for (const f of block.fields) lines.push(fieldLine(f))
+  }
   for (const block of LIST_BLOCKS) {
     lines.push('', `\`${block.key}\` — ${block.doc}`)
     for (const f of block.fields) lines.push(fieldLine(f))
@@ -618,6 +711,17 @@ export function jsonSchema(): Record<string, unknown> {
     properties: {
       ...Object.fromEntries(
         TOP_LEVEL_FIELDS.map((f) => [f.key, f.key === 'version' ? { type: ['string', 'number'], description: f.doc } : fieldSchema(f)])
+      ),
+      ...Object.fromEntries(
+        OBJECT_BLOCKS.map((b) => [
+          b.key,
+          {
+            type: 'object',
+            description: b.doc,
+            properties: Object.fromEntries(b.fields.map((f) => [f.key, fieldSchema(f)])),
+            additionalProperties: true
+          }
+        ])
       ),
       ...Object.fromEntries(LIST_BLOCKS.map((b) => [b.key, listSchema(b as ListBlockSpec<unknown>)])),
       permissions: {

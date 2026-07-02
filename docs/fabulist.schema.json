@@ -22,6 +22,40 @@
       "type": "boolean",
       "description": "mark this project as a studio template: opening it offers \"new project from this studio\" instead of editing it in place"
     },
+    "theme": {
+      "type": "object",
+      "description": "How the studio looks. Parameterized, not raw CSS: an accent re-tints the whole UI coherently (buttons, focus rings, highlights), so every studio stays recognizably Fabulist. Looks only — never trust-gated, and fabulist.local.json may override it.",
+      "properties": {
+        "accent": {
+          "enum": [
+            "orange",
+            "crimson",
+            "magenta",
+            "violet",
+            "blue",
+            "cyan",
+            "teal",
+            "green",
+            "amber"
+          ],
+          "description": "named accent color the UI derives its whole accent ramp from"
+        },
+        "glyph": {
+          "type": "string",
+          "description": "1–2 characters/emoji shown as the studio's mark in the rail and project list",
+          "maxLength": 2
+        },
+        "docFont": {
+          "enum": [
+            "sans",
+            "serif",
+            "mono"
+          ],
+          "description": "default document typeface for prose files; the app chrome keeps its own faces"
+        }
+      },
+      "additionalProperties": true
+    },
     "fileTypes": {
       "type": "array",
       "description": "Typed kinds of files this studio works with, matched by filename glob. A matching file gets the icon and label in the rail, its title derived per titleFrom, and a card in the New File dialog (the filename follows the glob, the template seeds the content). Any file kind can be typed (.md, .html, .json, .py, …) — every textual file and image is already a work file; a file type adds meaning on top.",

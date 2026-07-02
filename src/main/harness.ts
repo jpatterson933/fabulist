@@ -162,13 +162,17 @@ export async function loadGateConfig(
   return { config: sharedConfig, trusted: await isTrusted(projectId, sharedConfig) }
 }
 
-/** The studio name from a project's manifest, for library metadata. Cheap read. */
-export async function studioName(projectId: string): Promise<string | undefined> {
+/** The studio name + theme glyph from a project's manifest, for library metadata. Cheap read. */
+export async function studioBadge(
+  projectId: string
+): Promise<{ name?: string; glyph?: string }> {
   try {
     const raw = await fs.readFile(path.join(projectPath(projectId), HARNESS_FILE), 'utf8')
-    const name = (JSON.parse(raw) as { name?: unknown }).name
-    return typeof name === 'string' && name.trim() ? name.trim() : undefined
+    const parsed = JSON.parse(raw) as { name?: unknown; theme?: { glyph?: unknown } }
+    const str = (v: unknown, max: number): string | undefined =>
+      typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : undefined
+    return { name: str(parsed.name, 80), glyph: str(parsed.theme?.glyph, 2) }
   } catch {
-    return undefined
+    return {}
   }
 }

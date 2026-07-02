@@ -150,6 +150,21 @@ describe('parseHarnessConfig — the lenient-parsing contract', () => {
     const { warnings } = parse({ version: 99 })
     expect(warnings[0]).toMatch(/newer than this app/)
   })
+
+  it('parses the theme block, validating accents and capping the glyph', () => {
+    const { config, warnings } = parse({
+      theme: { accent: 'violet', glyph: '🎓✦x', docFont: 'serif' }
+    })
+    expect(config.theme).toEqual({ accent: 'violet', glyph: '🎓', docFont: 'serif' })
+    expect(warnings).toEqual([])
+  })
+
+  it('drops unknown theme values with a warning, keeping the rest', () => {
+    const { config, warnings } = parse({ theme: { accent: 'hotpink', docFont: 'mono' } })
+    expect(config.theme).toEqual({ docFont: 'mono' })
+    expect(warnings[0]).toMatch(/theme\.accent/)
+    expect(parse({ theme: 'loud' }).warnings[0]).toMatch(/theme must be an object/)
+  })
 })
 
 describe('mergeHarnessConfigs — the local overlay contract', () => {
@@ -170,6 +185,13 @@ describe('mergeHarnessConfigs — the local overlay contract', () => {
     const merged = mergeHarnessConfigs(base, local)
     expect(merged.fileTypes.find((t) => t.id === 'scene')?.label).toBe('My Scene')
     expect(merged.fileTypes).toHaveLength(2)
+  })
+
+  it('overlays theme per-field', () => {
+    const themedBase = parse({ theme: { accent: 'violet', glyph: '🎓' } }).config
+    const local = parse({ theme: { accent: 'teal' } }).config
+    const merged = mergeHarnessConfigs(themedBase, local)
+    expect(merged.theme).toEqual({ accent: 'teal', glyph: '🎓' })
   })
 
   it('never lets the overlay touch permissions', () => {

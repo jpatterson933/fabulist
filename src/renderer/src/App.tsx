@@ -11,6 +11,7 @@ import CommandView from '@/components/CommandView'
 import StudioBanner from '@/components/StudioBanner'
 import NewFileDialog from '@/components/NewFileDialog'
 import NewProjectDialog from '@/components/NewProjectDialog'
+import { applyStudioTheme } from '@/lib/theme'
 
 export default function App(): React.JSX.Element {
   const activeProjectId = useStore((s) => s.activeProjectId)
@@ -30,6 +31,11 @@ export default function App(): React.JSX.Element {
     (activePanel?.startsWith('command:') &&
       harness?.config.commands.find((c) => `command:${c.id}` === activePanel)) ||
     null
+
+  // the active studio's theme retints the whole app; closing the project
+  // (or removing the theme from the manifest) restores the stock look
+  const theme = harness?.config.theme
+  useEffect(() => applyStudioTheme(theme), [theme])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {

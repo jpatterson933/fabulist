@@ -22,6 +22,16 @@ All notable changes to Fabulist are documented here. The format follows
   it) is gone.
 
 ### Added
+- **Studios have a look now: the `theme` block.** A `fabulist.json` can declare
+  `theme: { accent, glyph, docFont }`. The accent is one of nine named colors
+  (orange, crimson, magenta, violet, blue, cyan, teal, green, amber); the app
+  derives its whole accent ramp — buttons, focus rings, selection, comment
+  highlights — from that single hue, so a themed studio re-tints coherently
+  instead of skinning arbitrarily. The glyph replaces ✦ as the studio's mark in
+  the rail and the project list, and `docFont` (`sans` | `serif` | `mono`) sets
+  the default document typeface for prose while the chrome keeps the app faces.
+  Theme is looks-only — never part of the trust grant — and `fabulist.local.json`
+  can override it per person.
 - **The Files rail is now a real IDE-grade file tree**, rebuilt on
   [Headless Tree](https://headless-tree.lukasbach.com) (the successor to
   react-complex-tree). What it can do now: drag-and-drop files *and folders* into any

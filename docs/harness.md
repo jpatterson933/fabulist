@@ -37,6 +37,11 @@ Top-level fields (all optional; unknown fields are ignored):
   - `version`: manifest schema version; currently 1 — e.g. 1
   - `template`: mark this project as a studio template: opening it offers "new project from this studio" instead of editing it in place — e.g. true
 
+`theme` — How the studio looks. Parameterized, not raw CSS: an accent re-tints the whole UI coherently (buttons, focus rings, highlights), so every studio stays recognizably Fabulist. Looks only — never trust-gated, and fabulist.local.json may override it.
+  - `accent`: named accent color the UI derives its whole accent ramp from — one of "orange" | "crimson" | "magenta" | "violet" | "blue" | "cyan" | "teal" | "green" | "amber" — e.g. "violet"
+  - `glyph`: 1–2 characters/emoji shown as the studio's mark in the rail and project list — e.g. "🎓"
+  - `docFont`: default document typeface for prose files; the app chrome keeps its own faces — one of "sans" | "serif" | "mono" — e.g. "serif"
+
 `fileTypes` — Typed kinds of files this studio works with, matched by filename glob. A matching file gets the icon and label in the rail, its title derived per titleFrom, and a card in the New File dialog (the filename follows the glob, the template seeds the content). Any file kind can be typed (.md, .html, .json, .py, …) — every textual file and image is already a work file; a file type adds meaning on top.
   - `id` (required): stable identifier — e.g. "lesson"
   - `match` (required): project-relative filename glob; * and ? stay within one path segment, ** spans folders — e.g. "lessons/*.lesson.md"
@@ -72,6 +77,14 @@ Top-level fields (all optional; unknown fields are ignored):
 <!-- generated:schema:end -->
 
 ## Behavior notes
+
+**Theme.** A studio names its look; it never writes CSS. `accent` is one of a
+named palette and the app derives the entire accent ramp — buttons, focus
+rings, selection, comment highlights — from that one hue, keeping lightness
+and contrast stock. `glyph` marks the studio in the rail and the project
+list. `docFont` picks the default document typeface for prose; the app chrome
+keeps its own faces. Theme is looks-only: it is never part of the trust
+grant, and `fabulist.local.json` may override any of it per person.
 
 **File types.** A matching file gets the type's icon and label in the rail, its
 title derived per `titleFrom` (frontmatter blocks are stripped before `h1`

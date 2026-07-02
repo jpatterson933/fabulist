@@ -81,7 +81,11 @@ function ProjectsView(): React.JSX.Element {
             <button className="library-item-main" onClick={() => void openProject(p.id)}>
               <span className="library-item-title">{p.title}</span>
               <span className="library-item-meta">
-                {p.studio && <span className="library-item-studio">✦ {p.studio} · </span>}
+                {p.studio && (
+                  <span className="library-item-studio">
+                    {p.studioGlyph ?? '✦'} {p.studio} ·{' '}
+                  </span>
+                )}
                 {relativeTime(p.updatedAt)} · {p.fileCount} {p.fileCount === 1 ? 'file' : 'files'}
               </span>
             </button>
@@ -162,7 +166,7 @@ function DocsView(): React.JSX.Element {
         }
       >
         <span className="library-studio-glyph" aria-hidden>
-          ✦
+          {harness?.config.theme.glyph ?? '✦'}
         </span>
         <span className="library-studio-text">
           <span className="library-studio-name">{harness?.config.name ?? 'No studio yet'}</span>

@@ -14,6 +14,8 @@ export interface ProjectMeta {
   updatedLabel?: string // most-recent file title, for the rail subtitle
   /** studio name from fabulist.json, when the project defines a harness */
   studio?: string
+  /** the studio's theme glyph, shown next to the name in the project list */
+  studioGlyph?: string
 }
 
 export interface FileMeta {

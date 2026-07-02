@@ -7,7 +7,12 @@
 
 :root {
   --font-display: 'Archivo Variable', 'Avenir Next', sans-serif;
-  --font-doc: 'IBM Plex Sans', 'Avenir Next', sans-serif;
+  /* document typeface options; a studio's theme.docFont (or a file type's
+     font) picks one — the chrome always keeps --font-ui/--font-display */
+  --font-doc-sans: 'IBM Plex Sans', 'Avenir Next', sans-serif;
+  --font-doc-serif: 'Literata Variable', Georgia, serif;
+  --font-doc-mono: 'IBM Plex Mono', 'SF Mono', monospace;
+  --font-doc: var(--font-doc-sans);
   --font-ui: 'IBM Plex Sans', 'Avenir Next', sans-serif;
   --font-mono: 'IBM Plex Mono', 'SF Mono', monospace;
 

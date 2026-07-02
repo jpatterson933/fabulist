@@ -16,7 +16,7 @@ import {
 import { initRepo, commitAll } from './git'
 // note: harness.ts imports projectPath back from this module; both sides only
 // touch each other at call time, so the cycle is harmless
-import { loadMergedConfig, studioName } from './harness'
+import { loadMergedConfig, studioBadge } from './harness'
 
 export const LIBRARY_ROOT = path.join(app.getPath('documents'), 'Fabulist')
 const LEGACY_LIBRARY_ROOT = path.join(app.getPath('documents'), 'Lobstertale')
@@ -349,7 +349,7 @@ export async function listProjects(): Promise<ProjectMeta[]> {
       const files = await scanProjectFiles(id)
       // folders with no files are noise — unless they declare a studio manifest
       if (files.length === 0 && !(await exists(path.join(projectPath(id), 'fabulist.json')))) return null
-      const [project, studio] = await Promise.all([readProject(id), studioName(id)])
+      const [project, badge] = await Promise.all([readProject(id), studioBadge(id)])
       const stats = await Promise.all(
         files.map((f) => fs.stat(projectFilePath(id, f)).catch(() => null))
       )
@@ -362,7 +362,8 @@ export async function listProjects(): Promise<ProjectMeta[]> {
         fileCount: files.length,
         createdAt: births.length ? Math.min(...births) : Date.now(),
         updatedAt: times.length ? Math.max(...times) : Date.now(),
-        studio
+        studio: badge.name,
+        studioGlyph: badge.glyph
       }
       return meta
     })
