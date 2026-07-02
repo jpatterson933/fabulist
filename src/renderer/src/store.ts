@@ -158,6 +158,8 @@ interface FabulistStore {
 
   handleAgentEvent: (e: AgentEvent) => void
   handleExternalChange: (projectId: string, docFile: string, content: string) => void
+  /** a doc file was deleted outside the app (terminal, agent, teammate's pull) */
+  handleDocRemoved: (projectId: string, docFile: string) => void
 }
 
 // per-(project,doc) debounce timers, so a tab switch flushes the right file
@@ -934,6 +936,24 @@ export const useStore = create<FabulistStore>((set, get) => ({
         break
       }
     }
+  },
+
+  handleDocRemoved: (projectId, docFile) => {
+    if (get().activeProjectId !== projectId) return
+    const openDocs = get().openDocs.filter((f) => f !== docFile)
+    const { [docFile]: _gone, ...docContents } = get().docContents
+    set({ openDocs, docContents })
+    void window.fabulist.project.setOpenTabs(projectId, combinedTabs(openDocs, get().openPanels))
+    if (get().activeDoc === docFile) {
+      const next = openDocs[openDocs.length - 1] ?? null
+      if (next) void get().setActiveDoc(next)
+      else {
+        set({ activeDoc: null, content: '', threads: [], external: { seq: extSeq++, content: '' } })
+        void window.fabulist.project.setActiveDoc(projectId, null)
+      }
+    }
+    void get().loadDocs()
+    void get().loadProjects()
   },
 
   handleExternalChange: (projectId, docFile, content) => {

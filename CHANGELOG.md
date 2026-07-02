@@ -67,6 +67,8 @@ All notable changes to Fabulist are documented here. The format follows
   tooltip) already says it; the badge was noise.
 - Icon buttons (+ and × in the tab strip and rail, the chat send arrow) now center their glyphs
   explicitly instead of trusting baseline layout, which sat them slightly off-center.
+- Deleting a document outside the app (terminal, agent, a teammate's pull) now removes it from
+  the rail and closes its tab instead of leaving a ghost entry until the next full refresh.
 - The passage-comment composer no longer covers the text you selected — it opens just below the
   selection, the passage stays highlighted while you write (instead of deselecting when the box
   takes focus), the redundant quoted-passage line is gone, and clicking anywhere outside the box

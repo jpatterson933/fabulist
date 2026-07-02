@@ -67,6 +67,11 @@ const api = {
         cb(id, docFile, content)
       ipcRenderer.on('doc:external-change', listener)
       return () => ipcRenderer.removeListener('doc:external-change', listener)
+    },
+    onRemoved: (cb: (id: string, docFile: string) => void): (() => void) => {
+      const listener = (_e: unknown, id: string, docFile: string): void => cb(id, docFile)
+      ipcRenderer.on('doc:removed', listener)
+      return () => ipcRenderer.removeListener('doc:removed', listener)
     }
   },
   history: {

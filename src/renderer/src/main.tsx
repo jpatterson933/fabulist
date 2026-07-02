@@ -19,6 +19,7 @@ window.fabulist.agent.onEvent((e) => useStore.getState().handleAgentEvent(e))
 window.fabulist.doc.onExternalChange((id, docFile, content) =>
   useStore.getState().handleExternalChange(id, docFile, content)
 )
+window.fabulist.doc.onRemoved((id, docFile) => useStore.getState().handleDocRemoved(id, docFile))
 window.fabulist.comments.onChanged((id) => {
   if (useStore.getState().activeProjectId === id) useStore.getState().reloadThreads()
 })
