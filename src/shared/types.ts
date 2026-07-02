@@ -1,6 +1,7 @@
 // Shared contract between main, preload, and renderer.
 
 import type { FileFormat } from './fileFormats'
+import type { AccentName } from './harness'
 export type { FileFormat }
 
 /** A project is a folder under the library root; it holds one or more files. */
@@ -34,6 +35,8 @@ export interface FileMeta {
   kindLabel?: string
   /** rail glyph for the kind */
   kindIcon?: string
+  /** named accent tinting the kind's glyph in the rail and tabs */
+  kindColor?: AccentName
 }
 
 export interface CommentMessage {

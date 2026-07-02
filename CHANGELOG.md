@@ -32,6 +32,15 @@ All notable changes to Fabulist are documented here. The format follows
   the default document typeface for prose while the chrome keeps the app faces.
   Theme is looks-only — never part of the trust grant — and `fabulist.local.json`
   can override it per person.
+- **File types now shape the editor, not just the rail.** New `fileTypes`
+  options: `color` tints the type's glyph in the rail and tab strip (same named
+  palette as the theme accent); `font` and `width` set the document typeface and
+  prose measure per type (a scene gets a narrow serif column, a data file stays
+  wide); `wordCount: true` shows a live word count while writing; and `fields`
+  declares frontmatter keys the editor renders as a structured form above the
+  prose — `"status: draft | final"` becomes a select, `"pov"` a free-text field —
+  with edits rewriting the file's frontmatter block in place, so files stay
+  plain Markdown.
 - **The Files rail is now a real IDE-grade file tree**, rebuilt on
   [Headless Tree](https://headless-tree.lukasbach.com) (the successor to
   react-complex-tree). What it can do now: drag-and-drop files *and folders* into any

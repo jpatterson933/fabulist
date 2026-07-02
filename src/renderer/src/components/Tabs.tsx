@@ -1,5 +1,6 @@
 import { useStore } from '@/store'
 import { fileIconUrl } from '@/lib/fileIcons'
+import { accentColor } from '@/lib/theme'
 
 export default function Tabs(): React.JSX.Element {
   const files = useStore((s) => s.files)
@@ -44,10 +45,14 @@ export default function Tabs(): React.JSX.Element {
           >
             <button className="tab-main" onClick={() => void setActiveFile(file)} title={file}>
               {(() => {
-                const kindIcon = files.find((d) => d.file === file)?.kindIcon
-                return kindIcon ? (
-                  <span className="tab-icon-glyph" aria-hidden>
-                    {kindIcon}
+                const meta = files.find((d) => d.file === file)
+                return meta?.kindIcon ? (
+                  <span
+                    className="tab-icon-glyph"
+                    style={meta.kindColor ? { color: accentColor(meta.kindColor) } : undefined}
+                    aria-hidden
+                  >
+                    {meta.kindIcon}
                   </span>
                 ) : (
                   <img className="tab-icon" src={fileIconUrl(file)} alt="" aria-hidden />

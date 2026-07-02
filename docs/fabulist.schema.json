@@ -86,6 +86,47 @@
           "template": {
             "type": "string",
             "description": "seed content for new files of this type; {{title}} is substituted"
+          },
+          "color": {
+            "enum": [
+              "orange",
+              "crimson",
+              "magenta",
+              "violet",
+              "blue",
+              "cyan",
+              "teal",
+              "green",
+              "amber"
+            ],
+            "description": "named accent tinting this type's glyph in the rail and tab strip"
+          },
+          "font": {
+            "enum": [
+              "sans",
+              "serif",
+              "mono"
+            ],
+            "description": "document typeface for files of this type; overrides theme.docFont"
+          },
+          "width": {
+            "enum": [
+              "narrow",
+              "normal",
+              "wide"
+            ],
+            "description": "prose measure for files of this type: \"narrow\" (58ch), \"normal\" (74ch, default), \"wide\" (96ch)"
+          },
+          "wordCount": {
+            "type": "boolean",
+            "description": "show a live word count while editing files of this type"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "frontmatter keys edited as a form above the prose: \"key\" is free text, \"key: a | b\" a select"
           }
         },
         "required": [

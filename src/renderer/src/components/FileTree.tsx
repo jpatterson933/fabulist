@@ -14,6 +14,7 @@ import { useTree } from '@headless-tree/react'
 import type { FileMeta } from '@shared/types'
 import { useStore } from '@/store'
 import { fileIconUrl, folderIconUrl } from '@/lib/fileIcons'
+import { accentColor } from '@/lib/theme'
 
 /** Synthetic id for the tree root (project-relative paths can never equal it). */
 const ROOT = '<root>'
@@ -379,7 +380,11 @@ export default function FileTree(): React.JSX.Element {
                   />
                 </>
               ) : data.meta?.kindIcon ? (
-                <span className="library-file-glyph" aria-hidden>
+                <span
+                  className="library-file-glyph"
+                  style={data.meta.kindColor ? { color: accentColor(data.meta.kindColor) } : undefined}
+                  aria-hidden
+                >
                   {data.meta.kindIcon}
                 </span>
               ) : (

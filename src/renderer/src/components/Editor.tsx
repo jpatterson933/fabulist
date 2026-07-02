@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { EditorView } from '@codemirror/view'
 import { EditorState, Compartment } from '@codemirror/state'
+import { fileTypeFor, type DocWidth } from '@shared/harness'
 import { useStore } from '@/store'
+import FrontmatterFields from '@/components/FrontmatterFields'
 import { computeSuggestion } from '@/lib/suggest'
 import {
   baseExtensions,
@@ -51,6 +53,13 @@ export default function Editor({
   const setPaletteOpen = useStore((s) => s.setPaletteOpen)
   // harness selection actions ride the same toolbar as Comment
   const selectionActions = harness?.config.actions.filter((a) => a.surface === 'selection') ?? []
+  // the file's harness type may shape the editor: typeface, measure, word count
+  const harnessType = harness ? fileTypeFor(harness.config, file) : null
+  const MEASURES: Record<DocWidth, string> = { narrow: '58ch', normal: '74ch', wide: '96ch' }
+  const docShape = {
+    ...(harnessType?.font ? { '--font-doc': `var(--font-doc-${harnessType.font})` } : {}),
+    ...(harnessType?.width ? { '--doc-measure': MEASURES[harnessType.width] } : {})
+  } as React.CSSProperties
 
   const external = useStore((s) => s.external)
   const threads = useStore((s) => s.threads)
@@ -293,11 +302,21 @@ export default function Editor({
     return () => document.removeEventListener('mousedown', onDown)
   }, [composer])
 
+  const isMarkdownFile = file.toLowerCase().endsWith('.md')
+  const fmFields = isMarkdownFile && harnessType?.fields?.length ? harnessType.fields : null
+
   return (
+    <div className="editor-pane" style={docShape}>
+    {fmFields && <FrontmatterFields fields={fmFields} />}
     <div
-      className={`editor-host ${activeThreadId ? 'has-active-thread' : ''} ${file.toLowerCase().endsWith('.md') ? '' : 'is-code-file'}`}
+      className={`editor-host ${activeThreadId ? 'has-active-thread' : ''} ${isMarkdownFile ? '' : 'is-code-file'}`}
       ref={hostRef}
     >
+      {harnessType?.wordCount && (
+        <span className="editor-word-count" aria-live="off">
+          {countWords(content)} words
+        </span>
+      )}
       {suggestion && (
         <div className="suggest-bar">
           <span className="suggest-bar-glyph" aria-hidden>
@@ -390,9 +409,15 @@ export default function Editor({
         </div>
       )}
     </div>
+    </div>
   )
 }
 
+
+function countWords(text: string): number {
+  const m = text.match(/\S+/g)
+  return m ? m.length : 0
+}
 
 function MarkIcon(): React.JSX.Element {
   return (

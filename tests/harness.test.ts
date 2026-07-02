@@ -151,6 +151,33 @@ describe('parseHarnessConfig — the lenient-parsing contract', () => {
     expect(warnings[0]).toMatch(/newer than this app/)
   })
 
+  it('parses the editor-shaping file-type fields and the frontmatter field syntax', () => {
+    const { config, warnings } = parse({
+      fileTypes: [
+        {
+          id: 'scene',
+          match: '*.scene.md',
+          color: 'blue',
+          font: 'serif',
+          width: 'narrow',
+          wordCount: true,
+          fields: ['status: draft | revised | final', 'pov', 'bad key!']
+        }
+      ]
+    })
+    const t = config.fileTypes[0]
+    expect(t).toMatchObject({ color: 'blue', font: 'serif', width: 'narrow', wordCount: true })
+    expect(t.fields).toEqual([
+      { key: 'status', values: ['draft', 'revised', 'final'] },
+      { key: 'pov' }
+    ])
+    expect(warnings.join('\n')).toMatch(/bad key!/)
+    // non-array fields is dropped with a warning, not fatal
+    const bad = parse({ fileTypes: [{ id: 'a', match: '*.md', fields: 'status' }] })
+    expect(bad.config.fileTypes[0].fields).toBeUndefined()
+    expect(bad.warnings[0]).toMatch(/fields must be an array/)
+  })
+
   it('parses the theme block, validating accents and capping the glyph', () => {
     const { config, warnings } = parse({
       theme: { accent: 'violet', glyph: '🎓✦x', docFont: 'serif' }

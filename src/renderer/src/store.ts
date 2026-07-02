@@ -142,6 +142,8 @@ export interface FabulistStore {
   setActiveFile: (file: string) => Promise<void>
 
   setContent: (content: string) => void
+  /** programmatic edit (frontmatter form): updates the store AND the open editor */
+  replaceContent: (content: string) => void
   flushWrite: () => Promise<void>
   snapshot: (label?: string) => Promise<void>
 
@@ -703,6 +705,14 @@ export const useStore = create<FabulistStore>((set, get) => ({
       const committed = await window.fabulist.project.snapshot(id, 'Edited').catch(() => false)
       if (committed) get().loadHistory()
     }, 60_000)
+  },
+
+  replaceContent: (content) => {
+    if (!get().activeFile) return
+    // setContent stores it and schedules the debounced write; the external
+    // bump pushes it into the CodeMirror view, which re-anchors by quote
+    get().setContent(content)
+    set({ external: { seq: extSeq++, content }, threads: reanchor(get().threads, content) })
   },
 
   flushWrite: async () => {

@@ -25,8 +25,12 @@ export const HARNESS_VERSION = 1
 
 export interface FieldSpec {
   key: string
-  /** enum fields validate against `values`; strings are trimmed non-empty */
-  kind: 'string' | 'enum' | 'boolean'
+  /**
+   * enum fields validate against `values`; strings are trimmed non-empty;
+   * stringlist fields take a JSON array of strings (carried JSON-encoded
+   * through the entry record — decode with `listField`)
+   */
+  kind: 'string' | 'enum' | 'boolean' | 'stringlist'
   values?: readonly string[]
   required?: boolean
   /** one-line description; feeds the workshop prompt, files, and JSON Schema */
@@ -56,6 +60,11 @@ export function slugId(s: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
+}
+
+/** Decode a stringlist field back out of an entry record (see FieldSpec.kind). */
+export function listField(v: string | undefined): string[] | undefined {
+  return v === undefined ? undefined : (JSON.parse(v) as string[])
 }
 
 /** A safe project-relative path: no traversal, no absolute, no dot segments. */
@@ -107,6 +116,41 @@ export interface ThemeDef {
   docFont?: DocFontName
 }
 
+export type DocWidth = 'narrow' | 'normal' | 'wide'
+export const DOC_WIDTHS: readonly DocWidth[] = ['narrow', 'normal', 'wide']
+
+/** One frontmatter key a file type surfaces as a form field above the prose. */
+export interface FrontmatterFieldDef {
+  key: string
+  /** enum choices (rendered as a select); absent = free text */
+  values?: string[]
+}
+
+/**
+ * Parse the compact field syntax: `"key"` is a free-text field,
+ * `"key: a | b | c"` a select. Returns null (with a warning) on a bad key.
+ */
+export function parseFrontmatterField(
+  entry: string,
+  warn: (msg: string) => void
+): FrontmatterFieldDef | null {
+  const colon = entry.indexOf(':')
+  const key = (colon === -1 ? entry : entry.slice(0, colon)).trim()
+  if (!/^[A-Za-z0-9_-]+$/.test(key)) {
+    warn(`frontmatter field "${entry}": key must be alphanumeric/-/_; skipped`)
+    return null
+  }
+  const values =
+    colon === -1
+      ? []
+      : entry
+          .slice(colon + 1)
+          .split('|')
+          .map((v) => v.trim())
+          .filter(Boolean)
+  return values.length > 0 ? { key, values } : { key }
+}
+
 export interface FileTypeDef {
   id: string
   match: string
@@ -114,6 +158,16 @@ export interface FileTypeDef {
   icon?: string
   titleFrom?: string
   template?: string
+  /** named accent tinting this type's glyph in the rail and tabs */
+  color?: AccentName
+  /** document typeface for files of this type (overrides theme.docFont) */
+  font?: DocFontName
+  /** prose measure for files of this type */
+  width?: DocWidth
+  /** show a live word count while editing files of this type */
+  wordCount?: boolean
+  /** frontmatter keys surfaced as a structured form above the prose */
+  fields?: FrontmatterFieldDef[]
 }
 
 export interface ActionDef {
@@ -170,6 +224,39 @@ export const FILE_TYPES_BLOCK: ListBlockSpec<FileTypeDef> = {
       raw: true,
       doc: 'seed content for new files of this type; {{title}} is substituted',
       example: '"---\\ntitle: {{title}}\\n---\\n\\n"'
+    },
+    {
+      key: 'color',
+      kind: 'enum',
+      values: ACCENT_NAMES,
+      doc: "named accent tinting this type's glyph in the rail and tab strip",
+      example: '"blue"'
+    },
+    {
+      key: 'font',
+      kind: 'enum',
+      values: DOC_FONTS,
+      doc: 'document typeface for files of this type; overrides theme.docFont',
+      example: '"serif"'
+    },
+    {
+      key: 'width',
+      kind: 'enum',
+      values: DOC_WIDTHS,
+      doc: 'prose measure for files of this type: "narrow" (58ch), "normal" (74ch, default), "wide" (96ch)',
+      example: '"narrow"'
+    },
+    {
+      key: 'wordCount',
+      kind: 'boolean',
+      doc: 'show a live word count while editing files of this type',
+      example: 'true'
+    },
+    {
+      key: 'fields',
+      kind: 'stringlist',
+      doc: 'frontmatter keys edited as a form above the prose: "key" is free text, "key: a | b" a select',
+      example: '["status: draft | revised | final", "pov"]'
     }
   ],
   finalize: (e, warn) => {
@@ -183,7 +270,21 @@ export const FILE_TYPES_BLOCK: ListBlockSpec<FileTypeDef> = {
       warn(`fileType "${e.id}": unknown titleFrom "${titleFrom}"; using h1`)
       titleFrom = undefined
     }
-    return { id: e.id, match: e.match, label: e.label, icon: e.icon, titleFrom, template: e.template }
+    return {
+      id: e.id,
+      match: e.match,
+      label: e.label,
+      icon: e.icon,
+      titleFrom,
+      template: e.template,
+      color: e.color as AccentName | undefined,
+      font: e.font as DocFontName | undefined,
+      width: e.width as DocWidth | undefined,
+      wordCount: e.wordCount === 'true' ? true : undefined,
+      fields: listField(e.fields)
+        ?.map((entry) => parseFrontmatterField(entry, warn))
+        .filter((f): f is FrontmatterFieldDef => f !== null)
+    }
   }
 }
 
@@ -433,6 +534,17 @@ export const EMPTY_HARNESS: Harness = {
 
 function parseField(spec: FieldSpec, value: unknown, warn: (msg: string) => void, at: string): string | undefined {
   if (value === undefined || value === null) return undefined
+  if (spec.kind === 'stringlist') {
+    if (!Array.isArray(value)) {
+      warn(`${at}.${spec.key} must be an array of strings`)
+      return undefined
+    }
+    const items = value
+      .filter((x): x is string => typeof x === 'string' && x.trim() !== '')
+      .map((x) => x.trim())
+    if (items.length < value.length) warn(`${at}.${spec.key}: non-string entries dropped`)
+    return JSON.stringify(items)
+  }
   if (spec.kind === 'boolean') {
     if (typeof value === 'boolean') return String(value)
     if (value === 'true' || value === 'false') return value
@@ -657,7 +769,12 @@ export function fileNameForType(type: FileTypeDef, slug: string): string {
 
 function fieldLine(f: FieldSpec): string {
   const req = f.required ? ' (required)' : ''
-  const en = f.kind === 'enum' ? ` — one of ${f.values!.map((v) => `"${v}"`).join(' | ')}` : ''
+  const en =
+    f.kind === 'enum'
+      ? ` — one of ${f.values!.map((v) => `"${v}"`).join(' | ')}`
+      : f.kind === 'stringlist'
+        ? ' — an array of strings'
+        : ''
   return `  - \`${f.key}\`${req}: ${f.doc}${en}${f.example ? ` — e.g. ${f.example}` : ''}`
 }
 
@@ -690,7 +807,9 @@ export function jsonSchema(): Record<string, unknown> {
       ? { enum: [...f.values!] }
       : f.kind === 'boolean'
         ? { type: 'boolean' }
-        : { type: 'string' }),
+        : f.kind === 'stringlist'
+          ? { type: 'array', items: { type: 'string' } }
+          : { type: 'string' }),
     description: f.doc,
     ...(f.maxLen ? { maxLength: f.maxLen } : {})
   })

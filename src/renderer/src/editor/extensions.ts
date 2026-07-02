@@ -163,13 +163,15 @@ const editorTheme = EditorView.theme({
     backgroundColor: 'transparent',
     color: 'var(--ink)'
   },
+  // --doc-measure is the prose measure; a harness file type's `width` sets it
+  // on the editor host (58ch narrow / 74ch default / 96ch wide)
   '.cm-scroller': {
     fontFamily: 'var(--font-doc)',
     lineHeight: '1.72',
-    padding: '0 max(48px, calc(50% - 37ch)) 30vh'
+    padding: '0 max(48px, calc(50% - var(--doc-measure, 74ch) / 2)) 30vh'
   },
   '.cm-content': {
-    maxWidth: '74ch',
+    maxWidth: 'var(--doc-measure, 74ch)',
     caretColor: 'var(--accent)',
     padding: '40px 0 0'
   },

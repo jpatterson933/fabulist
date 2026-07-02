@@ -316,7 +316,8 @@ async function readFileMeta(
       preview: derived.preview,
       kind: harnessType?.id,
       kindLabel: harnessType ? harnessType.label ?? harnessType.id : undefined,
-      kindIcon: harnessType?.icon
+      kindIcon: harnessType?.icon,
+      kindColor: harnessType?.color
     }
   } catch {
     return null

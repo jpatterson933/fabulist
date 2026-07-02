@@ -744,14 +744,81 @@ input::placeholder {
 
 /* ─── editor ─── */
 
+/* the editor column: optional frontmatter form, then the prose */
+.editor-pane {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .editor-host {
   position: relative;
   flex: 1;
   min-height: 0;
 }
 
+/* frontmatter form (fileTypes[].fields): micro-labeled chips over the prose,
+   aligned to the document measure */
+.fm-fields {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  padding: 16px max(48px, calc(50% - var(--doc-measure, 74ch) / 2)) 0;
+  border-bottom: 1px solid var(--line-soft);
+  padding-bottom: 12px;
+}
+.fm-field {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+.fm-field-key {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  flex-shrink: 0;
+}
+.fm-field-input,
+.fm-field-select {
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 3px 7px;
+  max-width: 220px;
+}
+.fm-field-input:focus,
+.fm-field-select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-wash);
+  outline: none;
+}
+
 .editor-host .cm-editor {
   height: 100%;
+}
+
+/* live word count for file types that opt in (fileTypes[].wordCount) */
+.editor-word-count {
+  position: absolute;
+  right: 14px;
+  bottom: 10px;
+  z-index: 10;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: var(--ink-faint);
+  background: color-mix(in oklch, var(--paper) 82%, transparent);
+  border-radius: 4px;
+  padding: 2px 6px;
+  pointer-events: none;
 }
 
 .selection-toolbar {

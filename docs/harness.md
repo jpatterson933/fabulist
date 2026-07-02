@@ -49,6 +49,11 @@ Top-level fields (all optional; unknown fields are ignored):
   - `icon`: 1–2 characters/emoji shown in the file rail — e.g. "🎓"
   - `titleFrom`: "h1" (default), "filename", or "frontmatter:<key>" — e.g. "frontmatter:title"
   - `template`: seed content for new files of this type; {{title}} is substituted — e.g. "---\ntitle: {{title}}\n---\n\n"
+  - `color`: named accent tinting this type's glyph in the rail and tab strip — one of "orange" | "crimson" | "magenta" | "violet" | "blue" | "cyan" | "teal" | "green" | "amber" — e.g. "blue"
+  - `font`: document typeface for files of this type; overrides theme.docFont — one of "sans" | "serif" | "mono" — e.g. "serif"
+  - `width`: prose measure for files of this type: "narrow" (58ch), "normal" (74ch, default), "wide" (96ch) — one of "narrow" | "normal" | "wide" — e.g. "narrow"
+  - `wordCount`: show a live word count while editing files of this type — e.g. true
+  - `fields`: frontmatter keys edited as a form above the prose: "key" is free text, "key: a | b" a select — an array of strings — e.g. ["status: draft | revised | final", "pov"]
 
 `actions` — Commands surfaced in the ⌘K palette (and, for surface "selection", in the highlight toolbar). An action runs a .claude/skills skill, sends a canned prompt, or both.
   - `id`: stable identifier; defaults to a slug of the label — e.g. "simplify"
@@ -91,6 +96,16 @@ title derived per `titleFrom` (frontmatter blocks are stripped before `h1`
 derivation), and a card in the New File dialog — the filename follows the
 glob (`chapters/*.scene.md` + "Cold Open" → `chapters/cold-open.scene.md`) and
 `template` seeds the content with `{{title}}` substituted.
+
+A file type can also shape the editor itself. `color` tints the type's glyph
+in the rail and tab strip (same named palette as the theme accent). `font`
+and `width` set the typeface and prose measure for files of the type — a
+scene wants a narrow serif column, a data file wants full width. `wordCount`
+shows a live count while writing. And `fields` declares frontmatter keys the
+editor renders as a structured form above the prose (`"status: draft | final"`
+becomes a select, `"pov"` a free-text field); edits rewrite the file's
+frontmatter block in place, so the file stays plain Markdown and works
+anywhere.
 
 Every project — harness or not — treats every textual file (`pages/*.html`,
 `data/*.json`, `src/**`) and every raster image as a work file: text opens in
