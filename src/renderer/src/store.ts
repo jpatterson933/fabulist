@@ -442,7 +442,8 @@ export const useStore = create<FabulistStore>((set, get) => ({
 
     const present = new Set(files.map((d) => d.file))
     // the studio's layout may say whether the chat sidebar starts open
-    const layoutSidebar = harness?.config.layout.sidebar
+    // (optional-chained: a mid-HMR stale main process may hand us an older config shape)
+    const layoutSidebar = harness?.config.layout?.sidebar
     let openDocs = meta.openTabs.filter((f) => !f.startsWith(PANEL_TAB) && present.has(f))
     const openPanels = meta.openTabs
       .filter((f) => f.startsWith(PANEL_TAB))

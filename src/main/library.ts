@@ -203,7 +203,8 @@ async function ensureProjectUnlocked(projectId: string): Promise<ProjectFile> {
   let title = projectId
   if (titleSource) {
     const content = await fs.readFile(projectFilePath(projectId, titleSource), 'utf8').catch(() => '')
-    title = deriveFileMeta(titleSource, content).title
+    // strip frontmatter like readFileMeta does, or a frontmatter-led file titles the project "---"
+    title = deriveFileMeta(titleSource, stripFrontmatter(content)).title
   }
 
   // a harness layout.open decides the first-open tabs (fresh clone, new copy

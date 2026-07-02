@@ -16,6 +16,12 @@ All notable changes to Fabulist are documented here. The format follows
 - **Actions moved into the rail.** The ⌘K palette trigger now lives in the project
   rail, right under the studio slot — with the shortcut hint beside it.
 
+### Fixed
+- **Projects whose first markdown file leads with frontmatter no longer get
+  titled `---`.** The first-open migration now strips frontmatter before
+  deriving the project title, like every other title derivation already did —
+  common now that file-type templates seed frontmatter.
+
 ### Removed
 - **The per-file font picker.** Files now always render in the app's default
   typeface; the typeface menu in the header (and the per-file font plumbing behind

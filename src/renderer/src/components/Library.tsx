@@ -166,7 +166,7 @@ function DocsView(): React.JSX.Element {
         }
       >
         <span className="library-studio-glyph" aria-hidden>
-          {harness?.config.theme.glyph ?? '✦'}
+          {harness?.config.theme?.glyph ?? '✦'}
         </span>
         <span className="library-studio-text">
           <span className="library-studio-name">{harness?.config.name ?? 'No studio yet'}</span>
