@@ -176,6 +176,8 @@ export interface ActionDef {
   surface: ActionSurface
   skill?: string
   prompt?: string
+  /** file-type ids this action is scoped to; shown only when the focused file matches */
+  types?: string[]
 }
 
 export interface PanelDef {
@@ -308,6 +310,12 @@ export const ACTIONS_BLOCK: ListBlockSpec<ActionDef> = {
       raw: true,
       doc: 'instructions sent to the project agent (alongside or instead of the skill)',
       example: '"Rewrite this to be clearer without losing precision."'
+    },
+    {
+      key: 'types',
+      kind: 'stringlist',
+      doc: 'fileTypes ids this action is scoped to; it appears only while a matching file is focused',
+      example: '["lesson"]'
     }
   ],
   finalize: (e, warn) => {
@@ -316,12 +324,14 @@ export const ACTIONS_BLOCK: ListBlockSpec<ActionDef> = {
       warn(`an action needs a "label" plus a "skill" or "prompt"; skipped`)
       return null
     }
+    const types = listField(e.types)
     return {
       id: e.id ?? slugId(label),
       label,
       surface: (e.surface as ActionSurface) ?? 'project',
       skill: e.skill,
-      prompt: e.prompt
+      prompt: e.prompt,
+      types: types && types.length > 0 ? types : undefined
     }
   }
 }
@@ -750,6 +760,11 @@ export function globMatch(pattern: string, file: string): boolean {
 /** The first doc type whose glob matches the file path, if any. */
 export function fileTypeFor(config: HarnessConfig, file: string): FileTypeDef | null {
   return config.fileTypes.find((t) => globMatch(t.match, file)) ?? null
+}
+
+/** Is a (possibly type-scoped) action available given the focused file's type id? */
+export function actionAppliesTo(action: ActionDef, focusedKind: string | null | undefined): boolean {
+  return !action.types || (!!focusedKind && action.types.includes(focusedKind))
 }
 
 /**

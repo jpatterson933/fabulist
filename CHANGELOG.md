@@ -41,6 +41,10 @@ All notable changes to Fabulist are documented here. The format follows
   prose — `"status: draft | final"` becomes a select, `"pov"` a free-text field —
   with edits rewriting the file's frontmatter block in place, so files stay
   plain Markdown.
+- **Actions can be scoped to file types.** An action with `types: ["lesson"]`
+  appears in the ⌘K palette and the highlight toolbar only while a matching
+  file is focused — each file type gets its own verbs, and a big studio's
+  palette stays clean.
 - **The Files rail is now a real IDE-grade file tree**, rebuilt on
   [Headless Tree](https://headless-tree.lukasbach.com) (the successor to
   react-complex-tree). What it can do now: drag-and-drop files *and folders* into any

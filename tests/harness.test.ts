@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import {
   EMPTY_CONFIG,
+  actionAppliesTo,
   fileNameForType,
   globMatch,
   mergeHarnessConfigs,
@@ -139,6 +140,21 @@ describe('parseHarnessConfig — the lenient-parsing contract', () => {
   it('lets a skill name stand in for a label', () => {
     const { config } = parse({ actions: [{ skill: 'tighten-prose' }] })
     expect(config.actions[0].label).toBe('tighten-prose')
+  })
+
+  it('scopes actions to file types via `types`', () => {
+    const { config } = parse({
+      actions: [
+        { label: 'Grade', prompt: 'go', types: ['lesson'] },
+        { label: 'Anywhere', prompt: 'go', types: [] }
+      ]
+    })
+    expect(config.actions[0].types).toEqual(['lesson'])
+    expect(config.actions[1].types).toBeUndefined() // empty list = unscoped
+    expect(actionAppliesTo(config.actions[0], 'lesson')).toBe(true)
+    expect(actionAppliesTo(config.actions[0], 'scene')).toBe(false)
+    expect(actionAppliesTo(config.actions[0], undefined)).toBe(false)
+    expect(actionAppliesTo(config.actions[1], undefined)).toBe(true)
   })
 
   it('caps icon length', () => {

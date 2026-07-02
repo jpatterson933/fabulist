@@ -61,6 +61,7 @@ Top-level fields (all optional; unknown fields are ignored):
   - `surface`: what the action operates on; "selection" needs highlighted text — one of "selection" | "file" | "project" — e.g. "selection"
   - `skill`: a .claude/skills name to invoke — e.g. "simplify-explanation"
   - `prompt`: instructions sent to the project agent (alongside or instead of the skill) — e.g. "Rewrite this to be clearer without losing precision."
+  - `types`: fileTypes ids this action is scoped to; it appears only while a matching file is focused — an array of strings — e.g. ["lesson"]
 
 `panels` — Read-only rendered views over project files, opened as ▦ tabs from the rail or palette.
   - `id`: stable identifier; defaults to a slug of the title — e.g. "outline"
@@ -119,7 +120,10 @@ media) are never work files.
 agent to invoke that skill; `prompt` sends instructions; with both, the skill
 is invoked with the prompt as guidance. `surface: "selection"` actions appear
 in the highlight toolbar next to Comment and attach the selected text;
-`surface: "file"` targets the focused file. Skills not referenced by any
+`surface: "file"` targets the focused file. An action with `types` is scoped:
+it appears in the palette and the highlight toolbar only while the focused
+file matches one of those file types, so a big studio's palette stays clean
+and each file type gets its own verbs. Skills not referenced by any
 action still appear in the ⌘K palette under **Skills**.
 
 **Panels.** `markdown` renders prose; `code` shows the source read-only with

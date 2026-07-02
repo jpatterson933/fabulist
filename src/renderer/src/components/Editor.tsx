@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { EditorView } from '@codemirror/view'
 import { EditorState, Compartment } from '@codemirror/state'
-import { fileTypeFor, type DocWidth } from '@shared/harness'
+import { actionAppliesTo, fileTypeFor, type DocWidth } from '@shared/harness'
 import { useStore } from '@/store'
 import FrontmatterFields from '@/components/FrontmatterFields'
 import { computeSuggestion } from '@/lib/suggest'
@@ -51,10 +51,14 @@ export default function Editor({
   const harness = useStore((s) => s.harness)
   const runAction = useStore((s) => s.runAction)
   const setPaletteOpen = useStore((s) => s.setPaletteOpen)
-  // harness selection actions ride the same toolbar as Comment
-  const selectionActions = harness?.config.actions.filter((a) => a.surface === 'selection') ?? []
   // the file's harness type may shape the editor: typeface, measure, word count
   const harnessType = harness ? fileTypeFor(harness.config, file) : null
+  // harness selection actions ride the same toolbar as Comment; type-scoped
+  // ones only appear on files of their type
+  const selectionActions =
+    harness?.config.actions.filter(
+      (a) => a.surface === 'selection' && actionAppliesTo(a, harnessType?.id)
+    ) ?? []
   const MEASURES: Record<DocWidth, string> = { narrow: '58ch', normal: '74ch', wide: '96ch' }
   const docShape = {
     ...(harnessType?.font ? { '--font-doc': `var(--font-doc-${harnessType.font})` } : {}),

@@ -165,6 +165,13 @@
           "prompt": {
             "type": "string",
             "description": "instructions sent to the project agent (alongside or instead of the skill)"
+          },
+          "types": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "fileTypes ids this action is scoped to; it appears only while a matching file is focused"
           }
         },
         "required": [],

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { ActionDef } from '@shared/harness'
+import { actionAppliesTo, type ActionDef } from '@shared/harness'
 import { useStore, type FabulistStore } from '@/store'
 import { SURFACES } from '@/lib/surfaces'
 
@@ -21,7 +21,11 @@ type CommandProvider = (s: FabulistStore) => Command[]
 
 const harnessActions: CommandProvider = (s) => {
   const config = s.harness?.config
-  return (config?.actions ?? []).map((action) => {
+  // type-scoped actions only surface while a matching file is focused
+  const focusedKind = s.activeFile ? s.files.find((d) => d.file === s.activeFile)?.kind : undefined
+  return (config?.actions ?? [])
+    .filter((action) => actionAppliesTo(action, focusedKind))
+    .map((action) => {
     const surface = SURFACES[action.surface]
     const available = surface.available(s)
     return {
@@ -120,6 +124,7 @@ export default function CommandPalette(): React.JSX.Element | null {
   const setOpen = useStore((s) => s.setPaletteOpen)
   const harness = useStore((s) => s.harness)
   const files = useStore((s) => s.files)
+  const activeFile = useStore((s) => s.activeFile)
   const selectionQuote = useStore((s) => s.selectionQuote)
   const [q, setQ] = useState('')
   const [index, setIndex] = useState(0)
@@ -128,8 +133,8 @@ export default function CommandPalette(): React.JSX.Element | null {
 
   const commands = useMemo<Command[]>(
     () => PROVIDERS.flatMap((provide) => provide(useStore.getState())),
-    // harness/files/selectionQuote are the provider inputs that change at runtime
-    [harness, files, selectionQuote]
+    // harness/files/activeFile/selectionQuote are the provider inputs that change at runtime
+    [harness, files, activeFile, selectionQuote]
   )
 
   const filtered = useMemo(() => {
