@@ -49,6 +49,11 @@ All notable changes to Fabulist are documented here. The format follows
 - All project-folder signals (harness hot reload, external doc edits/deletions, comment
   changes) now arrive on a single typed `project:event` IPC channel instead of four bespoke
   ones.
+- **The document rail is a folder tree.** Nested documents group under collapsible folders
+  (chevron, per-folder counts, indentation); collapse state is remembered per project. Root
+  documents and the Views section sit alongside as before. Frontmatter is now stripped before
+  title/preview derivation for every doc, not just harness-typed ones, so an untyped doc with
+  frontmatter no longer titles itself "---".
 - **Documents can live in folders.** Doc identity is now a project-relative path
   (`chapters/ch-1.md`), discovered recursively (hidden folders, `attachments/`, and
   `node_modules/` excluded; top-level `CLAUDE.md`/`AGENTS.md`/`README.md` stay reserved).

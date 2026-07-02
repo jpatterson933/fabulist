@@ -2303,6 +2303,47 @@ input::placeholder {
   padding: 16px 8px 8px;
 }
 
+/* folder tree in the document rail; depth indents via --rail-depth */
+.library-doc .library-doc-main {
+  padding-left: calc(10px + var(--rail-depth, 0) * 14px);
+}
+
+.library-folder {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+  padding: 6px 10px 6px calc(10px + var(--rail-depth, 0) * 14px);
+  border-radius: 7px;
+  color: var(--ink-soft);
+  transition: background 120ms ease;
+}
+.library-folder:hover {
+  background: var(--paper-deeper);
+}
+.library-folder-chevron {
+  flex-shrink: 0;
+  color: var(--ink-faint);
+  transition: transform 140ms var(--ease-out);
+}
+.library-folder-chevron.is-open {
+  transform: rotate(90deg);
+}
+.library-folder-name {
+  font-size: 12.5px;
+  font-weight: 550;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.library-folder-count {
+  margin-left: auto;
+  font-size: 10.5px;
+  color: var(--ink-faint);
+}
+
 /* panel tabs sit in the strip like documents, marked with a view glyph */
 .tab-panel .tab-main {
   display: inline-flex;

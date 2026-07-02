@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import type { DocMeta } from '@shared/types'
 import { useStore } from '@/store'
 
 export default function Library(): React.JSX.Element {
@@ -131,6 +132,39 @@ function ProjectsView(): React.JSX.Element {
   )
 }
 
+/** Docs grouped into their folders; folders sort first, alphabetically. */
+interface DocFolder {
+  path: string // "" for the root
+  name: string
+  folders: DocFolder[]
+  docs: DocMeta[]
+}
+
+function buildDocTree(docs: DocMeta[]): DocFolder {
+  const root: DocFolder = { path: '', name: '', folders: [], docs: [] }
+  const folderFor = (dir: string): DocFolder => {
+    if (dir === '') return root
+    let node = root
+    let sofar = ''
+    for (const seg of dir.split('/')) {
+      sofar = sofar ? `${sofar}/${seg}` : seg
+      let child = node.folders.find((f) => f.path === sofar)
+      if (!child) {
+        child = { path: sofar, name: seg, folders: [], docs: [] }
+        node.folders.push(child)
+        node.folders.sort((a, b) => a.name.localeCompare(b.name))
+      }
+      node = child
+    }
+    return node
+  }
+  for (const d of docs) {
+    const slash = d.file.lastIndexOf('/')
+    folderFor(slash === -1 ? '' : d.file.slice(0, slash)).docs.push(d)
+  }
+  return root
+}
+
 function DocsView(): React.JSX.Element {
   const projects = useStore((s) => s.projects)
   const activeProjectId = useStore((s) => s.activeProjectId)
@@ -145,9 +179,99 @@ function DocsView(): React.JSX.Element {
   const openWorkshop = useStore((s) => s.openWorkshop)
   const setNewDocOpen = useStore((s) => s.setNewDocOpen)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+
+  // collapse state is remembered per project
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(`fabulist:collapsed:${activeProjectId}`)
+      setCollapsed(new Set(saved ? (JSON.parse(saved) as string[]) : []))
+    } catch {
+      setCollapsed(new Set())
+    }
+  }, [activeProjectId])
+
+  const toggleFolder = (path: string): void => {
+    const next = new Set(collapsed)
+    if (next.has(path)) next.delete(path)
+    else next.add(path)
+    setCollapsed(next)
+    localStorage.setItem(`fabulist:collapsed:${activeProjectId}`, JSON.stringify([...next]))
+  }
 
   const project = projects.find((p) => p.id === activeProjectId)
   const panels = harness?.config.panels ?? []
+  const tree = useMemo(() => buildDocTree(docs), [docs])
+
+  const renderDoc = (d: DocMeta, depth: number): React.JSX.Element => (
+    <div
+      key={d.file}
+      className={`library-doc ${d.file === activeDoc && !activePanel ? 'is-active' : ''}`}
+      style={{ '--rail-depth': depth } as React.CSSProperties}
+    >
+      <button
+        className="library-doc-main"
+        onClick={() => void openTab(d.file)}
+        title={d.kindLabel ? `${d.file} · ${d.kindLabel}` : d.file}
+      >
+        <span className="library-doc-glyph" aria-hidden>
+          {d.kindIcon ?? '❡'}
+        </span>
+        <span className="library-doc-title">{d.title}</span>
+      </button>
+      {confirmDelete === d.file ? (
+        <div className="library-item-confirm">
+          <button
+            className="danger"
+            onClick={() => {
+              setConfirmDelete(null)
+              void deleteDoc(d.file)
+            }}
+          >
+            Delete
+          </button>
+          <button onClick={() => setConfirmDelete(null)}>Keep</button>
+        </div>
+      ) : (
+        <button className="library-item-x" title="Delete document" onClick={() => setConfirmDelete(d.file)}>
+          ×
+        </button>
+      )}
+    </div>
+  )
+
+  const renderFolder = (folder: DocFolder, depth: number): React.JSX.Element => {
+    const isCollapsed = collapsed.has(folder.path)
+    return (
+      <div key={folder.path}>
+        <button
+          className="library-folder"
+          style={{ '--rail-depth': depth } as React.CSSProperties}
+          onClick={() => toggleFolder(folder.path)}
+          title={folder.path}
+        >
+          <svg
+            className={`library-folder-chevron ${isCollapsed ? '' : 'is-open'}`}
+            width="9"
+            height="9"
+            viewBox="0 0 12 12"
+            fill="none"
+            aria-hidden
+          >
+            <path d="M4.5 3 7.5 6l-3 3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <span className="library-folder-name">{folder.name}</span>
+          <span className="library-folder-count">{folder.docs.length + folder.folders.length}</span>
+        </button>
+        {!isCollapsed && (
+          <>
+            {folder.folders.map((f) => renderFolder(f, depth + 1))}
+            {folder.docs.map((d) => renderDoc(d, depth + 1))}
+          </>
+        )}
+      </div>
+    )
+  }
 
   return (
     <>
@@ -189,42 +313,8 @@ function DocsView(): React.JSX.Element {
         {docs.length === 0 && (
           <p className="library-empty">No documents yet. Add one with +</p>
         )}
-        {docs.map((d) => (
-          <div key={d.file} className={`library-doc ${d.file === activeDoc && !activePanel ? 'is-active' : ''}`}>
-            <button
-              className="library-doc-main"
-              onClick={() => void openTab(d.file)}
-              title={d.kindLabel ? `${d.file} · ${d.kindLabel}` : d.file}
-            >
-              <span className="library-doc-glyph" aria-hidden>
-                {d.kindIcon ?? '❡'}
-              </span>
-              <span className="library-doc-title">{d.title}</span>
-            </button>
-            {confirmDelete === d.file ? (
-              <div className="library-item-confirm">
-                <button
-                  className="danger"
-                  onClick={() => {
-                    setConfirmDelete(null)
-                    void deleteDoc(d.file)
-                  }}
-                >
-                  Delete
-                </button>
-                <button onClick={() => setConfirmDelete(null)}>Keep</button>
-              </div>
-            ) : (
-              <button
-                className="library-item-x"
-                title="Delete document"
-                onClick={() => setConfirmDelete(d.file)}
-              >
-                ×
-              </button>
-            )}
-          </div>
-        ))}
+        {tree.folders.map((f) => renderFolder(f, 0))}
+        {tree.docs.map((d) => renderDoc(d, 0))}
 
         {panels.length > 0 && (
           <>

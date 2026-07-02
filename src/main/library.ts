@@ -275,7 +275,8 @@ async function readDocMeta(
   try {
     const [content, stat] = await Promise.all([fs.readFile(full, 'utf8'), fs.stat(full)])
     const harnessType = config ? docTypeFor(config, file) : null
-    const derived = deriveDocMeta(file, harnessType ? stripFrontmatter(content) : content)
+    // frontmatter is metadata for any doc — titles/previews derive from the body
+    const derived = deriveDocMeta(file, stripFrontmatter(content))
     return {
       file,
       type,
