@@ -13,6 +13,7 @@ import {
 import { useTree } from '@headless-tree/react'
 import type { FileMeta } from '@shared/types'
 import { useStore } from '@/store'
+import { fileIconUrl, folderIconUrl } from '@/lib/fileIcons'
 
 /** Synthetic id for the tree root (project-relative paths can never equal it). */
 const ROOT = '<root>'
@@ -117,6 +118,7 @@ export default function FileTree(): React.JSX.Element {
 
   const [menu, setMenu] = useState<Menu | null>(null)
   const [creating, setCreating] = useState<Creating | null>(null)
+  const [createName, setCreateName] = useState('')
   const [error, setError] = useState<string | null>(null)
   const errorTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const flashError = (message: string): void => {
@@ -245,6 +247,7 @@ export default function FileTree(): React.JSX.Element {
     if (parent !== ROOT && collapsed.has(parent)) {
       tree.getItemInstance(parent)?.expand()
     }
+    setCreateName('')
     setCreating({ parent, kind })
   }
 
@@ -267,12 +270,21 @@ export default function FileTree(): React.JSX.Element {
       style={{ '--rail-depth': level } as React.CSSProperties}
       key="__create__"
     >
-      <span className="library-file-glyph" aria-hidden>
-        {creating?.kind === 'folder' ? '▸' : '▢'}
-      </span>
+      <img
+        className="tree-icon"
+        src={
+          creating?.kind === 'folder'
+            ? folderIconUrl(createName, false)
+            : fileIconUrl(createName || 'file')
+        }
+        alt=""
+        aria-hidden
+      />
       <input
         className="tree-rename-input"
         autoFocus
+        value={createName}
+        onChange={(e) => setCreateName(e.currentTarget.value)}
         placeholder={creating?.kind === 'folder' ? 'folder name' : 'file name'}
         onBlur={(e) => submitCreate(e.currentTarget.value)}
         onKeyDown={(e) => {
@@ -342,26 +354,36 @@ export default function FileTree(): React.JSX.Element {
               }}
             >
               {item.isFolder() ? (
-                <svg
-                  className={`library-folder-chevron ${item.isExpanded() ? 'is-open' : ''}`}
-                  width="9"
-                  height="9"
-                  viewBox="0 0 12 12"
-                  fill="none"
-                  aria-hidden
-                >
-                  <path
-                    d="M4.5 3 7.5 6l-3 3"
-                    stroke="currentColor"
-                    strokeWidth="1.6"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+                <>
+                  <svg
+                    className={`library-folder-chevron ${item.isExpanded() ? 'is-open' : ''}`}
+                    width="9"
+                    height="9"
+                    viewBox="0 0 12 12"
+                    fill="none"
+                    aria-hidden
+                  >
+                    <path
+                      d="M4.5 3 7.5 6l-3 3"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  <img
+                    className="tree-icon"
+                    src={folderIconUrl(data.name, item.isExpanded())}
+                    alt=""
+                    aria-hidden
                   />
-                </svg>
-              ) : (
+                </>
+              ) : data.meta?.kindIcon ? (
                 <span className="library-file-glyph" aria-hidden>
-                  {data.meta?.kindIcon ?? '▢'}
+                  {data.meta.kindIcon}
                 </span>
+              ) : (
+                <img className="tree-icon" src={fileIconUrl(data.name)} alt="" aria-hidden />
               )}
               {item.isRenaming() ? (
                 <input

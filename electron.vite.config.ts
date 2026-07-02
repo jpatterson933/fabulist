@@ -20,7 +20,10 @@ export default defineConfig({
     resolve: {
       alias: {
         '@shared': resolve(__dirname, 'src/shared'),
-        '@': resolve(__dirname, 'src/renderer/src')
+        '@': resolve(__dirname, 'src/renderer/src'),
+        // import.meta.glob refuses to reach into node_modules directly; the
+        // file-icon set (material-icon-theme SVGs) is globbed through this alias
+        '@file-icons': resolve(__dirname, 'node_modules/material-icon-theme/icons')
       }
     }
   }

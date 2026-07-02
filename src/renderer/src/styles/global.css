@@ -2535,6 +2535,30 @@ input::placeholder {
   text-underline-offset: 3px;
 }
 
+/* IDE-style file/folder icons (Material Icon Theme SVGs) */
+.tree-icon {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  display: block;
+}
+.tab-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  display: inline-block;
+  vertical-align: -2px;
+  margin-right: 6px;
+}
+.tab-icon-glyph {
+  font-size: 12px;
+  color: var(--ink-faint);
+  margin-right: 6px;
+}
+.tab.is-active .tab-icon-glyph {
+  color: var(--accent);
+}
+
 .tree-rename-input {
   flex: 1;
   min-width: 0;

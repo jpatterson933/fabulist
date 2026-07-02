@@ -1,4 +1,5 @@
 import { useStore } from '@/store'
+import { fileIconUrl } from '@/lib/fileIcons'
 
 export default function Tabs(): React.JSX.Element {
   const files = useStore((s) => s.files)
@@ -42,6 +43,16 @@ export default function Tabs(): React.JSX.Element {
             }}
           >
             <button className="tab-main" onClick={() => void setActiveFile(file)} title={file}>
+              {(() => {
+                const kindIcon = files.find((d) => d.file === file)?.kindIcon
+                return kindIcon ? (
+                  <span className="tab-icon-glyph" aria-hidden>
+                    {kindIcon}
+                  </span>
+                ) : (
+                  <img className="tab-icon" src={fileIconUrl(file)} alt="" aria-hidden />
+                )
+              })()}
               {titleFor(file)}
             </button>
             <button

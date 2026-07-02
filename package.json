@@ -52,6 +52,7 @@
     "@headless-tree/react": "^1.7.0",
     "@lezer/highlight": "^1.2.3",
     "diff": "^9.0.0",
+    "material-icon-theme": "^5.36.1",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "streamdown": "^2.5.0",

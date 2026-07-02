@@ -20,6 +20,14 @@ All notable changes to Fabulist are documented here. The format follows
   everything with them: open tabs, the active file, per-file fonts, and comment threads
   all follow the new path, and each move lands as a git snapshot. Expansion state is
   still remembered per project.
+- **IDE file-type icons.** Files in the tree and in the tab strip now carry the
+  Material Icon Theme set (the VS Code standard, 1200+ icons): TypeScript, React,
+  Python, JSON, YAML, SQL, shell, README, and everything else resolve by filename and
+  compound extension (`app.test.ts` beats `.ts`), folders get material folder icons
+  (with name-aware variants like `src/`), and the inline new-file input previews the
+  icon live as you type the name. Light-theme icon variants are preferred to suit the
+  porcelain surface. Studio-defined file types keep their own `fileTypes` icon — a
+  studio's ✦ scene glyph still outranks the generic markdown mark.
 - **New design language: construction kit, not manuscript.** The warm-paper/serif/ember
   theme is replaced by a modular one — a porcelain bench with a faint breadboard dot
   grid, white module surfaces with visible 1px seams, construction-orange accent, and
