@@ -51,6 +51,15 @@ All notable changes to Fabulist are documented here. The format follows
   — a course studio can open showing its outline instead of a blank bench.
   Once the user touches their tabs, their own state wins. `layout.sidebar`
   says whether the chat sidebar starts open or closed on every open.
+- **Web panels get a bridge: studio-built UI that matches the app.** A `web`
+  panel can include `<script src="/__fabulist__.js"></script>` (served
+  virtually to every project) to receive Fabulist's design tokens as live CSS
+  variables — `var(--paper)`, `var(--accent)`, the works, studio theme
+  included — and a small `window.fabulist` API: `openFile()`/`openPanel()` for
+  navigation, and `runAction()` to trigger harness actions (honored only for
+  trusted studios; the prompt shows in chat and edits still pass the approval
+  gate). This makes web panels the harness's escape hatch: dashboards,
+  timelines, and character maps as plain HTML files in the project.
 - **The Files rail is now a real IDE-grade file tree**, rebuilt on
   [Headless Tree](https://headless-tree.lukasbach.com) (the successor to
   react-complex-tree). What it can do now: drag-and-drop files *and folders* into any

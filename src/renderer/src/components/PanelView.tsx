@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { EditorState, type Extension } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 import type { PanelDef, PanelViewKind } from '@shared/harness'
 import { useStore } from '@/store'
 import Markdown from '@/components/Markdown'
 import { baseExtensions, codeLanguageExtensions } from '@/editor/extensions'
+import { themeTokens } from '@/lib/theme'
 
 /**
  * Harness panels: views over project files, declared in fabulist.json and
@@ -59,14 +60,68 @@ function ImagePanel({ panel, sourceUrl }: PanelViewProps): React.JSX.Element {
   return <img className="panel-image" src={sourceUrl} alt={panel.title} />
 }
 
+/** A message a bridged panel may post up to the app (see src/main/panelBridge.ts). */
+interface BridgeMessage {
+  fabulist?: boolean
+  type?: string
+  file?: unknown
+  panel?: unknown
+  action?: unknown
+}
+
 function WebPanel({ panel, sourceUrl }: PanelViewProps): React.JSX.Element {
+  const frameRef = useRef<HTMLIFrameElement>(null)
+  const harness = useStore((s) => s.harness)
+
+  const sendTheme = useCallback((): void => {
+    frameRef.current?.contentWindow?.postMessage(
+      { fabulist: true, type: 'theme', vars: themeTokens() },
+      '*'
+    )
+  }, [])
+
+  // re-push the tokens when the studio (and so possibly its theme) reloads
+  useEffect(sendTheme, [harness, sendTheme])
+
+  // the bridge's postMessage API: navigation is always allowed; running a
+  // harness action from studio-authored panel code requires the studio to be
+  // trusted (an untrusted elevation-seeking studio gets navigation only)
+  useEffect(() => {
+    const onMessage = (e: MessageEvent): void => {
+      if (e.source !== frameRef.current?.contentWindow) return
+      const d = e.data as BridgeMessage
+      if (!d || d.fabulist !== true) return
+      const s = useStore.getState()
+      if (d.type === 'ready') {
+        sendTheme()
+      } else if (d.type === 'open-file' && typeof d.file === 'string') {
+        if (s.files.some((f) => f.file === d.file)) void s.openTab(d.file)
+      } else if (d.type === 'open-panel' && typeof d.panel === 'string') {
+        s.openPanel(d.panel)
+      } else if (d.type === 'run-action' && typeof d.action === 'string') {
+        if (!s.harness?.trusted) {
+          console.warn(`panel "${panel.id}": run-action requires a trusted studio; ignored`)
+          return
+        }
+        const action = s.harness.config.actions.find(
+          (a) => a.id === d.action && a.surface !== 'selection'
+        )
+        if (action) s.runAction(action)
+      }
+    }
+    window.addEventListener('message', onMessage)
+    return () => window.removeEventListener('message', onMessage)
+  }, [panel.id, sendTheme])
+
   // sandboxed but scriptable: the page runs as its project's own origin, so it
   // can load its relative assets and nothing outside the project folder
   return (
     <iframe
+      ref={frameRef}
       className="panel-web"
       src={sourceUrl}
       title={panel.title}
+      onLoad={sendTheme}
       sandbox="allow-scripts allow-same-origin allow-forms allow-modals"
     />
   )

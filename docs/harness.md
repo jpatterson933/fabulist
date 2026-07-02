@@ -146,6 +146,21 @@ per-project scheme; dotfiles and paths outside the project are never served),
 so a studio that produces a website can show the website itself. Asset views
 refresh automatically when the agent edits the underlying files.
 
+Web panels are also the harness's escape hatch: a studio can ship its own UI
+as an HTML file — a dashboard, a timeline, a character map — instead of
+waiting for a schema field. Include the bridge with
+`<script src="/__fabulist__.js"></script>` (served virtually at every
+project's root; it never reads a project file) and the panel receives the
+app's design tokens as CSS variables on its own `:root` — `var(--paper)`,
+`var(--ink)`, `var(--accent)` and friends, studio theme included, updated
+live — plus a `window.fabulist` API: `openFile(path)` and `openPanel(id)`
+navigate the app, and `runAction(id)` triggers a harness action. Navigation
+is always allowed; `runAction` is honored only for **trusted** studios (an
+untrusted studio asking for elevated permissions gets navigation only), the
+prompt lands visibly in the chat, and any resulting edits still go through
+the normal approval gate. A `fabulist:theme` event fires on `window` whenever
+tokens arrive.
+
 **Commands.** A studio can declare the processes its work needs — a dev
 server, a build, a test run. Commands appear in the rail with Run/Stop, stream
 their output into a log tab, and (with `preview`) show the served page live

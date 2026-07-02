@@ -5,6 +5,7 @@ import { isSafeRelPath } from '@shared/harness'
 import { registerIpc } from './ipc'
 import { commandManager } from './commands'
 import { projectPath } from './library'
+import { PANEL_BRIDGE_JS, PANEL_BRIDGE_PATH } from './panelBridge'
 
 /**
  * fab-project://<projectId>/<relative/path> serves files straight out of a
@@ -28,6 +29,12 @@ function registerProjectProtocol(): void {
       const rel = decodeURIComponent(url.pathname).replace(/^\/+/, '')
       // no traversal, no dotfiles (.fabulist state, .claude, .git stay private)
       if (!isSafeRelPath(rel)) return new Response('Forbidden', { status: 403 })
+      // the panel bridge is virtual — every project serves it at the root
+      if (rel === PANEL_BRIDGE_PATH) {
+        return new Response(PANEL_BRIDGE_JS, {
+          headers: { 'content-type': 'text/javascript; charset=utf-8' }
+        })
+      }
       const file = path.join(projectPath(url.hostname), ...rel.split('/'))
       return await net.fetch(pathToFileURL(file).toString())
     } catch {

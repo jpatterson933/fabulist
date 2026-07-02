@@ -26,6 +26,43 @@ export function accentColor(name: AccentName): string {
   return `oklch(0.53 0.165 ${ACCENT_HUES[name]})`
 }
 
+/** The design tokens pushed into web panels via the /__fabulist__.js bridge. */
+const PANEL_TOKENS = [
+  '--font-display',
+  '--font-doc',
+  '--font-ui',
+  '--font-mono',
+  '--paper',
+  '--paper-deep',
+  '--paper-deeper',
+  '--surface',
+  '--ink',
+  '--ink-soft',
+  '--ink-faint',
+  '--line',
+  '--line-soft',
+  '--accent',
+  '--accent-deep',
+  '--accent-wash',
+  '--accent-ink',
+  '--mod-view',
+  '--mod-run',
+  '--selection',
+  '--ok',
+  '--bad'
+]
+
+/** Current computed values of the panel tokens (studio theme included). */
+export function themeTokens(): Record<string, string> {
+  const cs = getComputedStyle(document.documentElement)
+  const out: Record<string, string> = {}
+  for (const v of PANEL_TOKENS) {
+    const value = cs.getPropertyValue(v).trim()
+    if (value) out[v] = value
+  }
+  return out
+}
+
 /** Retint the app to a studio's theme; null/empty restores the stock look. */
 export function applyStudioTheme(theme: ThemeDef | null | undefined): void {
   const style = document.documentElement.style
