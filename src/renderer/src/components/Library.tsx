@@ -17,6 +17,7 @@ export function BlockMark({ size = 14 }: { size?: number }): React.JSX.Element {
 export default function Library(): React.JSX.Element {
   const railView = useStore((s) => s.railView)
   const activeProjectId = useStore((s) => s.activeProjectId)
+  const toggleLibrary = useStore((s) => s.toggleLibrary)
 
   return (
     <aside className="library">
@@ -27,6 +28,17 @@ export default function Library(): React.JSX.Element {
             <BlockMark />
           </span>
           <span className="library-brand-mark">Fabulist</span>
+          <button
+            className="library-brand-close"
+            onClick={toggleLibrary}
+            title="Close library  ⌘\"
+            aria-label="Close library"
+          >
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden>
+              <rect x="1.5" y="2.5" width="13" height="11" rx="2" stroke="currentColor" strokeWidth="1.3" />
+              <path d="M6 2.5v11" stroke="currentColor" strokeWidth="1.3" />
+            </svg>
+          </button>
         </div>
         {railView === 'files' && activeProjectId ? <DocsView /> : <ProjectsView />}
       </div>
@@ -121,6 +133,7 @@ function DocsView(): React.JSX.Element {
   const openPanel = useStore((s) => s.openPanel)
   const openWorkshop = useStore((s) => s.openWorkshop)
   const setNewFileOpen = useStore((s) => s.setNewFileOpen)
+  const setPaletteOpen = useStore((s) => s.setPaletteOpen)
 
   const project = projects.find((p) => p.id === activeProjectId)
   const panels = harness?.config.panels ?? []
@@ -156,6 +169,15 @@ function DocsView(): React.JSX.Element {
             {harness?.config.name ? 'Customize in the workshop' : 'Design one in the workshop'}
           </span>
         </span>
+      </button>
+
+      <button
+        className="library-actions"
+        onClick={() => setPaletteOpen(true)}
+        title="Actions, skills, files"
+      >
+        <span className="library-actions-label">Actions</span>
+        <kbd>⌘K</kbd>
       </button>
 
       <div className="library-head">

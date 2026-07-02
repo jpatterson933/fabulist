@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { FONT_CHOICES } from '@shared/types'
 import { useStore } from '@/store'
 import Library, { BlockMark } from '@/components/Library'
 import Editor from '@/components/Editor'
@@ -26,7 +25,6 @@ export default function App(): React.JSX.Element {
   const toggleLibrary = useStore((s) => s.toggleLibrary)
   const harness = useStore((s) => s.harness)
   const activePanel = useStore((s) => s.activePanel)
-  const setPaletteOpen = useStore((s) => s.setPaletteOpen)
   const panel = harness?.config.panels.find((p) => p.id === activePanel) ?? null
   const command =
     (activePanel?.startsWith('command:') &&
@@ -35,6 +33,13 @@ export default function App(): React.JSX.Element {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
+      // ⌘⇧\ produces '|' on most layouts; accept both
+      if ((e.key === '\\' || e.key === '|') && (e.metaKey || e.ctrlKey) && e.shiftKey) {
+        if (!useStore.getState().activeProjectId) return
+        e.preventDefault()
+        useStore.getState().toggleSidebar()
+        return
+      }
       if (e.key === '\\' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault()
         useStore.getState().toggleLibrary()
@@ -61,43 +66,39 @@ export default function App(): React.JSX.Element {
       <main className="workspace">
         <header className={`workspace-header ${libraryOpen ? '' : 'with-lights'}`}>
           <div className="workspace-title">
-            <button
-              className="btn-ghost btn-icon"
-              onClick={toggleLibrary}
-              title="Toggle library  ⌘\"
-            >
-              <RailIcon />
-            </button>
+            {!libraryOpen && (
+              <button
+                className="btn-ghost btn-icon"
+                onClick={toggleLibrary}
+                title="Open library  ⌘\"
+                aria-label="Open library"
+              >
+                <RailIcon />
+              </button>
+            )}
             {projectOpen ? (
               <Tabs />
             ) : (
               <h1 className="workspace-title-idle">Fabulist</h1>
             )}
           </div>
-          {projectOpen && (
-            <div className="workspace-actions">
-              {agent && agent.status !== 'idle' && agent.status !== 'done' && (
-                <span className="workspace-meta">
-                  <span className={`agent-dot agent-${agent.status}`} />
-                </span>
-              )}
+          <div className="workspace-actions">
+            {projectOpen && agent && agent.status !== 'idle' && agent.status !== 'done' && (
+              <span className="workspace-meta">
+                <span className={`agent-dot agent-${agent.status}`} />
+              </span>
+            )}
+            {projectOpen && !sidebarOpen && (
               <button
-                className="btn-ghost btn-with-kbd"
-                onClick={() => setPaletteOpen(true)}
-                title="Actions, skills, files"
-              >
-                Actions <kbd>⌘K</kbd>
-              </button>
-              {file && !panel && file.type === 'markdown' && <FontPicker />}
-              <button
-                className={`btn-ghost btn-icon ${sidebarOpen ? 'is-on' : ''}`}
+                className="btn-ghost btn-icon"
                 onClick={toggleSidebar}
-                title="Toggle sidebar"
+                title="Open sidebar  ⌘⇧\"
+                aria-label="Open sidebar"
               >
                 <PanelIcon />
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </header>
 
         {projectOpen && <StudioBanner />}
@@ -127,28 +128,6 @@ export default function App(): React.JSX.Element {
       <CommandPalette />
       <NewFileDialog />
       <NewProjectDialog />
-    </div>
-  )
-}
-
-function FontPicker(): React.JSX.Element {
-  const font = useStore((s) => s.font)
-  const setFont = useStore((s) => s.setFont)
-  const current = FONT_CHOICES.find((f) => f.value === font) ?? FONT_CHOICES[0]
-
-  // icon-only: the native select sits invisibly on top, so the menu still works
-  return (
-    <div className="font-picker font-picker-compact" title={`Typeface: ${current.label}`}>
-      <span className="font-picker-glyph" style={{ fontFamily: current.stack }} aria-hidden>
-        Aa
-      </span>
-      <select value={current.value} onChange={(e) => setFont(e.target.value)} aria-label="Typeface">
-        {FONT_CHOICES.map((f) => (
-          <option key={f.value} value={f.value}>
-            {f.label}
-          </option>
-        ))}
-      </select>
     </div>
   )
 }

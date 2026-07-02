@@ -252,6 +252,23 @@ input::placeholder {
   color: var(--ink);
 }
 
+/* the library's own collapse control, tucked into the brand row */
+.library-brand-close {
+  -webkit-app-region: no-drag;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 6px;
+  border-radius: 4px;
+  color: var(--ink-faint);
+  transition: background 140ms ease, color 140ms ease;
+}
+.library-brand-close:hover {
+  background: var(--paper-deeper);
+  color: var(--ink);
+}
+
 .library-head {
   display: flex;
   align-items: baseline;
@@ -688,48 +705,6 @@ input::placeholder {
   gap: 4px;
 }
 
-.font-picker {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 8px;
-  border-radius: 4px;
-  -webkit-app-region: no-drag;
-  transition: background 140ms ease;
-}
-.font-picker:hover {
-  background: var(--paper-deeper);
-}
-
-.font-picker-glyph {
-  font-size: 14px;
-  color: var(--ink-soft);
-  line-height: 1;
-}
-
-.font-picker select {
-  appearance: none;
-  font-family: var(--font-ui);
-  font-size: 12.5px;
-  color: var(--ink-soft);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  outline: none;
-}
-
-/* icon-only variant: the select overlays the Aa glyph invisibly */
-.font-picker-compact {
-  position: relative;
-  padding: 4px 7px;
-}
-.font-picker-compact select {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  width: 100%;
-}
-
 .agent-dot {
   width: 8px;
   height: 8px;
@@ -1021,6 +996,21 @@ input::placeholder {
   height: 2px;
   background: var(--accent);
   border-radius: 2px 2px 0 0;
+}
+
+/* the sidebar's own collapse control, right of the tabs */
+.sidebar-tabs .sidebar-close {
+  margin-left: auto;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 6px;
+  margin-bottom: 8px;
+  border-radius: 4px;
+}
+.sidebar-tabs .sidebar-close:hover {
+  background: var(--paper-deeper);
 }
 
 .tab-badge {
@@ -2178,15 +2168,32 @@ input::placeholder {
   color: var(--accent-deep);
 }
 
-/* keyboard hint inside a header button */
-.btn-with-kbd kbd {
+/* the palette trigger: a slim row under the studio slot */
+.library-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 6px 10px 0;
+  padding: 6px 8px;
+  border-radius: 4px;
+  color: var(--ink-soft);
+  transition: background 140ms ease, color 140ms ease;
+}
+.library-actions:hover {
+  background: var(--paper-deeper);
+  color: var(--ink);
+}
+.library-actions-label {
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.library-actions kbd {
   font-family: var(--font-ui);
   font-size: 10px;
   color: var(--ink-faint);
   border: 1px solid var(--line);
   border-radius: 4px;
   padding: 1px 4px;
-  margin-left: 3px;
 }
 
 /* the studio entry under the project crumb in the rail */

@@ -1,6 +1,5 @@
 import { create } from 'zustand'
 import {
-  DEFAULT_FONT,
   DEFAULT_MODEL_CHOICE,
   FALLBACK_MODEL_CHOICES,
   type AgentEvent,
@@ -75,7 +74,6 @@ export interface FabulistStore {
   preview: { hash: string; content: string; subject: string } | null
   model: string
   models: ModelChoice[]
-  font: string
   draftComment: DraftComment | null
   activeThreadId: string | null
   inlineSuggestionId: string | null
@@ -176,7 +174,6 @@ export interface FabulistStore {
   engageClaudeOnThread: (thread: CommentThread) => void
   setModel: (model: string) => void
   loadModels: () => Promise<void>
-  setFont: (font: string) => void
   interrupt: () => void
   respondPermission: (requestId: string, approved: boolean) => void
   setInlineSuggestion: (requestId: string | null) => void
@@ -258,7 +255,6 @@ export const useStore = create<FabulistStore>((set, get) => ({
   preview: null,
   model: '',
   models: FALLBACK_MODEL_CHOICES,
-  font: DEFAULT_FONT,
   draftComment: null,
   activeThreadId: null,
   inlineSuggestionId: null,
@@ -457,16 +453,13 @@ export const useStore = create<FabulistStore>((set, get) => ({
 
     let content = ''
     let threads: CommentThread[] = []
-    let font = DEFAULT_FONT
     if (activeFile) {
-      const [c, rawThreads, f] = await Promise.all([
+      const [c, rawThreads] = await Promise.all([
         window.fabulist.file.read(id, activeFile),
-        window.fabulist.comments.list(id, activeFile),
-        window.fabulist.file.getFont(id, activeFile)
+        window.fabulist.comments.list(id, activeFile)
       ])
       content = c
       threads = reanchor(rawThreads, c)
-      font = f || DEFAULT_FONT
     }
     const chat = activeThreadId ? await window.fabulist.agent.threadChat(id, activeThreadId) : []
 
@@ -483,7 +476,6 @@ export const useStore = create<FabulistStore>((set, get) => ({
       threads,
       commits,
       model,
-      font,
       preview: null,
       draftComment: null,
       activeThreadId: null,
@@ -675,17 +667,13 @@ export const useStore = create<FabulistStore>((set, get) => ({
     const content = isTextFile(file)
       ? cached ?? (await window.fabulist.file.read(id, file))
       : ''
-    const [rawThreads, font] = await Promise.all([
-      window.fabulist.comments.list(id, file),
-      window.fabulist.file.getFont(id, file)
-    ])
+    const rawThreads = await window.fabulist.comments.list(id, file)
     set({
       activeFile: file,
       content,
       fileContents: { ...get().fileContents, [file]: content },
       external: { seq: extSeq++, content },
       threads: reanchor(rawThreads, content),
-      font: font || DEFAULT_FONT,
       preview: null,
       draftComment: null,
       activeThreadId: null,
@@ -925,14 +913,6 @@ export const useStore = create<FabulistStore>((set, get) => ({
     if (!id) return
     set({ model })
     window.fabulist.project.setModel(id, model).catch(() => {})
-  },
-
-  setFont: (font) => {
-    const id = get().activeProjectId
-    const file = get().activeFile
-    if (!id || !file) return
-    set({ font })
-    window.fabulist.file.setFont(id, file, font).catch(() => {})
   },
 
   loadModels: async () => {

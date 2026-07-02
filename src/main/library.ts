@@ -631,24 +631,6 @@ export async function writeFileContent(projectId: string, file: string, content:
   await fs.writeFile(projectFilePath(projectId, file), content)
 }
 
-// --- per-file font (stored in project.json) ---
-
-export async function getFileFont(projectId: string, file: string): Promise<string> {
-  const project = await readProject(projectId)
-  return project.files.find((d) => d.file === file)?.font ?? ''
-}
-
-export function setFileFont(projectId: string, file: string, font: string): Promise<void> {
-  return withStateLock(projectId, async () => {
-    const project = await ensureProjectUnlocked(projectId)
-    const has = project.files.some((d) => d.file === file)
-    const files = has
-      ? project.files.map((d) => (d.file === file ? { ...d, font: font || undefined } : d))
-      : [...project.files, { file: file, font: font || undefined }]
-    await writeProjectUnlocked(projectId, { ...project, files })
-  })
-}
-
 // --- open-tab persistence (project.json) ---
 
 export function setOpenTabs(projectId: string, openTabs: string[]): Promise<void> {

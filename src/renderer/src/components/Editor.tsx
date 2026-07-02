@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { EditorView } from '@codemirror/view'
 import { EditorState, Compartment } from '@codemirror/state'
-import { FONT_CHOICES } from '@shared/types'
 import { useStore } from '@/store'
 import { computeSuggestion } from '@/lib/suggest'
 import {
@@ -294,13 +293,9 @@ export default function Editor({
     return () => document.removeEventListener('mousedown', onDown)
   }, [composer])
 
-  const font = useStore((s) => s.font)
-  const fontStack = (FONT_CHOICES.find((f) => f.value === font) ?? FONT_CHOICES[0]).stack
-
   return (
     <div
       className={`editor-host ${activeThreadId ? 'has-active-thread' : ''} ${file.toLowerCase().endsWith('.md') ? '' : 'is-code-file'}`}
-      style={{ '--font-doc': fontStack } as React.CSSProperties}
       ref={hostRef}
     >
       {suggestion && (

@@ -5,6 +5,21 @@ All notable changes to Fabulist are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+- **The workspace header is now just tabs.** The library and sidebar toggles, the
+  Actions button, and the font picker no longer crowd the header. Each open panel
+  carries its own close control (in the library's brand row and the sidebar's tab
+  row); the header toggle only appears when its panel is collapsed, right where the
+  panel would be. The sidebar also gains a keyboard toggle, ⌘⇧\ (pairing with the
+  library's ⌘\).
+- **Actions moved into the rail.** The ⌘K palette trigger now lives in the project
+  rail, right under the studio slot — with the shortcut hint beside it.
+
+### Removed
+- **The per-file font picker.** Files now always render in the app's default
+  typeface; the typeface menu in the header (and the per-file font plumbing behind
+  it) is gone.
+
 ### Added
 - **The Files rail is now a real IDE-grade file tree**, rebuilt on
   [Headless Tree](https://headless-tree.lukasbach.com) (the successor to
@@ -17,7 +32,7 @@ All notable changes to Fabulist are documented here. The format follows
   ghost-row input, created exactly where you clicked), Rename, Reveal in Finder, and
   Delete (⌫ works too). Empty folders now appear in the tree, and folders created
   outside the app (agent or terminal `mkdir`) show up live. Moves and renames carry
-  everything with them: open tabs, the active file, per-file fonts, and comment threads
+  everything with them: open tabs, the active file, and comment threads
   all follow the new path, and each move lands as a git snapshot. Expansion state is
   still remembered per project.
 - **IDE file-type icons.** Files in the tree and in the tab strip now carry the

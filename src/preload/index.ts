@@ -92,11 +92,7 @@ const api = {
     read: (id: string, file: string): Promise<string> =>
       ipcRenderer.invoke('file:read', id, file),
     write: (id: string, file: string, content: string): Promise<void> =>
-      ipcRenderer.invoke('file:write', id, file, content),
-    getFont: (id: string, file: string): Promise<string> =>
-      ipcRenderer.invoke('file:getFont', id, file),
-    setFont: (id: string, file: string, font: string): Promise<void> =>
-      ipcRenderer.invoke('file:setFont', id, file, font)
+      ipcRenderer.invoke('file:write', id, file, content)
   },
   history: {
     log: (id: string): Promise<CommitInfo[]> => ipcRenderer.invoke('history:log', id),

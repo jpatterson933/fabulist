@@ -201,24 +201,6 @@ export const FALLBACK_MODEL_CHOICES: ModelChoice[] = [
   { value: 'haiku', label: 'Haiku', hint: 'fastest' }
 ]
 
-export interface FontChoice {
-  value: string
-  label: string
-  stack: string
-}
-
-// A neutral sans leads as the default; the serifs are one choice among many,
-// for files that want a bookish reading page.
-export const FONT_CHOICES: FontChoice[] = [
-  { value: 'plex-sans', label: 'Plex Sans', stack: "'IBM Plex Sans', 'Avenir Next', sans-serif" },
-  { value: 'newsreader', label: 'Newsreader', stack: "'Newsreader Variable', 'Iowan Old Style', Georgia, serif" },
-  { value: 'literata', label: 'Literata', stack: "'Literata Variable', Georgia, serif" },
-  { value: 'fraunces', label: 'Fraunces', stack: "'Fraunces Variable', 'Iowan Old Style', serif" },
-  { value: 'plex-mono', label: 'Plex Mono', stack: "'IBM Plex Mono', 'SF Mono', monospace" }
-]
-
-export const DEFAULT_FONT = FONT_CHOICES[0].value
-
 export interface Attachment {
   /** absolute path to the file on disk */
   path: string
