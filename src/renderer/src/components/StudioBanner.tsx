@@ -45,14 +45,25 @@ export default function StudioBanner(): React.JSX.Element | null {
     }
   }
 
+  const grants: string[] = []
+  if (config.permissions.edits === 'auto') {
+    grants.push('apply the agent’s file edits without approval')
+  }
+  if (config.permissions.mcp === 'ask') {
+    grants.push('connect the project’s MCP servers (their tools still ask)')
+  }
+  if (config.permissions.mcp === 'allow') {
+    grants.push('connect the project’s MCP servers and run their tools without approval')
+  }
+
   return (
     <div className="studio-banner">
       <span className="studio-banner-text">
-        <strong>{name}</strong> asks to apply the agent&rsquo;s file edits without approval
+        <strong>{name}</strong> asks to {grants.join(', and to ')}{' '}
         ({config.actions.length} {config.actions.length === 1 ? 'action' : 'actions'},{' '}
         {harness.skills.length} {harness.skills.length === 1 ? 'skill' : 'skills'}
         {config.permissions.bash === 'deny' ? ', shell disabled' : ''}). Until you trust it,
-        every edit still asks.
+        none of that takes effect.
       </span>
       <button className="btn-primary btn-small" disabled={busy} onClick={() => void decide(true)}>
         Trust studio

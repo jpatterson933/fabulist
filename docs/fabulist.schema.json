@@ -141,6 +141,14 @@
             "deny"
           ],
           "description": "\"deny\" removes the shell tool from the agent entirely (tightening never needs trust)"
+        },
+        "mcp": {
+          "enum": [
+            "none",
+            "ask",
+            "allow"
+          ],
+          "description": "project MCP servers (.mcp.json + .claude/settings.json enablement): \"none\" (default) ignores them, \"ask\" connects them with per-tool approval, \"allow\" connects and auto-approves their tools; anything but \"none\" requires the user to trust the studio"
         }
       },
       "additionalProperties": true

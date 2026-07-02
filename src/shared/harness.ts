@@ -104,6 +104,7 @@ export interface PanelDef {
 export interface PermissionsDef {
   edits?: 'ask' | 'auto'
   bash?: 'ask' | 'deny'
+  mcp?: 'none' | 'ask' | 'allow'
 }
 
 export const DOC_TYPES_BLOCK: ListBlockSpec<DocTypeDef> = {
@@ -238,6 +239,14 @@ export const PERMISSION_FIELDS: FieldSpec[] = [
     kind: 'enum',
     values: ['ask', 'deny'],
     doc: '"deny" removes the shell tool from the agent entirely (tightening never needs trust)',
+    example: '"ask"'
+  },
+  {
+    key: 'mcp',
+    kind: 'enum',
+    values: ['none', 'ask', 'allow'],
+    trust: true,
+    doc: 'project MCP servers (.mcp.json + .claude/settings.json enablement): "none" (default) ignores them, "ask" connects them with per-tool approval, "allow" connects and auto-approves their tools; anything but "none" requires the user to trust the studio',
     example: '"ask"'
   }
 ]

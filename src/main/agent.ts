@@ -60,6 +60,10 @@ Guidelines:
 - Start by interviewing the user briefly: what are they making, what does "good" look
   like, what do they keep doing by hand? Then propose a harness and build it.
 - Prefer several small, well-named skills over one sprawling prompt.
+- To give the studio external tools, define MCP servers in \`.mcp.json\` at the project
+  root, enable them via \`enabledMcpjsonServers\` in \`.claude/settings.json\`, and set
+  \`permissions.mcp\` to "ask" (or "allow") in fabulist.json — the user must then trust
+  the studio before any server connects.
 - fabulist.json is meant to be committed and shared with collaborators; personal
   overrides belong in fabulist.local.json (gitignored).
 - Keep chat replies brief — the harness files are the deliverable.`
@@ -212,6 +216,10 @@ export class AgentManager {
     // sandbox-safe commands without consulting canUseTool
     const gateConfig = await loadGateConfig(projectId).catch(() => null)
     const bashDenied = gateConfig?.config.permissions.bash === 'deny'
+    // project MCP servers (.mcp.json) are spawned processes — connecting them
+    // at all requires the studio to be trusted with permissions.mcp beyond
+    // "none"; otherwise strictMcpConfig keeps the engine from loading them
+    const mcpPolicy = gateConfig?.trusted ? gateConfig.config.permissions.mcp ?? 'none' : 'none'
     const abort = new AbortController()
     let editsApplied = 0
 
@@ -241,6 +249,7 @@ export class AgentManager {
       },
       permissionMode: 'default',
       disallowedTools: bashDenied ? ['Bash'] : undefined,
+      strictMcpConfig: mcpPolicy === 'none' ? true : undefined,
       canUseTool: (tool, input, { signal }) =>
         this.gateTool(projectId, cwd, tool, input as Record<string, unknown>, signal, () => editsApplied++),
       stderr: (line) => {
@@ -394,7 +403,7 @@ export class AgentManager {
     signal: AbortSignal,
     onEditApplied: () => void
   ): Promise<PermissionResult> {
-    if (READ_ONLY.has(tool) || tool.startsWith('mcp__')) {
+    if (READ_ONLY.has(tool)) {
       return { behavior: 'allow', updatedInput: input }
     }
 
@@ -414,9 +423,20 @@ export class AgentManager {
     }
 
     // the studio's permission profile (fabulist.json). A manifest can always
-    // tighten the gate; loosening it (auto edits) requires the user to have
-    // trusted this studio, and any change to the permissions block re-prompts.
+    // tighten the gate; loosening it (auto edits, MCP) requires the user to
+    // have trusted this studio, and any change to the grants re-prompts.
     const gate = await loadGateConfig(projectId).catch(() => null)
+    if (tool.startsWith('mcp__')) {
+      const policy = gate?.trusted ? gate.config.permissions.mcp ?? 'none' : 'none'
+      if (policy === 'allow') return { behavior: 'allow', updatedInput: input }
+      if (policy === 'none') {
+        return {
+          behavior: 'deny',
+          message: 'This studio has not been granted MCP access (fabulist.json permissions.mcp).'
+        }
+      }
+      // 'ask' falls through to the approval card
+    }
     if (gate) {
       if (tool === 'Bash' && gate.config.permissions.bash === 'deny') {
         return { behavior: 'deny', message: 'This studio does not allow shell commands (fabulist.json permissions).' }
@@ -650,8 +670,11 @@ function describeTool(tool: string, input: Record<string, unknown>, cwd: string)
       return 'Updating plan'
     case 'Task':
       return `Delegating: ${String(input.description ?? '')}`
-    default:
+    default: {
+      const mcp = tool.match(/^mcp__(.+?)__(.+)$/)
+      if (mcp) return `MCP ${mcp[1]}: ${mcp[2]}`
       return tool
+    }
   }
 }
 

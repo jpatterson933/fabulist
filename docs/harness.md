@@ -60,6 +60,7 @@ Top-level fields (all optional; unknown fields are ignored):
 `permissions` — the gate profile. A manifest can always tighten the gate; loosening requires explicit user trust in the app, stored outside the repo and keyed to the trust-relevant fields, so any change re-prompts.
   - `edits`: "auto" applies the agent's file edits without per-edit approval; only takes effect after the user explicitly trusts the studio in the app — one of "ask" | "auto" — e.g. "ask"
   - `bash`: "deny" removes the shell tool from the agent entirely (tightening never needs trust) — one of "ask" | "deny" — e.g. "ask"
+  - `mcp`: project MCP servers (.mcp.json + .claude/settings.json enablement): "none" (default) ignores them, "ask" connects them with per-tool approval, "allow" connects and auto-approves their tools; anything but "none" requires the user to trust the studio — one of "none" | "ask" | "allow" — e.g. "ask"
 
 <!-- generated:schema:end -->
 

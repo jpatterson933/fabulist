@@ -6,6 +6,14 @@ All notable changes to Fabulist are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- **Studios can ship MCP servers — behind trust.** A harness may now carry `.mcp.json` (+
+  `enabledMcpjsonServers` in `.claude/settings.json`) and request `permissions.mcp: "ask"`
+  or `"allow"` in the manifest. Until the user trusts the studio, project MCP config is
+  ignored outright (`strictMcpConfig` — connecting a stdio server is code execution, so it
+  never happens silently); once trusted, `"ask"` puts every MCP tool call behind an approval
+  card ("MCP files: list_directory") and `"allow"` auto-approves them. This also closes a
+  hole: MCP tools were previously blanket-approved by the gate. Because the trust hash covers
+  the grant fields, existing trusted studios re-prompt once — the grant surface grew.
 - **Studio harnesses (`fabulist.json`).** A project folder can now describe its own studio in a
   checked-in manifest: custom document types (filename globs, templates, rail icons, title
   rules), palette actions that run skills or canned prompts, read-only panels rendered from

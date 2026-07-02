@@ -141,9 +141,14 @@ describe('mergeHarnessConfigs — the local overlay contract', () => {
 
 describe('trust', () => {
   it('snapshot covers exactly the trust-marked fields, defaults filled', () => {
-    expect(trustGrantSnapshot(parse({}).config)).toEqual({ edits: 'ask' })
+    expect(trustGrantSnapshot(parse({}).config)).toEqual({ edits: 'ask', mcp: 'none' })
     expect(trustGrantSnapshot(parse({ permissions: { edits: 'auto' } }).config)).toEqual({
-      edits: 'auto'
+      edits: 'auto',
+      mcp: 'none'
+    })
+    expect(trustGrantSnapshot(parse({ permissions: { mcp: 'allow' } }).config)).toEqual({
+      edits: 'ask',
+      mcp: 'allow'
     })
   })
 
@@ -151,6 +156,9 @@ describe('trust', () => {
     expect(wantsElevatedPermissions(parse({}).config)).toBe(false)
     expect(wantsElevatedPermissions(parse({ permissions: { bash: 'deny' } }).config)).toBe(false)
     expect(wantsElevatedPermissions(parse({ permissions: { edits: 'auto' } }).config)).toBe(true)
+    // connecting project MCP servers is a grant in both modes
+    expect(wantsElevatedPermissions(parse({ permissions: { mcp: 'ask' } }).config)).toBe(true)
+    expect(wantsElevatedPermissions(parse({ permissions: { mcp: 'allow' } }).config)).toBe(true)
   })
 })
 
