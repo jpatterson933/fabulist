@@ -5,7 +5,21 @@ All notable changes to Fabulist are documented here. The format follows
 
 ## [Unreleased]
 
-### Changed
+### Added
+- **The Files rail is now a real IDE-grade file tree**, rebuilt on
+  [Headless Tree](https://headless-tree.lukasbach.com) (the successor to
+  react-complex-tree). What it can do now: drag-and-drop files *and folders* into any
+  folder (or back to the project root), multi-select (⌘/shift-click) with group drag and
+  group delete, inline rename (double-click or F2, Enter/Escape), full keyboard
+  navigation (arrows, Home/End, Enter to open), and type-to-search — just start typing
+  over the tree and it matches against the titles you see as well as filenames, moving
+  focus to the hit. A right-click context menu carries New file / New folder (inline
+  ghost-row input, created exactly where you clicked), Rename, Reveal in Finder, and
+  Delete (⌫ works too). Empty folders now appear in the tree, and folders created
+  outside the app (agent or terminal `mkdir`) show up live. Moves and renames carry
+  everything with them: open tabs, the active file, per-file fonts, and comment threads
+  all follow the new path, and each move lands as a git snapshot. Expansion state is
+  still remembered per project.
 - **New design language: construction kit, not manuscript.** The warm-paper/serif/ember
   theme is replaced by a modular one — a porcelain bench with a faint breadboard dot
   grid, white module surfaces with visible 1px seams, construction-orange accent, and

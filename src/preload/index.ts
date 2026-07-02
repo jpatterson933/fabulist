@@ -61,6 +61,17 @@ const api = {
       ipcRenderer.invoke('project:createFile', id, title, typeId),
     deleteFile: (id: string, file: string): Promise<void> =>
       ipcRenderer.invoke('project:deleteFile', id, file),
+    folders: (id: string): Promise<string[]> => ipcRenderer.invoke('project:folders', id),
+    renamePath: (id: string, from: string, to: string): Promise<void> =>
+      ipcRenderer.invoke('project:renamePath', id, from, to),
+    createFileAt: (id: string, file: string): Promise<FileMeta> =>
+      ipcRenderer.invoke('project:createFileAt', id, file),
+    createFolder: (id: string, folder: string): Promise<void> =>
+      ipcRenderer.invoke('project:createFolder', id, folder),
+    deleteFolder: (id: string, folder: string): Promise<void> =>
+      ipcRenderer.invoke('project:deleteFolder', id, folder),
+    revealFile: (id: string, file: string): Promise<void> =>
+      ipcRenderer.invoke('project:revealFile', id, file),
     setOpenTabs: (id: string, openTabs: string[]): Promise<void> =>
       ipcRenderer.invoke('project:setOpenTabs', id, openTabs),
     setActiveFile: (id: string, file: string | null): Promise<void> =>

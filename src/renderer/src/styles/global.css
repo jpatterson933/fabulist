@@ -2457,6 +2457,154 @@ input::placeholder {
   color: var(--ink-faint);
 }
 
+/* ─── project file tree (headless-tree rows in the rail) ─── */
+
+.tree {
+  outline: none;
+  min-height: 24px;
+}
+.tree-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+  padding: 6px 10px 6px calc(10px + var(--rail-depth, 0) * 14px);
+  border-radius: 4px;
+  margin-bottom: 1px;
+  transition: background 120ms ease, box-shadow 120ms ease;
+  outline: none;
+}
+.tree-item:hover {
+  background: var(--paper-deeper);
+}
+.tree-item.is-folder {
+  gap: 6px;
+  color: var(--ink-soft);
+}
+.tree-item-title {
+  font-size: 13.5px;
+  color: var(--ink-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tree-item.is-folder .tree-item-title {
+  font-size: 12.5px;
+  font-weight: 550;
+}
+.tree-item.is-selected {
+  background: var(--paper-deeper);
+  box-shadow: inset 0 0 0 1px var(--line-soft);
+}
+.tree-item.is-focused:focus-visible,
+.tree:focus-within .tree-item.is-focused {
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.tree-item.is-active {
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.tree-item.is-active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 5px;
+  bottom: 5px;
+  width: 3px;
+  background: var(--accent);
+}
+.tree-item.is-active .library-file-glyph {
+  color: var(--accent);
+}
+.tree-item.is-active .tree-item-title {
+  color: var(--ink);
+  font-weight: 550;
+}
+/* drop target while dragging: blueprint-blue wash, like a socket lighting up */
+.tree-item.is-drop {
+  background: color-mix(in oklch, var(--mod-view) 14%, transparent);
+  box-shadow: inset 0 0 0 1.5px var(--mod-view);
+}
+.tree-item.is-match .tree-item-title {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+  text-underline-offset: 3px;
+}
+
+.tree-rename-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-family: var(--font-mono);
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  padding: 1px 5px;
+  outline: none;
+}
+.tree-create {
+  background: var(--paper-deeper);
+}
+
+.tree-search {
+  padding: 2px 4px 6px;
+}
+.tree-search-input {
+  width: 100%;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 4px 8px;
+  outline: none;
+}
+.tree-search-input:focus {
+  border-color: var(--accent);
+}
+
+.tree-menu {
+  position: fixed;
+  z-index: 200;
+  min-width: 172px;
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow-pop);
+  display: flex;
+  flex-direction: column;
+}
+.tree-menu-item {
+  text-align: left;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  padding: 6px 10px;
+  border-radius: 5px;
+  transition: background 100ms ease, color 100ms ease;
+}
+.tree-menu-item:hover {
+  background: var(--paper-deeper);
+  color: var(--ink);
+}
+.tree-menu-item.is-danger:hover {
+  background: color-mix(in oklch, var(--bad) 12%, transparent);
+  color: var(--bad);
+}
+
+.tree-error {
+  margin: 6px 8px 0;
+  font-size: 11.5px;
+  font-family: var(--font-mono);
+  color: var(--bad);
+}
+
 /* panel tabs sit in the strip like documents, marked with a view glyph */
 .tab-panel .tab-main {
   display: inline-flex;

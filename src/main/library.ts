@@ -491,6 +491,138 @@ export async function deleteFile(projectId: string, file: string): Promise<void>
   await patchProject(projectId, { files, openTabs, activeFile })
 }
 
+/** All folders in a project (project-relative POSIX paths, sorted), empty ones included. */
+export async function listProjectFolders(projectId: string): Promise<string[]> {
+  const root = projectPath(projectId)
+  const out: string[] = []
+  const walk = async (rel: string, depth: number): Promise<void> => {
+    const entries = await fs
+      .readdir(rel ? path.join(root, ...rel.split('/')) : root, { withFileTypes: true })
+      .catch(() => [])
+    for (const e of entries) {
+      if (!e.isDirectory() || e.name.startsWith('.') || IGNORED_DIRS.has(e.name)) continue
+      const childRel = rel ? `${rel}/${e.name}` : e.name
+      out.push(childRel)
+      if (depth < SCAN_DEPTH) await walk(childRel, depth + 1)
+    }
+  }
+  await walk('', 0)
+  return out.sort()
+}
+
+/** Maps a path affected by a move: the path itself or anything nested under it. */
+const remapUnder =
+  (from: string, to: string) =>
+  (f: string): string =>
+    f === from ? to : f.startsWith(`${from}/`) ? `${to}${f.slice(from.length)}` : f
+
+/** Rewrite comments.json keys after files move; `null` drops a file's threads. */
+async function remapComments(
+  projectId: string,
+  mapPath: (file: string) => string | null
+): Promise<void> {
+  const file = path.join(projectPath(projectId), COMMENTS_FILE)
+  const raw = await fs.readFile(file, 'utf8').catch(() => null)
+  if (!raw) return
+  try {
+    const data = JSON.parse(raw) as Record<string, unknown>
+    const next: Record<string, unknown> = {}
+    let changed = false
+    for (const [k, v] of Object.entries(data)) {
+      const to = mapPath(k)
+      if (to === null) {
+        changed = true
+        continue
+      }
+      if (to !== k) changed = true
+      next[to] = v
+    }
+    if (changed) await fs.writeFile(file, JSON.stringify(next, null, 2))
+  } catch {
+    /* leave a malformed file alone */
+  }
+}
+
+/**
+ * Move or rename a file or folder within a project. App state follows the new
+ * path: project.json registrations (fonts included), open tabs, the active
+ * file, and comment threads. Refuses to overwrite an existing target.
+ */
+export async function renamePath(projectId: string, from: string, to: string): Promise<void> {
+  const src = projectFilePath(projectId, from)
+  const dest = projectFilePath(projectId, to)
+  if (from === to) return
+  if (to.startsWith(`${from}/`)) throw new Error(`Cannot move "${from}" into itself`)
+  // allow case-only renames on case-insensitive filesystems
+  if (from.toLowerCase() !== to.toLowerCase() && (await exists(dest))) {
+    throw new Error(`Already exists: ${to}`)
+  }
+  await fs.mkdir(path.dirname(dest), { recursive: true })
+  await fs.rename(src, dest)
+  const remap = remapUnder(from, to)
+  await withStateLock(projectId, async () => {
+    const project = await ensureProjectUnlocked(projectId)
+    await writeProjectUnlocked(projectId, {
+      ...project,
+      files: project.files.map((d) => ({ ...d, file: remap(d.file) })),
+      openTabs: project.openTabs.map(remap),
+      activeFile: project.activeFile ? remap(project.activeFile) : null
+    })
+  })
+  await remapComments(projectId, remap)
+  await commitAll(projectPath(projectId), `Moved ${from} → ${to}`).catch(() => {})
+}
+
+/**
+ * Create a file at an exact project-relative path (the tree's inline "New
+ * file"). A harness file type matching the path seeds it with the template.
+ */
+export async function createFileAt(projectId: string, file: string): Promise<FileMeta> {
+  const full = projectFilePath(projectId, file)
+  if (await exists(full)) throw new Error(`Already exists: ${file}`)
+  const config = await loadMergedConfig(projectId)
+  const harnessType = fileTypeFor(config, file)
+  const title = (file.split('/').pop() ?? file).replace(/\.[^.]+$/, '')
+  const seed = harnessType?.template ? harnessType.template.replaceAll('{{title}}', title) : ''
+  await fs.mkdir(path.dirname(full), { recursive: true })
+  await fs.writeFile(full, seed)
+  await withStateLock(projectId, async () => {
+    const project = await ensureProjectUnlocked(projectId)
+    await writeProjectUnlocked(projectId, {
+      ...project,
+      files: project.files.some((d) => d.file === file)
+        ? project.files
+        : [...project.files, { file }]
+    })
+  })
+  const meta = await readFileMeta(projectId, file, config)
+  if (!meta) throw new Error(`Failed to create file: ${file}`)
+  await commitAll(projectPath(projectId), `Added ${file}`).catch(() => {})
+  return meta
+}
+
+export async function createFolder(projectId: string, folder: string): Promise<void> {
+  await fs.mkdir(projectFilePath(projectId, folder), { recursive: true })
+}
+
+/** Remove a folder and everything under it; unregisters the contained files. */
+export async function deleteFolder(projectId: string, folder: string): Promise<void> {
+  await fs.rm(projectFilePath(projectId, folder), { recursive: true, force: true })
+  const under = (f: string): boolean => f === folder || f.startsWith(`${folder}/`)
+  await withStateLock(projectId, async () => {
+    const project = await ensureProjectUnlocked(projectId)
+    const files = project.files.filter((d) => !under(d.file))
+    const openTabs = project.openTabs.filter((f) => !under(f))
+    const activeFile =
+      project.activeFile && under(project.activeFile)
+        ? openTabs[openTabs.length - 1] ?? files[0]?.file ?? null
+        : project.activeFile
+    await writeProjectUnlocked(projectId, { ...project, files, openTabs, activeFile })
+  })
+  await remapComments(projectId, (f) => (under(f) ? null : f))
+  await commitAll(projectPath(projectId), `Deleted ${folder}/`).catch(() => {})
+}
+
 export async function readFileContent(projectId: string, file: string): Promise<string> {
   return fs.readFile(projectFilePath(projectId, file), 'utf8')
 }

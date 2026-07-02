@@ -44,6 +44,8 @@ export interface FabulistStore {
   activeProjectId: string | null
   /** files of the active project */
   files: FileMeta[]
+  /** folders of the active project (project-relative paths), empty ones included */
+  folders: string[]
   /** open tab filenames for the active project */
   openDocs: string[]
   /** active tab filename */
@@ -130,7 +132,13 @@ export interface FabulistStore {
 
   loadFiles: () => Promise<void>
   createFile: (title: string, typeId?: string) => Promise<void>
+  /** create a file at an exact project-relative path (tree inline create) and open it */
+  createFileAt: (file: string) => Promise<void>
+  createFolder: (folder: string) => Promise<void>
   deleteFile: (file: string) => Promise<void>
+  deleteFolder: (folder: string) => Promise<void>
+  /** move or rename a file or folder; open tabs and the active file follow */
+  renamePath: (from: string, to: string) => Promise<void>
   openTab: (file: string) => Promise<void>
   closeTab: (file: string) => Promise<void>
   setActiveFile: (file: string) => Promise<void>
@@ -230,6 +238,7 @@ export const useStore = create<FabulistStore>((set, get) => ({
   projects: [],
   activeProjectId: null,
   files: [],
+  folders: [],
   openDocs: [],
   activeFile: null,
   fileContents: {},
@@ -422,8 +431,9 @@ export const useStore = create<FabulistStore>((set, get) => ({
     const prev = get().activeProjectId
     if (prev && prev !== id) await get().closeProject()
 
-    const [files, meta, agentThreads, activeThreadId, commits, model, harness] = await Promise.all([
+    const [files, folders, meta, agentThreads, activeThreadId, commits, model, harness] = await Promise.all([
       window.fabulist.project.files(id),
+      window.fabulist.project.folders(id),
       window.fabulist.project.meta(id),
       window.fabulist.agent.threads(id),
       window.fabulist.agent.activeThread(id),
@@ -464,6 +474,7 @@ export const useStore = create<FabulistStore>((set, get) => ({
       activeProjectId: id,
       railView: 'files',
       files,
+      folders,
       openDocs,
       activeFile,
       fileContents: activeFile ? { [activeFile]: content } : {},
@@ -505,6 +516,7 @@ export const useStore = create<FabulistStore>((set, get) => ({
       activeProjectId: null,
       railView: 'projects',
       files: [],
+      folders: [],
       openDocs: [],
       activeFile: null,
       fileContents: {},
@@ -525,7 +537,12 @@ export const useStore = create<FabulistStore>((set, get) => ({
   loadFiles: async () => {
     const id = get().activeProjectId
     if (!id) return
-    set({ files: await window.fabulist.project.files(id) })
+    const [files, folders] = await Promise.all([
+      window.fabulist.project.files(id),
+      window.fabulist.project.folders(id)
+    ])
+    if (get().activeProjectId !== id) return
+    set({ files, folders })
   },
 
   createFile: async (title, typeId) => {
@@ -537,6 +554,63 @@ export const useStore = create<FabulistStore>((set, get) => ({
     // primes the watcher's echo-suppression so the create write doesn't bounce back)
     set({ openDocs: [...get().openDocs.filter((f) => f !== meta.file), meta.file] })
     await get().setActiveFile(meta.file)
+    await get().loadProjects()
+  },
+
+  createFileAt: async (file) => {
+    const id = get().activeProjectId
+    if (!id) return
+    const meta = await window.fabulist.project.createFileAt(id, file)
+    await get().loadFiles()
+    await get().openTab(meta.file)
+    await get().loadProjects()
+  },
+
+  createFolder: async (folder) => {
+    const id = get().activeProjectId
+    if (!id) return
+    await window.fabulist.project.createFolder(id, folder)
+    await get().loadFiles()
+  },
+
+  renamePath: async (from, to) => {
+    const id = get().activeProjectId
+    if (!id) return
+    // the pending write (if any) must land at the old path before it moves
+    await get().flushWrite()
+    await window.fabulist.project.renamePath(id, from, to)
+    const remap = (f: string): string =>
+      f === from ? to : f.startsWith(`${from}/`) ? `${to}${f.slice(from.length)}` : f
+    const fileContents = Object.fromEntries(
+      Object.entries(get().fileContents).map(([k, v]) => [remap(k), v])
+    )
+    const active = get().activeFile
+    set({
+      openDocs: get().openDocs.map(remap),
+      fileContents,
+      activeFile: active ? remap(active) : null
+    })
+    await get().loadFiles()
+    await get().loadProjects()
+  },
+
+  deleteFolder: async (folder) => {
+    const id = get().activeProjectId
+    if (!id) return
+    await window.fabulist.project.deleteFolder(id, folder)
+    const under = (f: string): boolean => f === folder || f.startsWith(`${folder}/`)
+    const openDocs = get().openDocs.filter((f) => !under(f))
+    const fileContents = Object.fromEntries(
+      Object.entries(get().fileContents).filter(([k]) => !under(k))
+    )
+    set({ openDocs, fileContents })
+    const active = get().activeFile
+    if (active && under(active)) {
+      const next = openDocs[openDocs.length - 1] ?? null
+      if (next) await get().setActiveFile(next)
+      else set({ activeFile: null, content: '', threads: [], external: { seq: extSeq++, content: '' } })
+    }
+    await get().loadFiles()
     await get().loadProjects()
   },
 
