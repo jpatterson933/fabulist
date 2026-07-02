@@ -659,6 +659,18 @@ input::placeholder {
   outline: none;
 }
 
+/* icon-only variant: the select overlays the Aa glyph invisibly */
+.font-picker-compact {
+  position: relative;
+  padding: 4px 7px;
+}
+.font-picker-compact select {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+}
+
 .agent-dot {
   width: 8px;
   height: 8px;
@@ -2163,23 +2175,10 @@ input::placeholder {
   min-width: 0;
 }
 
-/* panel tabs */
-.tabs-divider {
-  width: 1px;
-  height: 16px;
-  background: var(--line);
-  margin: 0 4px;
-  flex-shrink: 0;
-}
-.tab-panel .tab-main {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--ink-soft);
-}
-.tab-panel-glyph {
-  font-size: 10px;
-  color: var(--accent-deep);
+/* the Views section of the project rail (harness panels); lives inside
+   .library-list, which carries its own horizontal padding */
+.library-head-views {
+  padding: 16px 8px 8px;
 }
 
 /* ─── harness panels ─── */

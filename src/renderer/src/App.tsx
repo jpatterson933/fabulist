@@ -21,7 +21,6 @@ export default function App(): React.JSX.Element {
   const toggleSidebar = useStore((s) => s.toggleSidebar)
   const libraryOpen = useStore((s) => s.libraryOpen)
   const toggleLibrary = useStore((s) => s.toggleLibrary)
-  const snapshot = useStore((s) => s.snapshot)
   const harness = useStore((s) => s.harness)
   const activePanel = useStore((s) => s.activePanel)
   const openWorkshop = useStore((s) => s.openWorkshop)
@@ -79,23 +78,17 @@ export default function App(): React.JSX.Element {
                   )}
                 </span>
               )}
-              {harness?.config.name ? (
-                <button
-                  className="studio-chip"
-                  onClick={() => void openWorkshop()}
-                  title={`${harness.config.description ?? 'Studio defined by fabulist.json'} — click to customize in the workshop`}
-                >
-                  ✦ {harness.config.name}
-                </button>
-              ) : (
-                <button
-                  className="btn-ghost"
-                  onClick={() => void openWorkshop()}
-                  title="Design this project's studio with the agent — doc types, actions, skills, panels"
-                >
-                  Workshop
-                </button>
-              )}
+              <button
+                className="studio-chip"
+                onClick={() => void openWorkshop()}
+                title={
+                  harness?.config.name
+                    ? `${harness.config.description ?? 'Studio defined by fabulist.json'} — click to customize in the workshop`
+                    : "Design this project's studio with the agent — doc types, actions, skills, panels"
+                }
+              >
+                ✦ {harness?.config.name ?? 'Studio'}
+              </button>
               <button
                 className="btn-ghost"
                 onClick={() => setPaletteOpen(true)}
@@ -104,9 +97,6 @@ export default function App(): React.JSX.Element {
                 Actions
               </button>
               {doc && !panel && <FontPicker />}
-              <button className="btn-ghost" onClick={() => snapshot()} title="Save a named point in history">
-                Snapshot
-              </button>
               <button
                 className={`btn-ghost btn-icon ${sidebarOpen ? 'is-on' : ''}`}
                 onClick={toggleSidebar}
@@ -148,12 +138,13 @@ function FontPicker(): React.JSX.Element {
   const setFont = useStore((s) => s.setFont)
   const current = FONT_CHOICES.find((f) => f.value === font) ?? FONT_CHOICES[0]
 
+  // icon-only: the native select sits invisibly on top, so the menu still works
   return (
-    <div className="font-picker" title="Document typeface">
+    <div className="font-picker font-picker-compact" title={`Typeface: ${current.label}`}>
       <span className="font-picker-glyph" style={{ fontFamily: current.stack }} aria-hidden>
         Aa
       </span>
-      <select value={current.value} onChange={(e) => setFont(e.target.value)}>
+      <select value={current.value} onChange={(e) => setFont(e.target.value)} aria-label="Document typeface">
         {FONT_CHOICES.map((f) => (
           <option key={f.value} value={f.value}>
             {f.label}

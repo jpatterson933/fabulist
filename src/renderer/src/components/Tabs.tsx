@@ -10,14 +10,12 @@ export default function Tabs(): React.JSX.Element {
   const createDoc = useStore((s) => s.createDoc)
   const harness = useStore((s) => s.harness)
   const activePanel = useStore((s) => s.activePanel)
-  const openPanel = useStore((s) => s.openPanel)
 
   const [adding, setAdding] = useState(false)
   const [title, setTitle] = useState('')
   const [typeId, setTypeId] = useState('')
 
   const docTypes = harness?.config.docTypes ?? []
-  const panels = harness?.config.panels ?? []
 
   const titleFor = (file: string): string => docs.find((d) => d.file === file)?.title || file
 
@@ -105,22 +103,6 @@ export default function Tabs(): React.JSX.Element {
             +
           </button>
         )}
-
-        {panels.length > 0 && <span className="tabs-divider" aria-hidden />}
-        {panels.map((p) => (
-          <div key={p.id} className={`tab tab-panel ${p.id === activePanel ? 'is-active' : ''}`}>
-            <button
-              className="tab-main"
-              onClick={() => openPanel(p.id)}
-              title={`${p.source} — panel from fabulist.json`}
-            >
-              <span className="tab-panel-glyph" aria-hidden>
-                ▦
-              </span>
-              {p.title}
-            </button>
-          </div>
-        ))}
     </div>
   )
 }

@@ -141,6 +141,8 @@ function DocsView(): React.JSX.Element {
   const createDoc = useStore((s) => s.createDoc)
   const setRailView = useStore((s) => s.setRailView)
   const harness = useStore((s) => s.harness)
+  const activePanel = useStore((s) => s.activePanel)
+  const openPanel = useStore((s) => s.openPanel)
   const [creating, setCreating] = useState(false)
   const [title, setTitle] = useState('')
   const [typeId, setTypeId] = useState('')
@@ -148,6 +150,7 @@ function DocsView(): React.JSX.Element {
 
   const project = projects.find((p) => p.id === activeProjectId)
   const docTypes = harness?.config.docTypes ?? []
+  const panels = harness?.config.panels ?? []
 
   const submit = async (): Promise<void> => {
     const t = title.trim()
@@ -216,7 +219,7 @@ function DocsView(): React.JSX.Element {
           <p className="library-empty">No documents yet. Add one with +</p>
         )}
         {docs.map((d) => (
-          <div key={d.file} className={`library-doc ${d.file === activeDoc ? 'is-active' : ''}`}>
+          <div key={d.file} className={`library-doc ${d.file === activeDoc && !activePanel ? 'is-active' : ''}`}>
             <button
               className="library-doc-main"
               onClick={() => void openTab(d.file)}
@@ -252,6 +255,28 @@ function DocsView(): React.JSX.Element {
             )}
           </div>
         ))}
+
+        {panels.length > 0 && (
+          <>
+            <div className="library-head library-head-views">
+              <span className="library-label">Views</span>
+            </div>
+            {panels.map((p) => (
+              <div key={p.id} className={`library-doc ${p.id === activePanel ? 'is-active' : ''}`}>
+                <button
+                  className="library-doc-main"
+                  onClick={() => openPanel(p.id)}
+                  title={`${p.source} — view from fabulist.json`}
+                >
+                  <span className="library-doc-glyph" aria-hidden>
+                    ▦
+                  </span>
+                  <span className="library-doc-title">{p.title}</span>
+                </button>
+              </div>
+            ))}
+          </>
+        )}
       </nav>
 
       <footer className="library-foot">
