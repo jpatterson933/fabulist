@@ -6,6 +6,18 @@ All notable changes to Fabulist are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- **Panels can show code, images, and live web pages.** `view` in a panel definition now
+  accepts `"code"` (read-only source with by-extension syntax highlighting), `"image"`, and
+  `"web"` — the file rendered as a live page in a sandboxed frame, with relative assets and
+  scripts working, so a studio that builds a website can display the website. Project files
+  are served over an internal per-project scheme (`fab-project://`) that never exposes
+  dotfiles or anything outside the project folder; asset views refresh when the agent edits
+  the files behind them.
+- **Non-markdown documents open with real syntax highlighting.** Code-flavored docs
+  (`.html`, `.ts`, `.json`, `.py`, … — anything a docType glob admits) now open in a
+  monospace, full-width editor with the language picked by filename, lazy-loaded from the
+  CodeMirror language registry. Markdown keeps the prose editor, and fenced code blocks in
+  markdown are now language-highlighted too.
 - **Studios aren't just for writing anymore.** A doc-type glob in the manifest now admits
   *any* textual file as a document — `pages/*.html`, `data/*.json`, `src/**` — not just
   Markdown. Matched files show up in the rail (titled by filename unless `titleFrom` says

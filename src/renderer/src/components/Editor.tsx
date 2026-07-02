@@ -6,6 +6,8 @@ import { useStore } from '@/store'
 import { computeSuggestion } from '@/lib/suggest'
 import {
   baseExtensions,
+  codeLanguageExtensions,
+  markdownLanguageExtensions,
   setThreadRanges,
   setSuggestion,
   currentThreadRanges,
@@ -43,6 +45,7 @@ export default function Editor({
   const composerBoxRef = useRef<HTMLDivElement>(null)
   const selTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const editable = useRef(new Compartment()).current
+  const language = useRef(new Compartment()).current
   const askClaude = useStore((s) => s.askClaude)
   const harness = useStore((s) => s.harness)
   const runAction = useStore((s) => s.runAction)
@@ -75,12 +78,17 @@ export default function Editor({
     if (!host) return
     const state = useStore.getState()
 
+    // markdown gets the prose language stack synchronously; anything else
+    // starts as plain monospace text and upgrades once its language loads
+    const isMarkdownDoc = docFile.toLowerCase().endsWith('.md')
+
     const view = new EditorView({
       parent: host,
       state: EditorState.create({
         doc: state.content,
         extensions: [
           ...baseExtensions(),
+          language.of(isMarkdownDoc ? markdownLanguageExtensions() : []),
           editable.of([]),
           EditorView.updateListener.of((update) => {
             const isExternal = update.transactions.some((tr) => tr.annotation(externalChange))
@@ -135,6 +143,11 @@ export default function Editor({
       })
     })
     viewRef.current = view
+    if (!isMarkdownDoc) {
+      void codeLanguageExtensions(docFile).then((ext) => {
+        if (viewRef.current === view) view.dispatch({ effects: language.reconfigure(ext) })
+      })
+    }
     if (external) appliedSeq.current = external.seq
     return () => {
       view.destroy()
@@ -286,7 +299,7 @@ export default function Editor({
 
   return (
     <div
-      className={`editor-host ${activeThreadId ? 'has-active-thread' : ''}`}
+      className={`editor-host ${activeThreadId ? 'has-active-thread' : ''} ${docFile.toLowerCase().endsWith('.md') ? '' : 'is-code-doc'}`}
       style={{ '--font-serif': fontStack } as React.CSSProperties}
       ref={hostRef}
     >

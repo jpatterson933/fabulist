@@ -17,8 +17,15 @@ import type { SuggestSegment } from '@/lib/suggest'
 export const externalChange = Annotation.define<boolean>()
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
-import { syntaxHighlighting, HighlightStyle } from '@codemirror/language'
+import {
+  syntaxHighlighting,
+  HighlightStyle,
+  LanguageDescription,
+  defaultHighlightStyle
+} from '@codemirror/language'
+import { languages } from '@codemirror/language-data'
 import { tags } from '@lezer/highlight'
+import type { Extension } from '@codemirror/state'
 
 // ---------- comment highlights ----------
 
@@ -184,16 +191,37 @@ const editorTheme = EditorView.theme({
   '.cm-placeholder': { color: 'var(--ink-faint)', fontStyle: 'italic' }
 })
 
-export function baseExtensions(): ReturnType<typeof markdown>[] {
+export function baseExtensions(): Extension[] {
   return [
     history(),
     keymap.of([...defaultKeymap, ...historyKeymap]),
-    markdown({ base: markdownLanguage }),
-    syntaxHighlighting(mdHighlight),
     EditorView.lineWrapping,
     editorTheme,
     placeholder('Begin…'),
     threadField,
     suggestionField
-  ] as ReturnType<typeof markdown>[]
+  ]
+}
+
+// ---------- languages: markdown for prose docs, by-extension for the rest ----------
+
+/** The markdown language stack, with fenced code blocks highlighted per language. */
+export function markdownLanguageExtensions(): Extension[] {
+  return [markdown({ base: markdownLanguage, codeLanguages: languages }), syntaxHighlighting(mdHighlight)]
+}
+
+/**
+ * Language support for a non-markdown text doc, matched by filename via the
+ * lazy @codemirror/language-data registry. Unknown extensions still get the
+ * default highlight style (a no-op without a parser). The monospace/full-width
+ * look rides on the host's `is-code-doc` / `panel-code` CSS classes — theme
+ * extensions can't reliably out-specificity the base editor theme.
+ */
+export async function codeLanguageExtensions(file: string): Promise<Extension[]> {
+  const desc = LanguageDescription.matchFilename(languages, file)
+  const support = desc ? await desc.load().catch(() => null) : null
+  return [
+    ...(support ? [support] : []),
+    syntaxHighlighting(defaultHighlightStyle, { fallback: true })
+  ]
 }

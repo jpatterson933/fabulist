@@ -112,13 +112,16 @@
           },
           "source": {
             "type": "string",
-            "description": "project-relative markdown file to render"
+            "description": "project-relative file the panel renders"
           },
           "view": {
             "enum": [
-              "markdown"
+              "markdown",
+              "code",
+              "image",
+              "web"
             ],
-            "description": "how the source is rendered; only \"markdown\" today"
+            "description": "how the source is rendered: \"markdown\" (default) renders prose, \"code\" shows syntax-highlighted source, \"image\" displays a picture file, \"web\" embeds the file as a live page (relative assets and scripts work)"
           }
         },
         "required": [

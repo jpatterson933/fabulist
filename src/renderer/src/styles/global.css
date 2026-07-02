@@ -2431,6 +2431,63 @@ input::placeholder {
   font-family: var(--font-mono);
   font-size: 12.5px;
 }
+/* web panels take the whole surface; the page inside owns its own layout */
+.panel-view-full {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.panel-view-full .panel-view-inner {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  padding: 24px 32px 24px;
+  min-height: 0;
+}
+.panel-web {
+  flex: 1;
+  width: 100%;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: #fff;
+}
+.panel-image {
+  max-width: 100%;
+  border-radius: 8px;
+  border: 1px solid var(--line-soft);
+}
+.panel-code {
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  overflow: hidden;
+}
+/* panels are read surfaces, not the prose editor — undo its page padding */
+.panel-code .cm-scroller {
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  line-height: 1.6;
+  padding: 12px 16px 16px;
+}
+.panel-code .cm-content {
+  max-width: none;
+  padding: 0;
+}
+/* code docs trade the prose serif/measure for monospace and full width */
+.editor-host.is-code-doc .cm-editor {
+  font-size: 14px;
+}
+.editor-host.is-code-doc .cm-scroller {
+  font-family: var(--font-mono);
+  line-height: 1.6;
+  padding: 0 32px 30vh;
+}
+.editor-host.is-code-doc .cm-content {
+  max-width: none;
+  padding: 24px 0 0;
+}
 
 /* ─── command palette ─── */
 

@@ -75,7 +75,7 @@ function isSafeGlob(p: string): boolean {
 // --- the schema, as data ---
 
 export type ActionSurface = 'selection' | 'doc' | 'project'
-export type PanelViewKind = 'markdown'
+export type PanelViewKind = 'markdown' | 'code' | 'image' | 'web'
 
 export interface DocTypeDef {
   id: string
@@ -198,14 +198,14 @@ export const PANELS_BLOCK: ListBlockSpec<PanelDef> = {
       key: 'source',
       kind: 'string',
       required: true,
-      doc: 'project-relative markdown file to render',
+      doc: 'project-relative file the panel renders',
       example: '"bible.md"'
     },
     {
       key: 'view',
       kind: 'enum',
-      values: ['markdown'],
-      doc: 'how the source is rendered; only "markdown" today',
+      values: ['markdown', 'code', 'image', 'web'],
+      doc: 'how the source is rendered: "markdown" (default) renders prose, "code" shows syntax-highlighted source, "image" displays a picture file, "web" embeds the file as a live page (relative assets and scripts work)',
       example: '"markdown"'
     }
   ],

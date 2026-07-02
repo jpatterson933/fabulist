@@ -55,8 +55,8 @@ Top-level fields (all optional; unknown fields are ignored):
 `panels` — Read-only rendered views over project files, opened as ▦ tabs from the rail or palette.
   - `id`: stable identifier; defaults to a slug of the title — e.g. "bible"
   - `title` (required): tab and rail label — e.g. "Story Bible"
-  - `source` (required): project-relative markdown file to render — e.g. "bible.md"
-  - `view`: how the source is rendered; only "markdown" today — one of "markdown" — e.g. "markdown"
+  - `source` (required): project-relative file the panel renders — e.g. "bible.md"
+  - `view`: how the source is rendered: "markdown" (default) renders prose, "code" shows syntax-highlighted source, "image" displays a picture file, "web" embeds the file as a live page (relative assets and scripts work) — one of "markdown" | "code" | "image" | "web" — e.g. "markdown"
 
 `permissions` — the gate profile. A manifest can always tighten the gate; loosening requires explicit user trust in the app, stored outside the repo and keyed to the trust-relevant fields, so any change re-prompts.
   - `edits`: "auto" applies the agent's file edits without per-edit approval; only takes effect after the user explicitly trusts the studio in the app — one of "ask" | "auto" — e.g. "ask"
@@ -85,6 +85,14 @@ is invoked with the prompt as guidance. `surface: "selection"` actions appear
 in the highlight toolbar next to Comment and attach the selected passage;
 `surface: "doc"` targets the focused document. Skills not referenced by any
 action still appear in the ⌘K palette under **Skills**.
+
+**Panels.** `markdown` renders prose; `code` shows the source read-only with
+syntax highlighting picked by extension; `image` displays a picture file;
+`web` embeds the file as a live page in a sandboxed frame — relative assets
+and scripts inside the project folder work (files are served over an internal
+per-project scheme; dotfiles and paths outside the project are never served),
+so a studio that produces a website can show the website itself. Asset views
+refresh automatically when the agent edits the underlying files.
 
 **Permissions and trust.** A manifest can always *tighten* the gate
 (`"bash": "deny"` applies unconditionally). Loosening it — `"edits": "auto"` —

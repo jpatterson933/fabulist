@@ -79,6 +79,20 @@ describe('parseHarnessConfig — the lenient-parsing contract', () => {
     expect(warnings).toHaveLength(3)
   })
 
+  it('parses the panel view kinds and defaults to markdown', () => {
+    const { config, warnings } = parse({
+      panels: [
+        { title: 'Bible', source: 'bible.md' },
+        { title: 'Site', source: 'index.html', view: 'web' },
+        { title: 'Cover', source: 'art/cover.png', view: 'image' },
+        { title: 'Source', source: 'src/main.py', view: 'code' },
+        { title: 'Bad', source: 'x.md', view: 'hologram' }
+      ]
+    })
+    expect(config.panels.map((p) => p.view)).toEqual(['markdown', 'web', 'image', 'code', 'markdown'])
+    expect(warnings[0]).toMatch(/panels\[4\]\.view/)
+  })
+
   it('rejects unsafe panel sources', () => {
     const { config } = parse({
       panels: [
