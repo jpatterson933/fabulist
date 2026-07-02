@@ -6,6 +6,15 @@ All notable changes to Fabulist are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- **Studios can run things.** A `commands` block in the manifest declares the processes the
+  work needs — a dev server, a build, a test run. Each command appears in the rail with
+  Run/Stop, streams its output into a log tab (● while running), and, with a `preview`
+  localhost URL, shows the served page live beside the log — edit-and-see for studios that
+  produce running software. Commands start only from an explicit user click with the exact
+  command line shown (the agent has no path to them; agent shell access remains a separate,
+  gated concern), run at the project root in their own process group, and are killed —
+  whole tree — on Stop and at app quit. Previews must be localhost URLs; the preview frame
+  retries while the server warms up and has a manual reload.
 - **Panels can show code, images, and live web pages.** `view` in a panel definition now
   accepts `"code"` (read-only source with by-extension syntax highlighting), `"image"`, and
   `"web"` — the file rendered as a live page in a sandboxed frame, with relative assets and

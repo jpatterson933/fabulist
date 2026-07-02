@@ -58,6 +58,12 @@ Top-level fields (all optional; unknown fields are ignored):
   - `source` (required): project-relative file the panel renders — e.g. "bible.md"
   - `view`: how the source is rendered: "markdown" (default) renders prose, "code" shows syntax-highlighted source, "image" displays a picture file, "web" embeds the file as a live page (relative assets and scripts work) — one of "markdown" | "code" | "image" | "web" — e.g. "markdown"
 
+`commands` — Shell commands the studio can run at the project root (dev server, build, tests…), started only by the user from the rail — never by the agent — with the exact command line always shown. Output streams into a log tab; a long-running command keeps a ● running indicator until stopped.
+  - `id`: stable identifier; defaults to a slug of the label — e.g. "dev"
+  - `label`: rail label (required unless id is given) — e.g. "Dev server"
+  - `run` (required): the shell command line, run at the project root — e.g. "npx serve -l 5050 ."
+  - `preview`: a localhost URL embedded as a live preview beside the log while the command runs — e.g. "http://localhost:5050"
+
 `permissions` — the gate profile. A manifest can always tighten the gate; loosening requires explicit user trust in the app, stored outside the repo and keyed to the trust-relevant fields, so any change re-prompts.
   - `edits`: "auto" applies the agent's file edits without per-edit approval; only takes effect after the user explicitly trusts the studio in the app — one of "ask" | "auto" — e.g. "ask"
   - `bash`: "deny" removes the shell tool from the agent entirely (tightening never needs trust) — one of "ask" | "deny" — e.g. "ask"
@@ -93,6 +99,15 @@ and scripts inside the project folder work (files are served over an internal
 per-project scheme; dotfiles and paths outside the project are never served),
 so a studio that produces a website can show the website itself. Asset views
 refresh automatically when the agent edits the underlying files.
+
+**Commands.** A studio can declare the processes its work needs — a dev
+server, a build, a test run. Commands appear in the rail with Run/Stop, stream
+their output into a log tab, and (with `preview`) show the served page live
+beside the log. Only the user starts a command, always by explicit click, with
+the exact command line shown in the UI — the agent has no path to them (give
+the agent shell access via `permissions.bash` instead). Processes are killed
+with their whole process tree on Stop and when the app quits. `preview` must
+be a localhost URL.
 
 **Permissions and trust.** A manifest can always *tighten* the gate
 (`"bash": "deny"` applies unconditionally). Loosening it — `"edits": "auto"` —

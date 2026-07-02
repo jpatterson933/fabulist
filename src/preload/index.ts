@@ -4,6 +4,8 @@ import type {
   AgentThread,
   Attachment,
   ChatItem,
+  CommandEvent,
+  CommandRunState,
   CommentThread,
   CommitInfo,
   DocMeta,
@@ -27,6 +29,19 @@ const api = {
     load: (id: string): Promise<Harness> => ipcRenderer.invoke('harness:load', id),
     setTrusted: (id: string, trusted: boolean): Promise<void> =>
       ipcRenderer.invoke('harness:setTrusted', id, trusted)
+  },
+  commands: {
+    start: (id: string, commandId: string): Promise<void> =>
+      ipcRenderer.invoke('command:start', id, commandId),
+    stop: (id: string, commandId: string): Promise<void> =>
+      ipcRenderer.invoke('command:stop', id, commandId),
+    status: (id: string): Promise<Record<string, CommandRunState>> =>
+      ipcRenderer.invoke('command:status', id),
+    onEvent: (cb: (event: CommandEvent) => void): (() => void) => {
+      const listener = (_e: unknown, event: CommandEvent): void => cb(event)
+      ipcRenderer.on('command:event', listener)
+      return () => ipcRenderer.removeListener('command:event', listener)
+    }
   },
   templates: {
     list: (): Promise<{ id: string; name: string; description: string }[]> =>

@@ -7,6 +7,8 @@ import {
   type AgentThread,
   type Attachment,
   type ChatItem,
+  type CommandEvent,
+  type CommandRunState,
   type CommentAnchor,
   type CommentThread,
   type CommitInfo,
@@ -80,10 +82,15 @@ export interface FabulistStore {
   autoApprove: boolean
   /** the active project's studio harness (fabulist.json + skills), if loaded */
   harness: Harness | null
-  /** harness panels open as tabs, like documents; ids into harness.config.panels */
+  /**
+   * harness panels open as tabs, like documents; ids into harness.config.panels,
+   * or "command:<id>" for a studio command's log/preview tab
+   */
   openPanels: string[]
   /** the focused panel tab; when set it shows instead of the active doc */
   activePanel: string | null
+  /** live run state of the active project's studio commands, keyed by command id */
+  commandRuns: Record<string, CommandRunState>
   paletteOpen: boolean
   /** the new-document dialog (title + doc type) */
   newDocOpen: boolean
@@ -98,6 +105,10 @@ export interface FabulistStore {
   runAction: (action: ActionDef, quote?: string) => void
   openPanel: (panelId: string) => void
   closePanel: (panelId: string) => void
+  /** start a studio command (user-initiated; also opens its log tab) */
+  runCommand: (commandId: string) => Promise<void>
+  stopCommand: (commandId: string) => Promise<void>
+  handleCommandEvent: (event: CommandEvent) => void
   setPaletteOpen: (open: boolean) => void
   setNewDocOpen: (open: boolean) => void
   setNewProjectOpen: (open: boolean) => void
@@ -185,6 +196,16 @@ let extSeq = 1
 // panel tabs persist alongside doc tabs in project.json's openTabs, prefixed
 // so a plain filename can never collide with a panel id
 const PANEL_TAB = 'panel:'
+/** panel-slot ids for a command's log/preview tab: "command:<commandId>" */
+export const COMMAND_PANEL = 'command:'
+/** is this panel-slot id valid against the current harness? */
+const panelIdValid = (harness: Harness | null, id: string): boolean => {
+  if (!harness) return false
+  if (id.startsWith(COMMAND_PANEL)) {
+    return harness.config.commands.some((c) => COMMAND_PANEL + c.id === id)
+  }
+  return harness.config.panels.some((p) => p.id === id)
+}
 const combinedTabs = (openDocs: string[], openPanels: string[]): string[] => [
   ...openDocs,
   ...openPanels.map((id) => PANEL_TAB + id)
@@ -238,6 +259,7 @@ export const useStore = create<FabulistStore>((set, get) => ({
   harness: null,
   openPanels: [],
   activePanel: null,
+  commandRuns: {},
   paletteOpen: false,
   newDocOpen: false,
   newProjectOpen: false,
@@ -248,7 +270,7 @@ export const useStore = create<FabulistStore>((set, get) => ({
     if (!id) return
     const harness = await window.fabulist.harness.load(id)
     // drop tabs for panels whose definition disappeared out from under us
-    const openPanels = get().openPanels.filter((p) => harness.config.panels.some((x) => x.id === p))
+    const openPanels = get().openPanels.filter((p) => panelIdValid(harness, p))
     const activePanel =
       get().activePanel && openPanels.includes(get().activePanel!) ? get().activePanel : null
     set({ harness, openPanels, activePanel })
@@ -277,7 +299,7 @@ export const useStore = create<FabulistStore>((set, get) => ({
 
   openPanel: (panelId) => {
     const id = get().activeProjectId
-    if (!id || !get().harness?.config.panels.some((p) => p.id === panelId)) return
+    if (!id || !panelIdValid(get().harness, panelId)) return
     const openPanels = get().openPanels.includes(panelId)
       ? get().openPanels
       : [...get().openPanels, panelId]
@@ -294,6 +316,44 @@ export const useStore = create<FabulistStore>((set, get) => ({
       get().activePanel === panelId ? openPanels[openPanels.length - 1] ?? null : get().activePanel
     set({ openPanels, activePanel })
     void window.fabulist.project.setOpenTabs(id, combinedTabs(get().openDocs, openPanels))
+  },
+
+  runCommand: async (commandId) => {
+    const id = get().activeProjectId
+    if (!id) return
+    get().openPanel(COMMAND_PANEL + commandId)
+    try {
+      await window.fabulist.commands.start(id, commandId)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      const prev = get().commandRuns[commandId]
+      set({
+        commandRuns: {
+          ...get().commandRuns,
+          [commandId]: { running: false, log: `${prev?.log ?? ''}\n[fabulist] ${msg}\n`, exitCode: null }
+        }
+      })
+    }
+  },
+
+  stopCommand: async (commandId) => {
+    const id = get().activeProjectId
+    if (!id) return
+    await window.fabulist.commands.stop(id, commandId)
+  },
+
+  handleCommandEvent: (event) => {
+    if (event.projectId !== get().activeProjectId) return
+    const prev = get().commandRuns[event.commandId] ?? { running: false, log: '' }
+    let next: CommandRunState = prev
+    if (event.kind === 'command-started') {
+      next = { running: true, startedAt: Date.now(), log: '' }
+    } else if (event.kind === 'command-output') {
+      next = { ...prev, log: (prev.log + event.chunk).slice(-200_000) }
+    } else if (event.kind === 'command-exited') {
+      next = { ...prev, running: false, exitCode: event.code }
+    }
+    set({ commandRuns: { ...get().commandRuns, [event.commandId]: next } })
   },
 
   setPaletteOpen: (open) => set({ paletteOpen: open }),
@@ -376,7 +436,8 @@ export const useStore = create<FabulistStore>((set, get) => ({
     const openPanels = meta.openTabs
       .filter((f) => f.startsWith(PANEL_TAB))
       .map((f) => f.slice(PANEL_TAB.length))
-      .filter((p) => harness.config.panels.some((x) => x.id === p))
+      .filter((p) => panelIdValid(harness, p))
+    const commandRuns = await window.fabulist.commands.status(id).catch(() => ({}))
     if (openDocs.length === 0 && docs.length > 0) openDocs = [docs[0].file]
     const activeDoc =
       meta.activeDoc && openDocs.includes(meta.activeDoc)
@@ -421,6 +482,7 @@ export const useStore = create<FabulistStore>((set, get) => ({
       harness,
       openPanels,
       activePanel: null,
+      commandRuns,
       paletteOpen: false,
       newDocOpen: false,
       selectionQuote: null,
@@ -452,6 +514,7 @@ export const useStore = create<FabulistStore>((set, get) => ({
       harness: null,
       openPanels: [],
       activePanel: null,
+      commandRuns: {},
       paletteOpen: false,
       newDocOpen: false,
       selectionQuote: null

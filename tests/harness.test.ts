@@ -93,6 +93,22 @@ describe('parseHarnessConfig — the lenient-parsing contract', () => {
     expect(warnings[0]).toMatch(/panels\[4\]\.view/)
   })
 
+  it('parses commands, slugs ids from labels, and drops non-localhost previews', () => {
+    const { config, warnings } = parse({
+      commands: [
+        { label: 'Dev Server', run: 'npx serve -l 5050 .', preview: 'http://localhost:5050' },
+        { id: 'build', run: 'npm run build' },
+        { label: 'Evil', run: 'x', preview: 'https://example.com' },
+        { label: 'No run' }
+      ]
+    })
+    expect(config.commands.map((c) => c.id)).toEqual(['dev-server', 'build', 'evil'])
+    expect(config.commands[0].preview).toBe('http://localhost:5050')
+    expect(config.commands[2].preview).toBeUndefined()
+    expect(warnings.join('\n')).toMatch(/preview must be a localhost/)
+    expect(warnings.join('\n')).toMatch(/needs "run"/)
+  })
+
   it('rejects unsafe panel sources', () => {
     const { config } = parse({
       panels: [

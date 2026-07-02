@@ -8,6 +8,7 @@ import Sidebar from '@/components/Sidebar'
 import VersionPreview from '@/components/VersionPreview'
 import CommandPalette from '@/components/CommandPalette'
 import PanelView from '@/components/PanelView'
+import CommandView from '@/components/CommandView'
 import StudioBanner from '@/components/StudioBanner'
 import NewDocDialog from '@/components/NewDocDialog'
 import NewProjectDialog from '@/components/NewProjectDialog'
@@ -27,6 +28,10 @@ export default function App(): React.JSX.Element {
   const activePanel = useStore((s) => s.activePanel)
   const setPaletteOpen = useStore((s) => s.setPaletteOpen)
   const panel = harness?.config.panels.find((p) => p.id === activePanel) ?? null
+  const command =
+    (activePanel?.startsWith('command:') &&
+      harness?.config.commands.find((c) => `command:${c.id}` === activePanel)) ||
+    null
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
@@ -97,7 +102,9 @@ export default function App(): React.JSX.Element {
 
         {projectOpen && <StudioBanner />}
         {projectOpen ? (
-          panel ? (
+          command ? (
+            <CommandView key={command.id} command={command} />
+          ) : panel ? (
             <PanelView key={panel.id} panel={panel} />
           ) : preview && doc ? (
             <VersionPreview />

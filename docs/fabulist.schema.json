@@ -131,6 +131,35 @@
         "additionalProperties": true
       }
     },
+    "commands": {
+      "type": "array",
+      "description": "Shell commands the studio can run at the project root (dev server, build, tests…), started only by the user from the rail — never by the agent — with the exact command line always shown. Output streams into a log tab; a long-running command keeps a ● running indicator until stopped.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "stable identifier; defaults to a slug of the label"
+          },
+          "label": {
+            "type": "string",
+            "description": "rail label (required unless id is given)"
+          },
+          "run": {
+            "type": "string",
+            "description": "the shell command line, run at the project root"
+          },
+          "preview": {
+            "type": "string",
+            "description": "a localhost URL embedded as a live preview beside the log while the command runs"
+          }
+        },
+        "required": [
+          "run"
+        ],
+        "additionalProperties": true
+      }
+    },
     "permissions": {
       "type": "object",
       "description": "Gate profile; loosening grants requires user trust in the app.",

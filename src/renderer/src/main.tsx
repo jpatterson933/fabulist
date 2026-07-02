@@ -19,6 +19,8 @@ window.fabulist.agent.onEvent((e) => useStore.getState().handleAgentEvent(e))
 // everything the main process observes on the open project folder — doc edits,
 // deletions, comment changes, harness hot reloads — arrives on one channel
 window.fabulist.project.onEvent((e) => useStore.getState().handleProjectEvent(e))
+// studio command processes stream their lifecycle + output here
+window.fabulist.commands.onEvent((e) => useStore.getState().handleCommandEvent(e))
 
 window.addEventListener('beforeunload', () => {
   const { activeProjectId } = useStore.getState()

@@ -101,6 +101,13 @@ export interface PanelDef {
   view: PanelViewKind
 }
 
+export interface CommandDef {
+  id: string
+  label: string
+  run: string
+  preview?: string
+}
+
 export interface PermissionsDef {
   edits?: 'ask' | 'auto'
   bash?: 'ask' | 'deny'
@@ -224,6 +231,47 @@ export const PANELS_BLOCK: ListBlockSpec<PanelDef> = {
   }
 }
 
+/** Preview URLs must stay on this machine — the frame embeds them live. */
+export function isLocalPreviewUrl(url: string): boolean {
+  return /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/i.test(url)
+}
+
+export const COMMANDS_BLOCK: ListBlockSpec<CommandDef> = {
+  key: 'commands',
+  doc: 'Shell commands the studio can run at the project root (dev server, build, tests…), started only by the user from the rail — never by the agent — with the exact command line always shown. Output streams into a log tab; a long-running command keeps a ● running indicator until stopped.',
+  fields: [
+    { key: 'id', kind: 'string', doc: 'stable identifier; defaults to a slug of the label', example: '"dev"' },
+    { key: 'label', kind: 'string', doc: 'rail label (required unless id is given)', example: '"Dev server"' },
+    {
+      key: 'run',
+      kind: 'string',
+      required: true,
+      raw: true,
+      doc: 'the shell command line, run at the project root',
+      example: '"npx serve -l 5050 ."'
+    },
+    {
+      key: 'preview',
+      kind: 'string',
+      doc: 'a localhost URL embedded as a live preview beside the log while the command runs',
+      example: '"http://localhost:5050"'
+    }
+  ],
+  finalize: (e, warn) => {
+    const label = e.label ?? e.id
+    if (!label || !e.run?.trim()) {
+      warn(`a command needs a "label" (or "id") plus a "run" command line; skipped`)
+      return null
+    }
+    let preview = e.preview
+    if (preview && !isLocalPreviewUrl(preview)) {
+      warn(`command "${label}": preview must be a localhost / 127.0.0.1 URL; ignored`)
+      preview = undefined
+    }
+    return { id: e.id ?? slugId(label), label, run: e.run, preview }
+  }
+}
+
 /** permissions is a single object, not a list; same field machinery. */
 export const PERMISSION_FIELDS: FieldSpec[] = [
   {
@@ -263,7 +311,7 @@ export const TOP_LEVEL_FIELDS: FieldSpec[] = [
   }
 ]
 
-export const LIST_BLOCKS = [DOC_TYPES_BLOCK, ACTIONS_BLOCK, PANELS_BLOCK] as const
+export const LIST_BLOCKS = [DOC_TYPES_BLOCK, ACTIONS_BLOCK, PANELS_BLOCK, COMMANDS_BLOCK] as const
 
 // --- parsed shape ---
 
@@ -275,6 +323,7 @@ export interface HarnessConfig {
   docTypes: DocTypeDef[]
   actions: ActionDef[]
   panels: PanelDef[]
+  commands: CommandDef[]
   permissions: PermissionsDef
 }
 
@@ -300,6 +349,7 @@ export const EMPTY_CONFIG: HarnessConfig = {
   docTypes: [],
   actions: [],
   panels: [],
+  commands: [],
   permissions: {}
 }
 
@@ -409,6 +459,7 @@ export function parseHarnessConfig(raw: unknown, warnings: string[]): HarnessCon
     docTypes: parseListBlock(DOC_TYPES_BLOCK, obj.docTypes, warnings),
     actions: parseListBlock(ACTIONS_BLOCK, obj.actions, warnings),
     panels: parseListBlock(PANELS_BLOCK, obj.panels, warnings),
+    commands: parseListBlock(COMMANDS_BLOCK, obj.commands, warnings),
     permissions
   }
 }
@@ -431,6 +482,7 @@ export function mergeHarnessConfigs(base: HarnessConfig, local: HarnessConfig): 
     docTypes: mergeList(base.docTypes, local.docTypes),
     actions: mergeList(base.actions, local.actions),
     panels: mergeList(base.panels, local.panels),
+    commands: mergeList(base.commands, local.commands),
     permissions: base.permissions
   }
 }

@@ -3,6 +3,7 @@ import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { isSafeRelPath } from '@shared/harness'
 import { registerIpc } from './ipc'
+import { commandManager } from './commands'
 import { projectPath } from './library'
 
 /**
@@ -79,4 +80,9 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   app.quit()
+})
+
+// studio command processes must not outlive the app
+app.on('will-quit', () => {
+  commandManager.stopAll()
 })

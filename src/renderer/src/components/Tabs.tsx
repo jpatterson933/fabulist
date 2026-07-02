@@ -13,8 +13,17 @@ export default function Tabs(): React.JSX.Element {
   const closePanel = useStore((s) => s.closePanel)
   const setNewDocOpen = useStore((s) => s.setNewDocOpen)
 
-  const panelFor = (id: string): { title: string; source: string } | undefined =>
-    harness?.config.panels.find((p) => p.id === id)
+  const commandRuns = useStore((s) => s.commandRuns)
+
+  // a tab slot is a harness panel — or a command's log tab ("command:<id>")
+  const panelFor = (id: string): { title: string; hint: string; glyph: string; running?: boolean } | undefined => {
+    if (id.startsWith('command:')) {
+      const c = harness?.config.commands.find((x) => `command:${x.id}` === id)
+      return c && { title: c.label, hint: c.run, glyph: '▸', running: commandRuns[c.id]?.running }
+    }
+    const p = harness?.config.panels.find((x) => x.id === id)
+    return p && { title: p.title, hint: `${p.source} — view from fabulist.json`, glyph: '▦' }
+  }
 
   const titleFor = (file: string): string => docs.find((d) => d.file === file)?.title || file
 
@@ -62,13 +71,9 @@ export default function Tabs(): React.JSX.Element {
                 }
               }}
             >
-              <button
-                className="tab-main"
-                onClick={() => openPanel(id)}
-                title={`${p.source} — view from fabulist.json`}
-              >
-                <span className="tab-panel-glyph" aria-hidden>
-                  ▦
+              <button className="tab-main" onClick={() => openPanel(id)} title={p.hint}>
+                <span className={`tab-panel-glyph ${p.running ? 'is-running' : ''}`} aria-hidden>
+                  {p.running ? '●' : p.glyph}
                 </span>
                 {p.title}
               </button>

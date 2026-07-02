@@ -168,6 +168,10 @@ function DocsView(): React.JSX.Element {
 
   const project = projects.find((p) => p.id === activeProjectId)
   const panels = harness?.config.panels ?? []
+  const commands = harness?.config.commands ?? []
+  const commandRuns = useStore((s) => s.commandRuns)
+  const runCommand = useStore((s) => s.runCommand)
+  const stopCommand = useStore((s) => s.stopCommand)
   const tree = useMemo(() => buildDocTree(docs), [docs])
 
   const renderDoc = (d: DocMeta, depth: number): React.JSX.Element => (
@@ -302,6 +306,44 @@ function DocsView(): React.JSX.Element {
                 </button>
               </div>
             ))}
+          </>
+        )}
+
+        {commands.length > 0 && (
+          <>
+            <div className="library-head library-head-views">
+              <span className="library-label">Commands</span>
+            </div>
+            {commands.map((c) => {
+              const running = commandRuns[c.id]?.running ?? false
+              return (
+                <div
+                  key={c.id}
+                  className={`library-doc ${`command:${c.id}` === activePanel ? 'is-active' : ''}`}
+                >
+                  <button
+                    className="library-doc-main"
+                    onClick={() => openPanel(`command:${c.id}`)}
+                    title={`${c.run} — command from fabulist.json`}
+                  >
+                    <span
+                      className={`library-doc-glyph ${running ? 'library-command-running' : ''}`}
+                      aria-hidden
+                    >
+                      {running ? '●' : '▸'}
+                    </span>
+                    <span className="library-doc-title">{c.label}</span>
+                  </button>
+                  <button
+                    className="library-command-toggle"
+                    title={running ? 'Stop' : `Run: ${c.run}`}
+                    onClick={() => void (running ? stopCommand(c.id) : runCommand(c.id))}
+                  >
+                    {running ? 'Stop' : 'Run'}
+                  </button>
+                </div>
+              )
+            })}
           </>
         )}
       </nav>

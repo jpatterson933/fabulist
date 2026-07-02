@@ -139,6 +139,21 @@ export type ProjectEvent =
   | { kind: 'doc-removed'; projectId: string; docFile: string }
   | { kind: 'comments-changed'; projectId: string }
 
+/** Live state of one studio command (fabulist.json `commands`) in a project. */
+export interface CommandRunState {
+  running: boolean
+  startedAt?: number
+  exitCode?: number | null
+  /** bounded output backlog, so a (re)attaching window can rebuild the log */
+  log: string
+}
+
+/** Streamed over `command:event` while a studio command runs. */
+export type CommandEvent =
+  | { kind: 'command-started'; projectId: string; commandId: string }
+  | { kind: 'command-output'; projectId: string; commandId: string; chunk: string }
+  | { kind: 'command-exited'; projectId: string; commandId: string; code: number | null }
+
 /** A named conversation with the agent, scoped to one project. */
 export interface AgentThread {
   id: string
