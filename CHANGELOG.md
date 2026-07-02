@@ -63,6 +63,10 @@ All notable changes to Fabulist are documented here. The format follows
   automatically into one-document projects, keeping their chat, comments, model, and history.
 
 ### Fixed
+- Documents in the rail no longer wear a doc-type badge — the type's icon (and the hover
+  tooltip) already says it; the badge was noise.
+- Icon buttons (+ and × in the tab strip and rail, the chat send arrow) now center their glyphs
+  explicitly instead of trusting baseline layout, which sat them slightly off-center.
 - The passage-comment composer no longer covers the text you selected — it opens just below the
   selection, the passage stays highlighted while you write (instead of deselecting when the box
   takes focus), the redundant quoted-passage line is gone, and clicking anywhere outside the box

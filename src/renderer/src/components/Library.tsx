@@ -200,7 +200,6 @@ function DocsView(): React.JSX.Element {
                 {d.kindIcon ?? '❡'}
               </span>
               <span className="library-doc-title">{d.title}</span>
-              {d.kindLabel && <span className="library-doc-kind">{d.kindLabel}</span>}
             </button>
             {confirmDelete === d.file ? (
               <div className="library-item-confirm">
