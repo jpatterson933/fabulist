@@ -45,6 +45,10 @@ All notable changes to Fabulist are documented here. The format follows
 - **Views open as tabs, like documents.** Opening a panel from the rail or palette adds a
   closable ▦ tab to the strip; it keeps its place while you switch to documents and is restored
   when you reopen the project, instead of vanishing the moment you click anything else.
+- **New documents are created in a dialog.** The cramped inline forms in the tab strip and rail
+  are gone; every entry point (tab-strip +, rail +, palette, empty states) opens one dialog with
+  a title field, doc-type cards (icon, label, filename glob), and a live preview of the filename
+  it will create.
 - New projects' `.gitignore` no longer excludes `.claude/` — skills and agent personas are part
   of a shareable studio. Only `.fabulist/`, `.claude/settings.local.json`, and
   `fabulist.local.json` stay untracked.
