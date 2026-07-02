@@ -33,21 +33,21 @@ describe('parseHarnessConfig — the lenient-parsing contract', () => {
     const { config, warnings } = parse({
       name: 'X',
       futureThing: { nested: true },
-      docTypes: [{ id: 'a', match: '*.md', someFutureOption: 42 }],
+      fileTypes: [{ id: 'a', match: '*.md', someFutureOption: 42 }],
       permissions: { edits: 'ask', futureGrant: 'yes' }
     })
     expect(config.name).toBe('X')
-    expect(config.docTypes).toHaveLength(1)
+    expect(config.fileTypes).toHaveLength(1)
     expect(warnings).toEqual([])
   })
 
   it('drops malformed entries with a warning instead of failing the manifest', () => {
     const { config, warnings } = parse({
-      docTypes: [{ match: '*.md' }, { id: 'ok', match: '*.ok.md' }],
+      fileTypes: [{ match: '*.md' }, { id: 'ok', match: '*.ok.md' }],
       actions: [{ label: 'No skill or prompt' }],
       panels: [{ title: 'No source' }]
     })
-    expect(config.docTypes.map((t) => t.id)).toEqual(['ok'])
+    expect(config.fileTypes.map((t) => t.id)).toEqual(['ok'])
     expect(config.actions).toEqual([])
     expect(config.panels).toEqual([])
     expect(warnings.length).toBeGreaterThanOrEqual(3)
@@ -59,6 +59,16 @@ describe('parseHarnessConfig — the lenient-parsing contract', () => {
     expect(parse('nope').warnings[0]).toMatch(/must be a JSON object/)
   })
 
+  it('tells the author when a manifest still uses the pre-release "docTypes" key', () => {
+    const { config, warnings } = parse({ docTypes: [{ id: 'a', match: '*.md' }] })
+    expect(config.fileTypes).toEqual([])
+    expect(warnings.some((w) => w.includes('renamed to "fileTypes"'))).toBe(true)
+    // once fileTypes is present, the stale key is just an ignored unknown
+    expect(
+      parse({ docTypes: [], fileTypes: [{ id: 'a', match: '*.md' }] }).warnings
+    ).toEqual([])
+  })
+
   it('validates enums and drops bad values with a warning', () => {
     const { config, warnings } = parse({ permissions: { edits: 'yolo', bash: 'deny' } })
     expect(config.permissions.edits).toBeUndefined()
@@ -68,14 +78,14 @@ describe('parseHarnessConfig — the lenient-parsing contract', () => {
 
   it('rejects unsafe doc-type globs (traversal, absolute, dotfiles)', () => {
     const { config, warnings } = parse({
-      docTypes: [
+      fileTypes: [
         { id: 'up', match: '../*.md' },
         { id: 'abs', match: '/etc/*.md' },
         { id: 'dot', match: '.claude/*.md' },
         { id: 'ok', match: 'chapters/*.md' }
       ]
     })
-    expect(config.docTypes.map((t) => t.id)).toEqual(['ok'])
+    expect(config.fileTypes.map((t) => t.id)).toEqual(['ok'])
     expect(warnings).toHaveLength(3)
   })
 
@@ -132,8 +142,8 @@ describe('parseHarnessConfig — the lenient-parsing contract', () => {
   })
 
   it('caps icon length', () => {
-    const { config } = parse({ docTypes: [{ id: 'a', match: '*.md', icon: 'ABCDE' }] })
-    expect(config.docTypes[0].icon).toBe('AB')
+    const { config } = parse({ fileTypes: [{ id: 'a', match: '*.md', icon: 'ABCDE' }] })
+    expect(config.fileTypes[0].icon).toBe('AB')
   })
 
   it('warns when the manifest version is newer than the app understands', () => {
@@ -145,21 +155,21 @@ describe('parseHarnessConfig — the lenient-parsing contract', () => {
 describe('mergeHarnessConfigs — the local overlay contract', () => {
   const base = parse({
     name: 'Shared',
-    docTypes: [{ id: 'scene', match: '*.scene.md', label: 'Scene' }],
+    fileTypes: [{ id: 'scene', match: '*.scene.md', label: 'Scene' }],
     actions: [{ id: 'a', label: 'A', prompt: 'a' }],
     permissions: { edits: 'auto' }
   }).config
 
   it('replaces entries by id and appends new ones', () => {
     const local = parse({
-      docTypes: [
+      fileTypes: [
         { id: 'scene', match: '*.scene.md', label: 'My Scene' },
         { id: 'note', match: '*.note.md' }
       ]
     }).config
     const merged = mergeHarnessConfigs(base, local)
-    expect(merged.docTypes.find((t) => t.id === 'scene')?.label).toBe('My Scene')
-    expect(merged.docTypes).toHaveLength(2)
+    expect(merged.fileTypes.find((t) => t.id === 'scene')?.label).toBe('My Scene')
+    expect(merged.fileTypes).toHaveLength(2)
   })
 
   it('never lets the overlay touch permissions', () => {

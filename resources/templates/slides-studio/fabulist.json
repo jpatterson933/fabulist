@@ -4,22 +4,22 @@
   "description": "A hand-built HTML slide deck with a live preview while you work",
   "version": 1,
   "template": true,
-  "docTypes": [
+  "fileTypes": [
     { "id": "deck", "match": "deck/*.html", "label": "Deck", "icon": "🖥", "titleFrom": "filename" },
     { "id": "style", "match": "deck/*.css", "label": "Stylesheet", "icon": "🎨", "titleFrom": "filename" },
     { "id": "script", "match": "deck/*.js", "label": "Script", "icon": "⚙", "titleFrom": "filename" },
     { "id": "note", "match": "notes/*.md", "label": "Note", "icon": "📝" }
   ],
   "actions": [
-    { "label": "Design pass", "surface": "doc", "skill": "deck-design" },
+    { "label": "Design pass", "surface": "file", "skill": "deck-design" },
     {
       "label": "One idea per slide",
-      "surface": "doc",
+      "surface": "file",
       "prompt": "Walk the deck slide by slide. Any slide carrying more than one idea gets split; any slide that's a wall of text gets cut to its point. Keep the total flow intact. Edit the deck directly."
     },
     {
       "label": "Draft speaker notes",
-      "surface": "doc",
+      "surface": "file",
       "prompt": "For each slide, write or refresh its speaker notes in an <aside class=\"notes\"> inside the section: what to actually say, 2-4 sentences, conversational. Don't restate the slide text."
     }
   ],

@@ -22,9 +22,9 @@
       "type": "boolean",
       "description": "mark this project as a studio template: opening it offers \"new project from this studio\" instead of editing it in place"
     },
-    "docTypes": {
+    "fileTypes": {
       "type": "array",
-      "description": "Kinds of documents this studio works with, matched by filename glob. A matching doc gets the icon and label in the rail, its title derived per titleFrom, and a card in the New Document dialog (the filename follows the glob, the template seeds the content). Any file kind can be typed (.md, .html, .json, .py, …) — every textual file and image is already a document; a doc type adds meaning on top.",
+      "description": "Typed kinds of files this studio works with, matched by filename glob. A matching file gets the icon and label in the rail, its title derived per titleFrom, and a card in the New File dialog (the filename follows the glob, the template seeds the content). Any file kind can be typed (.md, .html, .json, .py, …) — every textual file and image is already a work file; a file type adds meaning on top.",
       "items": {
         "type": "object",
         "properties": {
@@ -42,7 +42,7 @@
           },
           "icon": {
             "type": "string",
-            "description": "1–2 characters/emoji shown in the document rail",
+            "description": "1–2 characters/emoji shown in the file rail",
             "maxLength": 2
           },
           "titleFrom": {
@@ -51,7 +51,7 @@
           },
           "template": {
             "type": "string",
-            "description": "seed content for new docs of this type; {{title}} is substituted"
+            "description": "seed content for new files of this type; {{title}} is substituted"
           }
         },
         "required": [
@@ -78,7 +78,7 @@
           "surface": {
             "enum": [
               "selection",
-              "doc",
+              "file",
               "project"
             ],
             "description": "what the action operates on; \"selection\" needs highlighted text"

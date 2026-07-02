@@ -17,7 +17,7 @@ there:
 | standing instructions | `CLAUDE.md` |
 | reusable skills | `.claude/skills/<name>/SKILL.md` |
 | subagent personas | `.claude/agents/<name>.md` |
-| doc types, actions, panels, permissions | `fabulist.json` |
+| file types, actions, panels, permissions | `fabulist.json` |
 | personal overrides (gitignored) | `fabulist.local.json` |
 
 ## Schema
@@ -37,18 +37,18 @@ Top-level fields (all optional; unknown fields are ignored):
   - `version`: manifest schema version; currently 1 — e.g. 1
   - `template`: mark this project as a studio template: opening it offers "new project from this studio" instead of editing it in place — e.g. true
 
-`docTypes` — Kinds of documents this studio works with, matched by filename glob. A matching doc gets the icon and label in the rail, its title derived per titleFrom, and a card in the New Document dialog (the filename follows the glob, the template seeds the content). Any file kind can be typed (.md, .html, .json, .py, …) — every textual file and image is already a document; a doc type adds meaning on top.
+`fileTypes` — Typed kinds of files this studio works with, matched by filename glob. A matching file gets the icon and label in the rail, its title derived per titleFrom, and a card in the New File dialog (the filename follows the glob, the template seeds the content). Any file kind can be typed (.md, .html, .json, .py, …) — every textual file and image is already a work file; a file type adds meaning on top.
   - `id` (required): stable identifier — e.g. "lesson"
   - `match` (required): project-relative filename glob; * and ? stay within one path segment, ** spans folders — e.g. "lessons/*.lesson.md"
   - `label`: display label; defaults to the id — e.g. "Lesson"
-  - `icon`: 1–2 characters/emoji shown in the document rail — e.g. "🎓"
+  - `icon`: 1–2 characters/emoji shown in the file rail — e.g. "🎓"
   - `titleFrom`: "h1" (default), "filename", or "frontmatter:<key>" — e.g. "frontmatter:title"
-  - `template`: seed content for new docs of this type; {{title}} is substituted — e.g. "---\ntitle: {{title}}\n---\n\n"
+  - `template`: seed content for new files of this type; {{title}} is substituted — e.g. "---\ntitle: {{title}}\n---\n\n"
 
 `actions` — Commands surfaced in the ⌘K palette (and, for surface "selection", in the highlight toolbar). An action runs a .claude/skills skill, sends a canned prompt, or both.
   - `id`: stable identifier; defaults to a slug of the label — e.g. "simplify"
   - `label`: palette label (required unless a skill names it) — e.g. "Simplify this"
-  - `surface`: what the action operates on; "selection" needs highlighted text — one of "selection" | "doc" | "project" — e.g. "selection"
+  - `surface`: what the action operates on; "selection" needs highlighted text — one of "selection" | "file" | "project" — e.g. "selection"
   - `skill`: a .claude/skills name to invoke — e.g. "simplify-explanation"
   - `prompt`: instructions sent to the project agent (alongside or instead of the skill) — e.g. "Rewrite this to be clearer without losing precision."
 
@@ -73,25 +73,25 @@ Top-level fields (all optional; unknown fields are ignored):
 
 ## Behavior notes
 
-**Doc types.** A matching doc gets the type's icon and label in the rail, its
+**File types.** A matching file gets the type's icon and label in the rail, its
 title derived per `titleFrom` (frontmatter blocks are stripped before `h1`
-derivation), and a card in the New Document dialog — the filename follows the
+derivation), and a card in the New File dialog — the filename follows the
 glob (`chapters/*.scene.md` + "Cold Open" → `chapters/cold-open.scene.md`) and
 `template` seeds the content with `{{title}}` substituted.
 
 Every project — harness or not — treats every textual file (`pages/*.html`,
-`data/*.json`, `src/**`) and every raster image as a document: text opens in
+`data/*.json`, `src/**`) and every raster image as a work file: text opens in
 the editor (Markdown gets the prose page, everything else monospace with
-syntax highlighting), images open in a read-only image view. A doc-type glob
+syntax highlighting), images open in a read-only image view. A file-type glob
 doesn't admit files; it adds meaning on top — the rail icon and label, the
-title rule, and a New Document card. Other known-binary files (archives,
-media) are never documents.
+title rule, and a New File card. Other known-binary files (archives,
+media) are never work files.
 
 **Actions.** Actions run through the project's agent. `skill` asks the
 agent to invoke that skill; `prompt` sends instructions; with both, the skill
 is invoked with the prompt as guidance. `surface: "selection"` actions appear
 in the highlight toolbar next to Comment and attach the selected text;
-`surface: "doc"` targets the focused document. Skills not referenced by any
+`surface: "file"` targets the focused file. Skills not referenced by any
 action still appear in the ⌘K palette under **Skills**.
 
 **Panels.** `markdown` renders prose; `code` shows the source read-only with
@@ -142,4 +142,4 @@ land.
 Commit `fabulist.json` and `.claude/` and push. Anyone can then use
 **Open folder…** in the library (or clone into `~/Documents/Fabulist/`) to open
 the project with its studio intact. A repo that is mostly harness plus a few
-seed documents works as a template: clone, open, write.
+seed files works as a template: clone, open, write.

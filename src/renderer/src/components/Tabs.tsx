@@ -1,17 +1,17 @@
 import { useStore } from '@/store'
 
 export default function Tabs(): React.JSX.Element {
-  const docs = useStore((s) => s.docs)
+  const files = useStore((s) => s.files)
   const openDocs = useStore((s) => s.openDocs)
-  const activeDoc = useStore((s) => s.activeDoc)
-  const setActiveDoc = useStore((s) => s.setActiveDoc)
+  const activeFile = useStore((s) => s.activeFile)
+  const setActiveFile = useStore((s) => s.setActiveFile)
   const closeTab = useStore((s) => s.closeTab)
   const harness = useStore((s) => s.harness)
   const openPanels = useStore((s) => s.openPanels)
   const activePanel = useStore((s) => s.activePanel)
   const openPanel = useStore((s) => s.openPanel)
   const closePanel = useStore((s) => s.closePanel)
-  const setNewDocOpen = useStore((s) => s.setNewDocOpen)
+  const setNewFileOpen = useStore((s) => s.setNewFileOpen)
 
   const commandRuns = useStore((s) => s.commandRuns)
 
@@ -25,14 +25,14 @@ export default function Tabs(): React.JSX.Element {
     return p && { title: p.title, hint: `${p.source} — view from fabulist.json`, glyph: '▦' }
   }
 
-  const titleFor = (file: string): string => docs.find((d) => d.file === file)?.title || file
+  const titleFor = (file: string): string => files.find((d) => d.file === file)?.title || file
 
   return (
     <div className="tabs-strip">
       {openDocs.map((file) => (
           <div
             key={file}
-            className={`tab ${file === activeDoc && !activePanel ? 'is-active' : ''}`}
+            className={`tab ${file === activeFile && !activePanel ? 'is-active' : ''}`}
             onMouseDown={(e) => {
               // middle-click closes, like a browser
               if (e.button === 1) {
@@ -41,7 +41,7 @@ export default function Tabs(): React.JSX.Element {
               }
             }}
           >
-            <button className="tab-main" onClick={() => void setActiveDoc(file)} title={file}>
+            <button className="tab-main" onClick={() => void setActiveFile(file)} title={file}>
               {titleFor(file)}
             </button>
             <button
@@ -91,7 +91,7 @@ export default function Tabs(): React.JSX.Element {
           )
         })}
 
-        <button className="tab-add" title="New document" onClick={() => setNewDocOpen(true)}>
+        <button className="tab-add" title="New file" onClick={() => setNewFileOpen(true)}>
           +
         </button>
     </div>

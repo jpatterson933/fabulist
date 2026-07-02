@@ -25,10 +25,10 @@ interface SelectionInfo {
 
 export default function Editor({
   projectId,
-  docFile
+  file
 }: {
   projectId: string
-  docFile: string
+  file: string
 }): React.JSX.Element {
   const hostRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
@@ -64,15 +64,15 @@ export default function Editor({
 
   const appliedSeq = useRef(0)
 
-  // a pending edit to the focused doc, rendered as an in-document suggestion
+  // a pending edit to the focused file, rendered as an inline suggestion
   const suggestion = useMemo(() => {
-    const req = permissions.find((p) => p.projectId === projectId && p.filePath === docFile)
+    const req = permissions.find((p) => p.projectId === projectId && p.filePath === file)
     if (!req) return null
-    const segments = computeSuggestion(content, req, docFile)
+    const segments = computeSuggestion(content, req, file)
     return segments ? { requestId: req.requestId, segments } : null
-  }, [permissions, content, projectId, docFile])
+  }, [permissions, content, projectId, file])
 
-  // create the view once per document
+  // create the view once per file
   useEffect(() => {
     const host = hostRef.current
     if (!host) return
@@ -80,7 +80,7 @@ export default function Editor({
 
     // markdown gets the prose language stack synchronously; anything else
     // starts as plain monospace text and upgrades once its language loads
-    const isMarkdownDoc = docFile.toLowerCase().endsWith('.md')
+    const isMarkdownDoc = file.toLowerCase().endsWith('.md')
 
     const view = new EditorView({
       parent: host,
@@ -144,7 +144,7 @@ export default function Editor({
     })
     viewRef.current = view
     if (!isMarkdownDoc) {
-      void codeLanguageExtensions(docFile).then((ext) => {
+      void codeLanguageExtensions(file).then((ext) => {
         if (viewRef.current === view) view.dispatch({ effects: language.reconfigure(ext) })
       })
     }
@@ -156,9 +156,9 @@ export default function Editor({
       useStore.getState().setSelectionQuote(null)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId, docFile])
+  }, [projectId, file])
 
-  // apply external content updates (Claude edits, restores, doc switches)
+  // apply external content updates (Claude edits, restores, file switches)
   useEffect(() => {
     const view = viewRef.current
     if (!view || !external || external.seq <= appliedSeq.current) return
@@ -206,7 +206,7 @@ export default function Editor({
     viewRef.current?.dispatch({ effects: setThreadRanges.of(ranges) })
   }, [ranges])
 
-  // render the pending suggestion inline; lock the doc while it's under review
+  // render the pending suggestion inline; lock the file while it's under review
   useEffect(() => {
     const view = viewRef.current
     if (!view) return
@@ -299,7 +299,7 @@ export default function Editor({
 
   return (
     <div
-      className={`editor-host ${activeThreadId ? 'has-active-thread' : ''} ${docFile.toLowerCase().endsWith('.md') ? '' : 'is-code-doc'}`}
+      className={`editor-host ${activeThreadId ? 'has-active-thread' : ''} ${file.toLowerCase().endsWith('.md') ? '' : 'is-code-file'}`}
       style={{ '--font-doc': fontStack } as React.CSSProperties}
       ref={hostRef}
     >

@@ -4,7 +4,7 @@
   "description": "Essays and newsletters: drafts held to your own style guide",
   "version": 1,
   "template": true,
-  "docTypes": [
+  "fileTypes": [
     {
       "id": "draft",
       "match": "drafts/*.md",
@@ -15,8 +15,8 @@
   ],
   "actions": [
     { "label": "Sharpen this argument", "surface": "selection", "prompt": "This passage is making an argument. Point out the weakest link in it, then rewrite the passage to fix it. Keep my voice." },
-    { "label": "Style pass", "surface": "doc", "skill": "style-pass" },
-    { "label": "Hunt weasel words", "surface": "doc", "prompt": "Find hedges and weasel words in this draft (somewhat, arguably, very, quite, I think). Either cut them or replace them with a concrete claim. Edit the document directly." }
+    { "label": "Style pass", "surface": "file", "skill": "style-pass" },
+    { "label": "Hunt weasel words", "surface": "file", "prompt": "Find hedges and weasel words in this draft (somewhat, arguably, very, quite, I think). Either cut them or replace them with a concrete claim. Edit the document directly." }
   ],
   "panels": [
     { "id": "style", "title": "Style Guide", "source": "style-guide.md" }

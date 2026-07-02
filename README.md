@@ -5,13 +5,13 @@
 Every project is a real Claude Code project folder — versioned with git, rewindable, and
 shared with an agent that works *inside* the project's world. A project can be prose, a
 website, a slide deck, research, code, data — and a `fabulist.json` manifest can grow a
-custom studio around it: typed documents, palette actions, rendered panels, live previews.
+custom studio around it: typed files, palette actions, rendered panels, live previews.
 You work directly, or you highlight, comment, and ask Claude. Every change Claude proposes
 is shown to you as a diff that you approve or decline before it lands.
 
-![Fabulist — comments anchored to the document, with Claude in the thread](docs/hero.png)
+![Fabulist — comments anchored to the file, with Claude in the thread](docs/hero.png)
 
-**Every edit Claude proposes appears in the document as a suggested edit — strikethrough and insertion, accept or decline:**
+**Every edit Claude proposes appears in the file as a suggested edit — strikethrough and insertion, accept or decline:**
 
 ![Reviewing a suggested edit inline](docs/approval.png)
 
@@ -24,8 +24,8 @@ is shown to you as a diff that you approve or decline before it lands.
 - **A real editor first** — CodeMirror 6 editing for every textual file: Markdown gets a
   reading page, code gets monospace and syntax highlighting, images get an image view.
   Your work lives in plain files you can open with anything.
-- **Studios, not just documents** — a checked-in `fabulist.json` turns a project into a
-  studio: typed doc kinds with templates, ⌘K palette actions backed by skills, rendered
+- **Studios, not just files** — a checked-in `fabulist.json` turns a project into a
+  studio: typed file kinds with templates, ⌘K palette actions backed by skills, rendered
   panels (markdown, code, image, live web), and user-run commands with log tabs and a
   live localhost preview. Built-in starters cover websites, slides, research, essays,
   novels, and campaigns — or describe your work and the workshop agent designs a studio
@@ -33,7 +33,7 @@ is shown to you as a diff that you approve or decline before it lands.
 - **An agent that knows the project** — chat in the sidebar; Claude reads, researches, and
   edits with full project context (each project has its own `CLAUDE.md` it loads).
   Per-project model picker, populated live from whatever your Claude Code version offers.
-- **Human-approved edits** — Claude's proposed changes render in the document itself as
+- **Human-approved edits** — Claude's proposed changes render in the file itself as
   Google-Docs-style suggested edits (strikethrough + insertion), with accept/decline
   (⌘⏎ / esc). Commands and other files surface as diff cards in chat. Nothing lands
   without your explicit approval (unless you trust a studio with auto-edits).
@@ -74,7 +74,7 @@ Your projects live in `~/Documents/Fabulist/`, one folder per project:
 ```
 ~/Documents/Fabulist/<project>/
   *.md, *.html, …    ← the work itself, any file kind, nested folders fine
-  fabulist.json      ← optional studio manifest (doc types, actions, panels…)
+  fabulist.json      ← optional studio manifest (file types, actions, panels…)
   CLAUDE.md          ← per-project instructions Claude loads automatically
   .claude/skills/    ← reusable skills the studio's actions invoke
   comments.json      ← anchored comment threads (versioned with the project)
@@ -96,8 +96,8 @@ Your projects live in `~/Documents/Fabulist/`, one folder per project:
 
 1. Claude calls `Edit`/`Write` on a file → `canUseTool` fires in the main process.
 2. Main computes before/after, sends a permission request over IPC.
-3. For the document itself, the editor renders the change inline as a suggested edit
-   (old text struck through, new text inserted) and locks the doc while you review;
+3. For the focused file itself, the editor renders the change inline as a suggested edit
+   (old text struck through, new text inserted) and locks the file while you review;
    commands and other files show as diff cards in the chat panel.
 4. On accept, the SDK executes the edit; a file watcher picks up the change and the
    editor updates live; the turn ends with an automatic `Claude: <prompt>` commit.

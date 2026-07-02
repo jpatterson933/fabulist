@@ -149,7 +149,7 @@ export async function loadHarness(projectId: string): Promise<Harness> {
   }
 }
 
-/** The merged (shared + local overlay) config — what doc typing and UI consult. */
+/** The merged (shared + local overlay) config — what file typing and UI consult. */
 export async function loadMergedConfig(projectId: string): Promise<HarnessConfig> {
   return (await readConfigs(projectId)).config
 }

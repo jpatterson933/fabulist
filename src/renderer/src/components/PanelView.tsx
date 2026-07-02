@@ -11,7 +11,7 @@ import { baseExtensions, codeLanguageExtensions } from '@/editor/extensions'
  * opened as tabs. Each `view` kind is a row in PANEL_VIEWS — adding a kind
  * (cards, checklist, timeline…) is one component plus one entry here, plus
  * the enum value in the schema descriptor. Sources re-read (and asset views
- * re-mount) whenever the doc list refreshes (agent edits and external changes
+ * re-mount) whenever the file list refreshes (agent edits and external changes
  * both trigger that).
  */
 
@@ -84,13 +84,13 @@ const ASSET_VIEWS = new Set<PanelViewKind>(['image', 'web'])
 
 export default function PanelView({ panel }: { panel: PanelDef }): React.JSX.Element {
   const projectId = useStore((s) => s.activeProjectId)
-  const docs = useStore((s) => s.docs)
+  const files = useStore((s) => s.files)
   const [content, setContent] = useState<string | null>(null)
   const [missing, setMissing] = useState(false)
   const isAsset = ASSET_VIEWS.has(panel.view)
-  // bump the URL when the doc list refreshes so iframe/img pick up edits
+  // bump the URL when the file list refreshes so iframe/img pick up edits
   const [rev, setRev] = useState(0)
-  useEffect(() => setRev((r) => r + 1), [docs])
+  useEffect(() => setRev((r) => r + 1), [files])
   const sourceUrl = useMemo(
     () => `fab-project://${projectId}/${panel.source.split('/').map(encodeURIComponent).join('/')}?v=${rev}`,
     [projectId, panel.source, rev]
@@ -99,7 +99,7 @@ export default function PanelView({ panel }: { panel: PanelDef }): React.JSX.Ele
   useEffect(() => {
     let cancelled = false
     if (!projectId || isAsset) return
-    window.fabulist.doc
+    window.fabulist.file
       .read(projectId, panel.source)
       .then((c) => {
         if (!cancelled) {
@@ -113,7 +113,7 @@ export default function PanelView({ panel }: { panel: PanelDef }): React.JSX.Ele
     return () => {
       cancelled = true
     }
-  }, [projectId, panel.source, isAsset, docs])
+  }, [projectId, panel.source, isAsset, files])
 
   const View = PANEL_VIEWS[panel.view]
   const ready = isAsset || content !== null

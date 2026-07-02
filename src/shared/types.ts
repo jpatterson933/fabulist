@@ -1,32 +1,32 @@
 // Shared contract between main, preload, and renderer.
 
-import type { DocType } from './docTypes'
-export type { DocType }
+import type { FileFormat } from './fileFormats'
+export type { FileFormat }
 
-/** A project is a folder under the library root; it holds one or more docs. */
+/** A project is a folder under the library root; it holds one or more files. */
 export interface ProjectMeta {
   id: string // folder name
   title: string
   path: string
-  docCount: number
+  fileCount: number
   createdAt: number
   updatedAt: number
-  updatedLabel?: string // most-recent doc title, for the rail subtitle
+  updatedLabel?: string // most-recent file title, for the rail subtitle
   /** studio name from fabulist.json, when the project defines a harness */
   studio?: string
 }
 
-export interface DocMeta {
-  /** filename within the project, e.g. "chapter-1.md" — the doc's stable id */
+export interface FileMeta {
+  /** filename within the project, e.g. "chapter-1.md" — the file's stable id */
   file: string
-  /** the kind of doc, derived from the extension */
-  type: DocType
+  /** the render format, derived from the extension */
+  type: FileFormat
   title: string
-  path: string // absolute path to the doc file
+  path: string // absolute path to the file
   createdAt: number
   updatedAt: number
   preview: string
-  /** harness doc-type id when a studio's docTypes glob matches this file */
+  /** harness file-type id when a studio's fileTypes glob matches this file */
   kind?: string
   /** display label for the kind, e.g. "Scene" */
   kindLabel?: string
@@ -123,8 +123,8 @@ export type AgentEvent =
       costUsd?: number
       durationMs?: number
       commentId?: string
-      /** the doc a comment reply belongs to, so the renderer reloads it */
-      docFile?: string
+      /** the file a comment reply belongs to, so the renderer reloads it */
+      file?: string
     }
 
 /**
@@ -134,10 +134,10 @@ export type AgentEvent =
  */
 export type ProjectEvent =
   | { kind: 'harness-changed'; projectId: string }
-  | { kind: 'doc-external-change'; projectId: string; docFile: string; content: string }
-  /** a non-text doc (image, …) changed on disk; refresh views by URL, no content payload */
-  | { kind: 'doc-touched'; projectId: string; docFile: string }
-  | { kind: 'doc-removed'; projectId: string; docFile: string }
+  | { kind: 'file-external-change'; projectId: string; file: string; content: string }
+  /** a non-text file (image, …) changed on disk; refresh views by URL, no content payload */
+  | { kind: 'file-touched'; projectId: string; file: string }
+  | { kind: 'file-removed'; projectId: string; file: string }
   | { kind: 'comments-changed'; projectId: string }
 
 /** Live state of one studio command (fabulist.json `commands`) in a project. */
@@ -208,7 +208,7 @@ export interface FontChoice {
 }
 
 // A neutral sans leads as the default; the serifs are one choice among many,
-// for docs that want a bookish reading page.
+// for files that want a bookish reading page.
 export const FONT_CHOICES: FontChoice[] = [
   { value: 'plex-sans', label: 'Plex Sans', stack: "'IBM Plex Sans', 'Avenir Next', sans-serif" },
   { value: 'newsreader', label: 'Newsreader', stack: "'Newsreader Variable', 'Iowan Old Style', Georgia, serif" },
@@ -227,12 +227,12 @@ export interface Attachment {
 }
 
 export interface SendOptions {
-  /** The doc the user is focused on / that a quote or comment belongs to */
-  docFile?: string
+  /** The file the user is focused on / that a quote or comment belongs to */
+  file?: string
   /** When set, Claude's final reply is also appended to this comment thread */
   commentId?: string
   /** Selected text the user is asking about */
   quote?: string
-  /** Files the user attached: images/PDFs are sent inline, others copied into the doc folder */
+  /** Files the user attached: images/PDFs are sent inline, others copied into the project folder */
   attachments?: Attachment[]
 }

@@ -8,7 +8,7 @@ import type {
   CommandRunState,
   CommentThread,
   CommitInfo,
-  DocMeta,
+  FileMeta,
   ModelChoice,
   ProjectEvent,
   ProjectMeta,
@@ -52,19 +52,21 @@ const api = {
       ipcRenderer.invoke('templates:createFromProject', id, title)
   },
   project: {
-    docs: (id: string): Promise<DocMeta[]> => ipcRenderer.invoke('project:docs', id),
+    files: (id: string): Promise<FileMeta[]> => ipcRenderer.invoke('project:files', id),
     meta: (
       id: string
-    ): Promise<{ title: string; docs: { file: string; font?: string }[]; openTabs: string[]; activeDoc: string | null }> =>
+    ): Promise<{ title: string; files: { file: string; font?: string }[]; openTabs: string[]; activeFile: string | null }> =>
       ipcRenderer.invoke('project:meta', id),
-    createDoc: (id: string, title: string, typeId?: string): Promise<DocMeta> =>
-      ipcRenderer.invoke('project:createDoc', id, title, typeId),
-    deleteDoc: (id: string, docFile: string): Promise<void> =>
-      ipcRenderer.invoke('project:deleteDoc', id, docFile),
+    createFile: (id: string, title: string, typeId?: string): Promise<FileMeta> =>
+      ipcRenderer.invoke('project:createFile', id, title, typeId),
+    deleteFile: (id: string, file: string): Promise<void> =>
+      ipcRenderer.invoke('project:deleteFile', id, file),
     setOpenTabs: (id: string, openTabs: string[]): Promise<void> =>
       ipcRenderer.invoke('project:setOpenTabs', id, openTabs),
-    setActiveDoc: (id: string, docFile: string | null): Promise<void> =>
-      ipcRenderer.invoke('project:setActiveDoc', id, docFile),
+    setActiveFile: (id: string, file: string | null): Promise<void> =>
+      ipcRenderer.invoke('project:setActiveFile', id, file),
+    snapshot: (id: string, label?: string): Promise<boolean> =>
+      ipcRenderer.invoke('project:snapshot', id, label),
     getModel: (id: string): Promise<string> => ipcRenderer.invoke('project:getModel', id),
     setModel: (id: string, model: string): Promise<void> =>
       ipcRenderer.invoke('project:setModel', id, model),
@@ -75,54 +77,52 @@ const api = {
       return () => ipcRenderer.removeListener('project:event', listener)
     }
   },
-  doc: {
-    read: (id: string, docFile: string): Promise<string> =>
-      ipcRenderer.invoke('doc:read', id, docFile),
-    write: (id: string, docFile: string, content: string): Promise<void> =>
-      ipcRenderer.invoke('doc:write', id, docFile, content),
-    snapshot: (id: string, label?: string): Promise<boolean> =>
-      ipcRenderer.invoke('doc:snapshot', id, label),
-    getFont: (id: string, docFile: string): Promise<string> =>
-      ipcRenderer.invoke('doc:getFont', id, docFile),
-    setFont: (id: string, docFile: string, font: string): Promise<void> =>
-      ipcRenderer.invoke('doc:setFont', id, docFile, font)
+  file: {
+    read: (id: string, file: string): Promise<string> =>
+      ipcRenderer.invoke('file:read', id, file),
+    write: (id: string, file: string, content: string): Promise<void> =>
+      ipcRenderer.invoke('file:write', id, file, content),
+    getFont: (id: string, file: string): Promise<string> =>
+      ipcRenderer.invoke('file:getFont', id, file),
+    setFont: (id: string, file: string, font: string): Promise<void> =>
+      ipcRenderer.invoke('file:setFont', id, file, font)
   },
   history: {
     log: (id: string): Promise<CommitInfo[]> => ipcRenderer.invoke('history:log', id),
-    show: (id: string, docFile: string, rev: string): Promise<string> =>
-      ipcRenderer.invoke('history:show', id, docFile, rev),
-    restore: (id: string, docFile: string, rev: string): Promise<string> =>
-      ipcRenderer.invoke('history:restore', id, docFile, rev)
+    show: (id: string, file: string, rev: string): Promise<string> =>
+      ipcRenderer.invoke('history:show', id, file, rev),
+    restore: (id: string, file: string, rev: string): Promise<string> =>
+      ipcRenderer.invoke('history:restore', id, file, rev)
   },
   comments: {
-    list: (id: string, docFile: string): Promise<CommentThread[]> =>
-      ipcRenderer.invoke('comments:list', id, docFile),
+    list: (id: string, file: string): Promise<CommentThread[]> =>
+      ipcRenderer.invoke('comments:list', id, file),
     add: (
       id: string,
-      docFile: string,
+      file: string,
       anchor: CommentThread['anchor'],
       text: string
-    ): Promise<CommentThread> => ipcRenderer.invoke('comments:add', id, docFile, anchor, text),
+    ): Promise<CommentThread> => ipcRenderer.invoke('comments:add', id, file, anchor, text),
     reply: (
       id: string,
-      docFile: string,
+      file: string,
       threadId: string,
       text: string
     ): Promise<CommentThread | null> =>
-      ipcRenderer.invoke('comments:reply', id, docFile, threadId, text),
+      ipcRenderer.invoke('comments:reply', id, file, threadId, text),
     setStatus: (
       id: string,
-      docFile: string,
+      file: string,
       threadId: string,
       status: CommentThread['status']
-    ): Promise<void> => ipcRenderer.invoke('comments:setStatus', id, docFile, threadId, status),
-    remove: (id: string, docFile: string, threadId: string): Promise<void> =>
-      ipcRenderer.invoke('comments:remove', id, docFile, threadId),
+    ): Promise<void> => ipcRenderer.invoke('comments:setStatus', id, file, threadId, status),
+    remove: (id: string, file: string, threadId: string): Promise<void> =>
+      ipcRenderer.invoke('comments:remove', id, file, threadId),
     updateAnchors: (
       id: string,
-      docFile: string,
+      file: string,
       anchors: { id: string; anchor: CommentThread['anchor']; status?: CommentThread['status'] }[]
-    ): Promise<void> => ipcRenderer.invoke('comments:updateAnchors', id, docFile, anchors)
+    ): Promise<void> => ipcRenderer.invoke('comments:updateAnchors', id, file, anchors)
   },
   agent: {
     send: (id: string, threadId: string, prompt: string, opts?: SendOptions): Promise<void> =>

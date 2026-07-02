@@ -16,7 +16,7 @@ import { useStore } from './store'
 const store = useStore.getState()
 
 window.fabulist.agent.onEvent((e) => useStore.getState().handleAgentEvent(e))
-// everything the main process observes on the open project folder — doc edits,
+// everything the main process observes on the open project folder — file edits,
 // deletions, comment changes, harness hot reloads — arrives on one channel
 window.fabulist.project.onEvent((e) => useStore.getState().handleProjectEvent(e))
 // studio command processes stream their lifecycle + output here
@@ -26,7 +26,7 @@ window.addEventListener('beforeunload', () => {
   const { activeProjectId } = useStore.getState()
   if (activeProjectId) {
     void useStore.getState().flushWrite()
-    void window.fabulist.doc.snapshot(activeProjectId, 'Edited')
+    void window.fabulist.project.snapshot(activeProjectId, 'Edited')
   }
 })
 

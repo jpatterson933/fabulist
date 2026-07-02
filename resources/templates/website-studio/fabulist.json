@@ -4,7 +4,7 @@
   "description": "A hand-built site: pages, styles, and a live preview while you work",
   "version": 1,
   "template": true,
-  "docTypes": [
+  "fileTypes": [
     {
       "id": "page",
       "match": "pages/*.html",
@@ -20,12 +20,12 @@
   "actions": [
     {
       "label": "Design pass",
-      "surface": "doc",
+      "surface": "file",
       "skill": "design-pass"
     },
     {
       "label": "Make it responsive",
-      "surface": "doc",
+      "surface": "file",
       "prompt": "Review this page and its stylesheet for small screens: fluid widths, readable font sizes, no horizontal scroll, sensible breakpoints. Edit the files directly."
     },
     {

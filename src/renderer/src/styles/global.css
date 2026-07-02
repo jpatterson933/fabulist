@@ -1,7 +1,7 @@
 /* ─── Fabulist design system ───────────────────────────────────────────
    Warm paper, ink, and an ember-red accent. Fraunces for display,
    IBM Plex Sans/Mono for the chrome and the default document face;
-   Newsreader/Literata stay on the menu for docs that want a book page. */
+   Newsreader/Literata stay on the menu for files that want a book page. */
 
 :root {
   --font-display: 'Fraunces Variable', 'Iowan Old Style', serif;
@@ -351,7 +351,7 @@ input::placeholder {
   transition: all 140ms ease;
 }
 .library-item:hover .library-item-x,
-.library-doc:hover .library-item-x {
+.library-file:hover .library-item-x {
   opacity: 1;
 }
 .library-item-x:hover {
@@ -414,18 +414,18 @@ input::placeholder {
   white-space: nowrap;
 }
 
-.library-doc {
+.library-file {
   position: relative;
   border-radius: 7px;
   transition: background 120ms ease;
 }
-.library-doc:hover {
+.library-file:hover {
   background: var(--paper-deeper);
 }
-.library-doc.is-active {
+.library-file.is-active {
   background: var(--accent-wash);
 }
-.library-doc-main {
+.library-file-main {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -433,23 +433,23 @@ input::placeholder {
   padding: 7px 28px 7px 10px;
   min-width: 0;
 }
-.library-doc-glyph {
+.library-file-glyph {
   font-family: var(--font-display);
   font-size: 12px;
   color: var(--ink-faint);
   flex-shrink: 0;
 }
-.library-doc.is-active .library-doc-glyph {
+.library-file.is-active .library-file-glyph {
   color: var(--accent);
 }
-.library-doc-title {
+.library-file-title {
   font-size: 13.5px;
   color: var(--ink-soft);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.library-doc.is-active .library-doc-title {
+.library-file.is-active .library-file-title {
   color: var(--ink);
   font-weight: 550;
 }
@@ -2343,7 +2343,7 @@ input::placeholder {
 }
 
 /* folder tree in the document rail; depth indents via --rail-depth */
-.library-doc .library-doc-main {
+.library-file .library-file-main {
   padding-left: calc(10px + var(--rail-depth, 0) * 14px);
 }
 
@@ -2465,8 +2465,8 @@ input::placeholder {
   border-radius: 8px;
   overflow: hidden;
 }
-/* image docs: the picture on the page, centered and contained */
-.image-doc {
+/* image files: the picture on the page, centered and contained */
+.image-file {
   flex: 1;
   min-height: 0;
   display: flex;
@@ -2475,7 +2475,7 @@ input::placeholder {
   padding: 32px;
   overflow: auto;
 }
-.image-doc img {
+.image-file img {
   max-width: 100%;
   max-height: 100%;
   border-radius: 8px;
@@ -2566,8 +2566,8 @@ input::placeholder {
   opacity: 0;
   transition: opacity 120ms ease;
 }
-.library-doc:hover .library-command-toggle,
-.library-doc.is-active .library-command-toggle {
+.library-file:hover .library-command-toggle,
+.library-file.is-active .library-command-toggle {
   opacity: 1;
 }
 .library-command-toggle:hover {
@@ -2575,16 +2575,16 @@ input::placeholder {
   border-color: var(--accent);
 }
 
-/* code docs trade the prose serif/measure for monospace and full width */
-.editor-host.is-code-doc .cm-editor {
+/* code files trade the prose serif/measure for monospace and full width */
+.editor-host.is-code-file .cm-editor {
   font-size: 14px;
 }
-.editor-host.is-code-doc .cm-scroller {
+.editor-host.is-code-file .cm-scroller {
   font-family: var(--font-mono);
   line-height: 1.6;
   padding: 0 32px 30vh;
 }
-.editor-host.is-code-doc .cm-content {
+.editor-host.is-code-file .cm-content {
   max-width: none;
   padding: 24px 0 0;
 }

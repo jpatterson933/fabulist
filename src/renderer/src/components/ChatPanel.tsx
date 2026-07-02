@@ -86,7 +86,7 @@ export default function ChatPanel({ projectId }: { projectId: string }): React.J
               still hangs together.
             </p>
             <p className="chat-empty-hint">
-              Or highlight anything in a document and comment on it — the selection and
+              Or highlight anything in a file and comment on it — the selection and
               your note go straight into this conversation.
             </p>
           </div>
@@ -314,7 +314,7 @@ function AutoApproveToggle(): React.JSX.Element {
   return (
     <label
       className="auto-approve"
-      title="Apply Claude's document edits automatically. Bash commands still ask first."
+      title="Apply Claude's file edits automatically. Bash commands still ask first."
     >
       <input
         type="checkbox"
@@ -405,16 +405,16 @@ function ChatBubble({ item }: { item: ChatItem }): React.JSX.Element {
 function ApprovalCard({ request }: { request: PermissionRequest }): React.JSX.Element {
   const respond = useStore((s) => s.respondPermission)
   const shownInline = useStore((s) => s.inlineSuggestionId === request.requestId)
-  const activeDoc = useStore((s) => s.activeDoc)
-  const isDocEdit = request.filePath === activeDoc
+  const activeFile = useStore((s) => s.activeFile)
+  const isFocusedFileEdit = request.filePath === activeFile
   const isWholeFile = request.tool === 'Write'
 
-  // the suggestion is rendered in the document itself — keep chat compact
+  // the suggestion is rendered in the file itself — keep chat compact
   if (shownInline) {
     return (
       <div className="approval approval-inline">
         <div className="approval-head">
-          <span className="approval-kind">Suggested edit — shown in the document</span>
+          <span className="approval-kind">Suggested edit — shown in the file</span>
           <span className="approval-tool">{request.tool}</span>
         </div>
         <div className="approval-actions">
@@ -433,7 +433,7 @@ function ApprovalCard({ request }: { request: PermissionRequest }): React.JSX.El
     <div className="approval">
       <div className="approval-head">
         <span className="approval-kind">
-          {request.command ? 'Run command' : isDocEdit ? 'Edit document' : `Change ${request.filePath ?? 'files'}`}
+          {request.command ? 'Run command' : isFocusedFileEdit ? 'Edit file' : `Change ${request.filePath ?? 'files'}`}
         </span>
         <span className="approval-tool">{request.tool}</span>
       </div>

@@ -3,22 +3,22 @@ import { fileNameForType } from '@shared/harness'
 import { useStore } from '@/store'
 
 /**
- * The one place documents are created: a title plus, when the studio defines
- * doc types, a type choice with room to show what each type means (icon,
+ * The one place files are created: a title plus, when the studio defines
+ * file types, a type choice with room to show what each type means (icon,
  * label, resulting filename).
  */
-export default function NewDocDialog(): React.JSX.Element | null {
-  const open = useStore((s) => s.newDocOpen)
-  const setOpen = useStore((s) => s.setNewDocOpen)
-  const createDoc = useStore((s) => s.createDoc)
+export default function NewFileDialog(): React.JSX.Element | null {
+  const open = useStore((s) => s.newFileOpen)
+  const setOpen = useStore((s) => s.setNewFileOpen)
+  const createFile = useStore((s) => s.createFile)
   const harness = useStore((s) => s.harness)
   const [title, setTitle] = useState('')
   const [typeId, setTypeId] = useState('')
   const [busy, setBusy] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const docTypes = harness?.config.docTypes ?? []
-  const selected = docTypes.find((t) => t.id === typeId) ?? null
+  const fileTypes = harness?.config.fileTypes ?? []
+  const selected = fileTypes.find((t) => t.id === typeId) ?? null
 
   const slug = useMemo(
     () =>
@@ -47,7 +47,7 @@ export default function NewDocDialog(): React.JSX.Element | null {
     if (!t || busy) return
     setBusy(true)
     try {
-      await createDoc(t, typeId || undefined)
+      await createFile(t, typeId || undefined)
       setOpen(false)
     } finally {
       setBusy(false)
@@ -64,7 +64,7 @@ export default function NewDocDialog(): React.JSX.Element | null {
           void submit()
         }}
       >
-        <h2 className="dialog-title">New document</h2>
+        <h2 className="dialog-title">New file</h2>
         <input
           ref={inputRef}
           className="dialog-input"
@@ -79,8 +79,8 @@ export default function NewDocDialog(): React.JSX.Element | null {
           }}
         />
 
-        {docTypes.length > 0 && (
-          <div className="dialog-types" role="radiogroup" aria-label="Document type">
+        {fileTypes.length > 0 && (
+          <div className="dialog-types" role="radiogroup" aria-label="File type">
             <button
               type="button"
               className={`dialog-type ${typeId === '' ? 'is-selected' : ''}`}
@@ -89,10 +89,10 @@ export default function NewDocDialog(): React.JSX.Element | null {
               <span className="dialog-type-glyph" aria-hidden>
                 ❡
               </span>
-              <span className="dialog-type-label">Document</span>
+              <span className="dialog-type-label">File</span>
               <span className="dialog-type-hint">plain markdown</span>
             </button>
-            {docTypes.map((t) => (
+            {fileTypes.map((t) => (
               <button
                 key={t.id}
                 type="button"

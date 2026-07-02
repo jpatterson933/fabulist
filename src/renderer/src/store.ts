@@ -12,14 +12,14 @@ import {
   type CommentAnchor,
   type CommentThread,
   type CommitInfo,
-  type DocMeta,
+  type FileMeta,
   type ModelChoice,
   type PermissionRequest,
   type ProjectEvent,
   type ProjectMeta
 } from '@shared/types'
 import type { ActionDef, Harness } from '@shared/harness'
-import { isTextDoc } from '@shared/docTypes'
+import { isTextFile } from '@shared/fileFormats'
 import { locateAnchor } from './lib/anchors'
 import { SURFACES } from './lib/surfaces'
 
@@ -42,18 +42,18 @@ interface ExternalUpdate {
 export interface FabulistStore {
   projects: ProjectMeta[]
   activeProjectId: string | null
-  /** docs of the active project */
-  docs: DocMeta[]
+  /** files of the active project */
+  files: FileMeta[]
   /** open tab filenames for the active project */
   openDocs: string[]
   /** active tab filename */
-  activeDoc: string | null
-  /** cached content of open tabs, keyed by doc filename */
-  docContents: Record<string, string>
-  /** the active doc's live content (the editor binds to this) */
+  activeFile: string | null
+  /** cached content of open tabs, keyed by file filename */
+  fileContents: Record<string, string>
+  /** the active file's live content (the editor binds to this) */
   content: string
   external: ExternalUpdate | null
-  /** comment threads for the active doc */
+  /** comment threads for the active file */
   threads: CommentThread[]
   /** chat transcripts keyed by agent thread id */
   chats: Record<string, ChatItem[]>
@@ -65,8 +65,8 @@ export interface FabulistStore {
   /** agent status keyed by project id */
   agent: Record<string, AgentState>
   tab: SidebarTab
-  /** what the left rail shows: the project list, or the active project's docs */
-  railView: 'projects' | 'docs'
+  /** what the left rail shows: the project list, or the active project's files */
+  railView: 'projects' | 'files'
   sidebarOpen: boolean
   libraryOpen: boolean
   commits: CommitInfo[]
@@ -84,17 +84,17 @@ export interface FabulistStore {
   /** the active project's studio harness (fabulist.json + skills), if loaded */
   harness: Harness | null
   /**
-   * harness panels open as tabs, like documents; ids into harness.config.panels,
+   * harness panels open as tabs, like files; ids into harness.config.panels,
    * or "command:<id>" for a studio command's log/preview tab
    */
   openPanels: string[]
-  /** the focused panel tab; when set it shows instead of the active doc */
+  /** the focused panel tab; when set it shows instead of the active file */
   activePanel: string | null
   /** live run state of the active project's studio commands, keyed by command id */
   commandRuns: Record<string, CommandRunState>
   paletteOpen: boolean
-  /** the new-document dialog (title + doc type) */
-  newDocOpen: boolean
+  /** the new-file dialog (title + file type) */
+  newFileOpen: boolean
   /** the new-project chooser (blank / genesis / starter studios) */
   newProjectOpen: boolean
   /** current editor selection, for selection-surface actions */
@@ -111,7 +111,7 @@ export interface FabulistStore {
   stopCommand: (commandId: string) => Promise<void>
   handleCommandEvent: (event: CommandEvent) => void
   setPaletteOpen: (open: boolean) => void
-  setNewDocOpen: (open: boolean) => void
+  setNewFileOpen: (open: boolean) => void
   setNewProjectOpen: (open: boolean) => void
   /** instantiate a built-in starter studio as a new project */
   createProjectFromTemplate: (templateId: string, title: string) => Promise<void>
@@ -128,19 +128,19 @@ export interface FabulistStore {
   openProject: (id: string) => Promise<void>
   closeProject: () => Promise<void>
 
-  loadDocs: () => Promise<void>
-  createDoc: (title: string, typeId?: string) => Promise<void>
-  deleteDoc: (docFile: string) => Promise<void>
-  openTab: (docFile: string) => Promise<void>
-  closeTab: (docFile: string) => Promise<void>
-  setActiveDoc: (docFile: string) => Promise<void>
+  loadFiles: () => Promise<void>
+  createFile: (title: string, typeId?: string) => Promise<void>
+  deleteFile: (file: string) => Promise<void>
+  openTab: (file: string) => Promise<void>
+  closeTab: (file: string) => Promise<void>
+  setActiveFile: (file: string) => Promise<void>
 
   setContent: (content: string) => void
   flushWrite: () => Promise<void>
   snapshot: (label?: string) => Promise<void>
 
   setTab: (tab: SidebarTab) => void
-  setRailView: (view: 'projects' | 'docs') => void
+  setRailView: (view: 'projects' | 'files') => void
   toggleSidebar: () => void
   toggleLibrary: () => void
 
@@ -182,19 +182,19 @@ export interface FabulistStore {
   handleAgentEvent: (e: AgentEvent) => void
   /** everything the main process observes on the project folder, one dispatcher */
   handleProjectEvent: (e: ProjectEvent) => void
-  handleExternalChange: (projectId: string, docFile: string, content: string) => void
-  /** a doc file was deleted outside the app (terminal, agent, teammate's pull) */
-  handleDocRemoved: (projectId: string, docFile: string) => void
+  handleExternalChange: (projectId: string, file: string, content: string) => void
+  /** a file file was deleted outside the app (terminal, agent, teammate's pull) */
+  handleFileRemoved: (projectId: string, file: string) => void
 }
 
-// per-(project,doc) debounce timers, so a tab switch flushes the right file
+// per-(project,file) debounce timers, so a tab switch flushes the right file
 let writeTimer: ReturnType<typeof setTimeout> | null = null
-let writeTarget: { projectId: string; docFile: string } | null = null
+let writeTarget: { projectId: string; file: string } | null = null
 let idleCommitTimer: ReturnType<typeof setTimeout> | null = null
 let anchorTimer: ReturnType<typeof setTimeout> | null = null
 let extSeq = 1
 
-// panel tabs persist alongside doc tabs in project.json's openTabs, prefixed
+// panel tabs persist alongside file tabs in project.json's openTabs, prefixed
 // so a plain filename can never collide with a panel id
 const PANEL_TAB = 'panel:'
 /** panel-slot ids for a command's log/preview tab: "command:<commandId>" */
@@ -229,10 +229,10 @@ function reanchor(threads: CommentThread[], content: string): CommentThread[] {
 export const useStore = create<FabulistStore>((set, get) => ({
   projects: [],
   activeProjectId: null,
-  docs: [],
+  files: [],
   openDocs: [],
-  activeDoc: null,
-  docContents: {},
+  activeFile: null,
+  fileContents: {},
   content: '',
   external: null,
   threads: [],
@@ -262,7 +262,7 @@ export const useStore = create<FabulistStore>((set, get) => ({
   activePanel: null,
   commandRuns: {},
   paletteOpen: false,
-  newDocOpen: false,
+  newFileOpen: false,
   newProjectOpen: false,
   selectionQuote: null,
 
@@ -312,7 +312,7 @@ export const useStore = create<FabulistStore>((set, get) => ({
     const id = get().activeProjectId
     if (!id) return
     const openPanels = get().openPanels.filter((p) => p !== panelId)
-    // closing the focused panel falls back to the remaining tabs: last panel, else the active doc
+    // closing the focused panel falls back to the remaining tabs: last panel, else the active file
     const activePanel =
       get().activePanel === panelId ? openPanels[openPanels.length - 1] ?? null : get().activePanel
     set({ openPanels, activePanel })
@@ -358,7 +358,7 @@ export const useStore = create<FabulistStore>((set, get) => ({
   },
 
   setPaletteOpen: (open) => set({ paletteOpen: open }),
-  setNewDocOpen: (open) => set({ newDocOpen: open }),
+  setNewFileOpen: (open) => set({ newFileOpen: open }),
   setNewProjectOpen: (open) => set({ newProjectOpen: open }),
 
   createProjectFromTemplate: async (templateId, title) => {
@@ -422,8 +422,8 @@ export const useStore = create<FabulistStore>((set, get) => ({
     const prev = get().activeProjectId
     if (prev && prev !== id) await get().closeProject()
 
-    const [docs, meta, agentThreads, activeThreadId, commits, model, harness] = await Promise.all([
-      window.fabulist.project.docs(id),
+    const [files, meta, agentThreads, activeThreadId, commits, model, harness] = await Promise.all([
+      window.fabulist.project.files(id),
       window.fabulist.project.meta(id),
       window.fabulist.agent.threads(id),
       window.fabulist.agent.activeThread(id),
@@ -432,27 +432,27 @@ export const useStore = create<FabulistStore>((set, get) => ({
       window.fabulist.harness.load(id)
     ])
 
-    const present = new Set(docs.map((d) => d.file))
+    const present = new Set(files.map((d) => d.file))
     let openDocs = meta.openTabs.filter((f) => !f.startsWith(PANEL_TAB) && present.has(f))
     const openPanels = meta.openTabs
       .filter((f) => f.startsWith(PANEL_TAB))
       .map((f) => f.slice(PANEL_TAB.length))
       .filter((p) => panelIdValid(harness, p))
     const commandRuns = await window.fabulist.commands.status(id).catch(() => ({}))
-    if (openDocs.length === 0 && docs.length > 0) openDocs = [docs[0].file]
-    const activeDoc =
-      meta.activeDoc && openDocs.includes(meta.activeDoc)
-        ? meta.activeDoc
+    if (openDocs.length === 0 && files.length > 0) openDocs = [files[0].file]
+    const activeFile =
+      meta.activeFile && openDocs.includes(meta.activeFile)
+        ? meta.activeFile
         : openDocs[0] ?? null
 
     let content = ''
     let threads: CommentThread[] = []
     let font = DEFAULT_FONT
-    if (activeDoc) {
+    if (activeFile) {
       const [c, rawThreads, f] = await Promise.all([
-        window.fabulist.doc.read(id, activeDoc),
-        window.fabulist.comments.list(id, activeDoc),
-        window.fabulist.doc.getFont(id, activeDoc)
+        window.fabulist.file.read(id, activeFile),
+        window.fabulist.comments.list(id, activeFile),
+        window.fabulist.file.getFont(id, activeFile)
       ])
       content = c
       threads = reanchor(rawThreads, c)
@@ -462,11 +462,11 @@ export const useStore = create<FabulistStore>((set, get) => ({
 
     set({
       activeProjectId: id,
-      railView: 'docs',
-      docs,
+      railView: 'files',
+      files,
       openDocs,
-      activeDoc,
-      docContents: activeDoc ? { [activeDoc]: content } : {},
+      activeFile,
+      fileContents: activeFile ? { [activeFile]: content } : {},
       content,
       external: { seq: extSeq++, content },
       threads,
@@ -485,7 +485,7 @@ export const useStore = create<FabulistStore>((set, get) => ({
       activePanel: null,
       commandRuns,
       paletteOpen: false,
-      newDocOpen: false,
+      newFileOpen: false,
       selectionQuote: null,
       agentThreads: { ...get().agentThreads, [id]: agentThreads },
       activeThread: { ...get().activeThread, [id]: activeThreadId },
@@ -499,15 +499,15 @@ export const useStore = create<FabulistStore>((set, get) => ({
     const id = get().activeProjectId
     if (!id) return
     await get().flushWrite()
-    await window.fabulist.doc.snapshot(id, 'Edited').catch(() => {})
+    await window.fabulist.project.snapshot(id, 'Edited').catch(() => {})
     await window.fabulist.project.watch(null)
     set({
       activeProjectId: null,
       railView: 'projects',
-      docs: [],
+      files: [],
       openDocs: [],
-      activeDoc: null,
-      docContents: {},
+      activeFile: null,
+      fileContents: {},
       content: '',
       threads: [],
       commits: [],
@@ -517,98 +517,98 @@ export const useStore = create<FabulistStore>((set, get) => ({
       activePanel: null,
       commandRuns: {},
       paletteOpen: false,
-      newDocOpen: false,
+      newFileOpen: false,
       selectionQuote: null
     })
   },
 
-  loadDocs: async () => {
+  loadFiles: async () => {
     const id = get().activeProjectId
     if (!id) return
-    set({ docs: await window.fabulist.project.docs(id) })
+    set({ files: await window.fabulist.project.files(id) })
   },
 
-  createDoc: async (title, typeId) => {
+  createFile: async (title, typeId) => {
     const id = get().activeProjectId
     if (!id) return
-    const meta = await window.fabulist.project.createDoc(id, title, typeId)
-    await get().loadDocs()
-    // add the tab but let setActiveDoc read the seeded file from disk (which also
+    const meta = await window.fabulist.project.createFile(id, title, typeId)
+    await get().loadFiles()
+    // add the tab but let setActiveFile read the seeded file from disk (which also
     // primes the watcher's echo-suppression so the create write doesn't bounce back)
     set({ openDocs: [...get().openDocs.filter((f) => f !== meta.file), meta.file] })
-    await get().setActiveDoc(meta.file)
+    await get().setActiveFile(meta.file)
     await get().loadProjects()
   },
 
-  deleteDoc: async (docFile) => {
+  deleteFile: async (file) => {
     const id = get().activeProjectId
     if (!id) return
-    await window.fabulist.project.deleteDoc(id, docFile)
-    const openDocs = get().openDocs.filter((f) => f !== docFile)
-    const { [docFile]: _gone, ...docContents } = get().docContents
-    set({ openDocs, docContents })
-    if (get().activeDoc === docFile) {
+    await window.fabulist.project.deleteFile(id, file)
+    const openDocs = get().openDocs.filter((f) => f !== file)
+    const { [file]: _gone, ...fileContents } = get().fileContents
+    set({ openDocs, fileContents })
+    if (get().activeFile === file) {
       const next = openDocs[openDocs.length - 1] ?? null
-      if (next) await get().setActiveDoc(next)
-      else set({ activeDoc: null, content: '', threads: [], external: { seq: extSeq++, content: '' } })
+      if (next) await get().setActiveFile(next)
+      else set({ activeFile: null, content: '', threads: [], external: { seq: extSeq++, content: '' } })
     }
-    await get().loadDocs()
+    await get().loadFiles()
     await get().loadProjects()
   },
 
-  openTab: async (docFile) => {
-    if (!get().openDocs.includes(docFile)) {
-      const openDocs = [...get().openDocs, docFile]
+  openTab: async (file) => {
+    if (!get().openDocs.includes(file)) {
+      const openDocs = [...get().openDocs, file]
       set({ openDocs })
       const id = get().activeProjectId
       if (id) void window.fabulist.project.setOpenTabs(id, combinedTabs(openDocs, get().openPanels))
     }
-    await get().setActiveDoc(docFile)
+    await get().setActiveFile(file)
   },
 
-  closeTab: async (docFile) => {
+  closeTab: async (file) => {
     const id = get().activeProjectId
     if (!id) return
     // flush the file being closed if it's the live one
-    if (get().activeDoc === docFile) await get().flushWrite()
-    const openDocs = get().openDocs.filter((f) => f !== docFile)
-    const { [docFile]: _gone, ...docContents } = get().docContents
-    set({ openDocs, docContents })
+    if (get().activeFile === file) await get().flushWrite()
+    const openDocs = get().openDocs.filter((f) => f !== file)
+    const { [file]: _gone, ...fileContents } = get().fileContents
+    set({ openDocs, fileContents })
     void window.fabulist.project.setOpenTabs(id, combinedTabs(openDocs, get().openPanels))
-    if (get().activeDoc === docFile) {
+    if (get().activeFile === file) {
       const next = openDocs[openDocs.length - 1] ?? null
-      if (next) await get().setActiveDoc(next)
+      if (next) await get().setActiveFile(next)
       else {
-        set({ activeDoc: null, content: '', threads: [], external: { seq: extSeq++, content: '' } })
-        void window.fabulist.project.setActiveDoc(id, null)
+        set({ activeFile: null, content: '', threads: [], external: { seq: extSeq++, content: '' } })
+        void window.fabulist.project.setActiveFile(id, null)
       }
     }
   },
 
-  setActiveDoc: async (docFile) => {
+  setActiveFile: async (file) => {
     const id = get().activeProjectId
-    // selecting a doc always leaves any open harness panel
+    // selecting a file always leaves any open harness panel
     if (get().activePanel) set({ activePanel: null })
-    if (!id || get().activeDoc === docFile) return
-    // stash the outgoing doc's live content and flush its pending write
-    const prevDoc = get().activeDoc
+    if (!id || get().activeFile === file) return
+    // stash the outgoing file's live content and flush its pending write
+    const prevDoc = get().activeFile
     if (prevDoc) {
-      set({ docContents: { ...get().docContents, [prevDoc]: get().content } })
+      set({ fileContents: { ...get().fileContents, [prevDoc]: get().content } })
       await get().flushWrite()
     }
-    // non-text docs (images) have no editable content — their views load by URL
-    const cached = get().docContents[docFile]
-    const content = isTextDoc(docFile)
-      ? cached ?? (await window.fabulist.doc.read(id, docFile))
+    // non-text files (images) have no editable content — their views load by URL
+    const cached = get().fileContents[file]
+    const content = isTextFile(file)
+      ? cached ?? (await window.fabulist.file.read(id, file))
       : ''
     const [rawThreads, font] = await Promise.all([
-      window.fabulist.comments.list(id, docFile),
-      window.fabulist.doc.getFont(id, docFile)
+      window.fabulist.comments.list(id, file),
+      window.fabulist.file.getFont(id, file)
     ])
     set({
-      activeDoc: docFile,
+      activeFile: file,
       content,
-      docContents: { ...get().docContents, [docFile]: content },
+      fileContents: { ...get().fileContents, [file]: content },
       external: { seq: extSeq++, content },
       threads: reanchor(rawThreads, content),
       font: font || DEFAULT_FONT,
@@ -617,20 +617,20 @@ export const useStore = create<FabulistStore>((set, get) => ({
       activeThreadId: null,
       inlineSuggestionId: null
     })
-    void window.fabulist.project.setActiveDoc(id, docFile)
+    void window.fabulist.project.setActiveFile(id, file)
   },
 
   setContent: (content) => {
     const id = get().activeProjectId
-    const docFile = get().activeDoc
-    if (!id || !docFile) return
-    set({ content, docContents: { ...get().docContents, [docFile]: content } })
-    writeTarget = { projectId: id, docFile }
+    const file = get().activeFile
+    if (!id || !file) return
+    set({ content, fileContents: { ...get().fileContents, [file]: content } })
+    writeTarget = { projectId: id, file }
     if (writeTimer) clearTimeout(writeTimer)
     writeTimer = setTimeout(async () => {
       writeTimer = null
-      await window.fabulist.doc.write(id, docFile, get().content).catch(() => {})
-      get().loadDocs()
+      await window.fabulist.file.write(id, file, get().content).catch(() => {})
+      get().loadFiles()
       get().loadProjects()
     }, 400)
     if (idleCommitTimer) clearTimeout(idleCommitTimer)
@@ -638,19 +638,19 @@ export const useStore = create<FabulistStore>((set, get) => ({
       idleCommitTimer = null
       if (get().activeProjectId !== id) return
       await get().flushWrite()
-      const committed = await window.fabulist.doc.snapshot(id, 'Edited').catch(() => false)
+      const committed = await window.fabulist.project.snapshot(id, 'Edited').catch(() => false)
       if (committed) get().loadHistory()
     }, 60_000)
   },
 
   flushWrite: async () => {
     if (!writeTimer || !writeTarget) return
-    const { projectId, docFile } = writeTarget
+    const { projectId, file } = writeTarget
     clearTimeout(writeTimer)
     writeTimer = null
-    const content = get().docContents[docFile] ?? get().content
-    await window.fabulist.doc.write(projectId, docFile, content).catch(() => {})
-    get().loadDocs()
+    const content = get().fileContents[file] ?? get().content
+    await window.fabulist.file.write(projectId, file, content).catch(() => {})
+    get().loadFiles()
     get().loadProjects()
   },
 
@@ -658,7 +658,7 @@ export const useStore = create<FabulistStore>((set, get) => ({
     const id = get().activeProjectId
     if (!id) return
     await get().flushWrite()
-    await window.fabulist.doc.snapshot(id, label)
+    await window.fabulist.project.snapshot(id, label)
     await get().loadHistory()
   },
 
@@ -669,16 +669,16 @@ export const useStore = create<FabulistStore>((set, get) => ({
 
   reloadThreads: async () => {
     const id = get().activeProjectId
-    const docFile = get().activeDoc
-    if (!id || !docFile) return
-    const raw = await window.fabulist.comments.list(id, docFile)
+    const file = get().activeFile
+    if (!id || !file) return
+    const raw = await window.fabulist.comments.list(id, file)
     set({ threads: reanchor(raw, get().content) })
   },
 
   persistAnchors: (anchors) => {
     const id = get().activeProjectId
-    const docFile = get().activeDoc
-    if (!id || !docFile) return
+    const file = get().activeFile
+    if (!id || !file) return
     const content = get().content
     const threads = get().threads.map((t) => {
       const a = anchors.find((x) => x.id === t.id)
@@ -702,7 +702,7 @@ export const useStore = create<FabulistStore>((set, get) => ({
       window.fabulist.comments
         .updateAnchors(
           id,
-          docFile,
+          file,
           threads
             .filter((t) => t.status !== 'resolved')
             .map((t) => ({ id: t.id, anchor: t.anchor, status: t.status }))
@@ -716,10 +716,10 @@ export const useStore = create<FabulistStore>((set, get) => ({
 
   submitDraftComment: async (text) => {
     const id = get().activeProjectId
-    const docFile = get().activeDoc
+    const file = get().activeFile
     const draft = get().draftComment
-    if (!id || !docFile || !draft || !text.trim()) return
-    const thread = await window.fabulist.comments.add(id, docFile, draft.anchor, text.trim())
+    if (!id || !file || !draft || !text.trim()) return
+    const thread = await window.fabulist.comments.add(id, file, draft.anchor, text.trim())
     set({ draftComment: null, activeThreadId: thread.id })
     await get().reloadThreads()
     get().engageClaudeOnThread(thread)
@@ -727,9 +727,9 @@ export const useStore = create<FabulistStore>((set, get) => ({
 
   replyToThread: async (threadId, text) => {
     const id = get().activeProjectId
-    const docFile = get().activeDoc
-    if (!id || !docFile || !text.trim()) return
-    const thread = await window.fabulist.comments.reply(id, docFile, threadId, text.trim())
+    const file = get().activeFile
+    if (!id || !file || !text.trim()) return
+    const thread = await window.fabulist.comments.reply(id, file, threadId, text.trim())
     await get().reloadThreads()
     if (thread) get().engageClaudeOnThread(thread)
   },
@@ -759,17 +759,17 @@ export const useStore = create<FabulistStore>((set, get) => ({
 
   resolveThread: async (threadId, status) => {
     const id = get().activeProjectId
-    const docFile = get().activeDoc
-    if (!id || !docFile) return
-    await window.fabulist.comments.setStatus(id, docFile, threadId, status)
+    const file = get().activeFile
+    if (!id || !file) return
+    await window.fabulist.comments.setStatus(id, file, threadId, status)
     await get().reloadThreads()
   },
 
   removeThread: async (threadId) => {
     const id = get().activeProjectId
-    const docFile = get().activeDoc
-    if (!id || !docFile) return
-    await window.fabulist.comments.remove(id, docFile, threadId)
+    const file = get().activeFile
+    if (!id || !file) return
+    await window.fabulist.comments.remove(id, file, threadId)
     if (get().activeThreadId === threadId) set({ activeThreadId: null })
     await get().reloadThreads()
   },
@@ -842,7 +842,7 @@ export const useStore = create<FabulistStore>((set, get) => ({
     void get().flushWrite()
     window.fabulist.agent.send(id, threadId, prompt.trim(), {
       ...opts,
-      docFile: get().activeDoc ?? undefined
+      file: get().activeFile ?? undefined
     })
   },
 
@@ -855,10 +855,10 @@ export const useStore = create<FabulistStore>((set, get) => ({
 
   setFont: (font) => {
     const id = get().activeProjectId
-    const docFile = get().activeDoc
-    if (!id || !docFile) return
+    const file = get().activeFile
+    if (!id || !file) return
     set({ font })
-    window.fabulist.doc.setFont(id, docFile, font).catch(() => {})
+    window.fabulist.file.setFont(id, file, font).catch(() => {})
   },
 
   loadModels: async () => {
@@ -902,9 +902,9 @@ export const useStore = create<FabulistStore>((set, get) => ({
 
   openPreview: async (commit) => {
     const id = get().activeProjectId
-    const docFile = get().activeDoc
-    if (!id || !docFile) return
-    const content = await window.fabulist.history.show(id, docFile, commit.hash)
+    const file = get().activeFile
+    if (!id || !file) return
+    const content = await window.fabulist.history.show(id, file, commit.hash)
     set({ preview: { hash: commit.hash, content, subject: commit.subject } })
   },
 
@@ -912,15 +912,15 @@ export const useStore = create<FabulistStore>((set, get) => ({
 
   restorePreview: async () => {
     const id = get().activeProjectId
-    const docFile = get().activeDoc
+    const file = get().activeFile
     const preview = get().preview
-    if (!id || !docFile || !preview) return
+    if (!id || !file || !preview) return
     await get().flushWrite()
-    const content = await window.fabulist.history.restore(id, docFile, preview.hash)
+    const content = await window.fabulist.history.restore(id, file, preview.hash)
     set({
       preview: null,
       content,
-      docContents: { ...get().docContents, [docFile]: content },
+      fileContents: { ...get().fileContents, [file]: content },
       external: { seq: extSeq++, content },
       threads: reanchor(get().threads, content)
     })
@@ -996,9 +996,9 @@ export const useStore = create<FabulistStore>((set, get) => ({
           e.projectId === activeProjectId &&
           !get().permissions.some((p) => p.requestId === e.request.requestId)
         ) {
-          // an edit to the focused doc renders inline in the editor; everything
-          // else (other docs, Bash) shows as a card in the chat tab
-          const inline = e.request.filePath === get().activeDoc
+          // an edit to the focused file renders inline in the editor; everything
+          // else (other files, Bash) shows as a card in the chat tab
+          const inline = e.request.filePath === get().activeFile
           set({
             permissions: [...get().permissions, e.request],
             sidebarOpen: true,
@@ -1021,11 +1021,11 @@ export const useStore = create<FabulistStore>((set, get) => ({
         if (e.commentId === get().pendingCommentId) set({ pendingCommentId: null })
         if (e.projectId === activeProjectId) {
           get().loadHistory()
-          get().loadDocs()
+          get().loadFiles()
           get().loadProjects()
           get().loadAgentThreads()
-          // reload comments if the reply landed on the focused doc
-          if (e.commentId && e.docFile === get().activeDoc) get().reloadThreads()
+          // reload comments if the reply landed on the focused file
+          if (e.commentId && e.file === get().activeFile) get().reloadThreads()
           const [next, ...rest] = get().queuedCommentSends
           if (next) {
             set({ queuedCommentSends: rest })
@@ -1042,16 +1042,16 @@ export const useStore = create<FabulistStore>((set, get) => ({
     switch (e.kind) {
       case 'harness-changed':
         void get().loadHarness()
-        void get().loadDocs() // doc kinds/titles may derive from the manifest
+        void get().loadFiles() // file kinds/titles may derive from the manifest
         break
-      case 'doc-external-change':
-        get().handleExternalChange(e.projectId, e.docFile, e.content)
+      case 'file-external-change':
+        get().handleExternalChange(e.projectId, e.file, e.content)
         break
-      case 'doc-touched':
-        void get().loadDocs() // non-text views (images) reload by URL off the doc list
+      case 'file-touched':
+        void get().loadFiles() // non-text views (images) reload by URL off the file list
         break
-      case 'doc-removed':
-        get().handleDocRemoved(e.projectId, e.docFile)
+      case 'file-removed':
+        get().handleFileRemoved(e.projectId, e.file)
         break
       case 'comments-changed':
         void get().reloadThreads()
@@ -1059,37 +1059,37 @@ export const useStore = create<FabulistStore>((set, get) => ({
     }
   },
 
-  handleDocRemoved: (projectId, docFile) => {
+  handleFileRemoved: (projectId, file) => {
     if (get().activeProjectId !== projectId) return
-    const openDocs = get().openDocs.filter((f) => f !== docFile)
-    const { [docFile]: _gone, ...docContents } = get().docContents
-    set({ openDocs, docContents })
+    const openDocs = get().openDocs.filter((f) => f !== file)
+    const { [file]: _gone, ...fileContents } = get().fileContents
+    set({ openDocs, fileContents })
     void window.fabulist.project.setOpenTabs(projectId, combinedTabs(openDocs, get().openPanels))
-    if (get().activeDoc === docFile) {
+    if (get().activeFile === file) {
       const next = openDocs[openDocs.length - 1] ?? null
-      if (next) void get().setActiveDoc(next)
+      if (next) void get().setActiveFile(next)
       else {
-        set({ activeDoc: null, content: '', threads: [], external: { seq: extSeq++, content: '' } })
-        void window.fabulist.project.setActiveDoc(projectId, null)
+        set({ activeFile: null, content: '', threads: [], external: { seq: extSeq++, content: '' } })
+        void window.fabulist.project.setActiveFile(projectId, null)
       }
     }
-    void get().loadDocs()
+    void get().loadFiles()
     void get().loadProjects()
   },
 
-  handleExternalChange: (projectId, docFile, content) => {
+  handleExternalChange: (projectId, file, content) => {
     if (get().activeProjectId !== projectId) return
-    // cache for any open tab; only re-render the editor if it's the live doc
-    if (get().openDocs.includes(docFile) || get().activeDoc === docFile) {
-      set({ docContents: { ...get().docContents, [docFile]: content } })
+    // cache for any open tab; only re-render the editor if it's the live file
+    if (get().openDocs.includes(file) || get().activeFile === file) {
+      set({ fileContents: { ...get().fileContents, [file]: content } })
     }
-    if (get().activeDoc === docFile) {
+    if (get().activeFile === file) {
       set({
         content,
         external: { seq: extSeq++, content },
         threads: reanchor(get().threads, content)
       })
     }
-    get().loadDocs()
+    get().loadFiles()
   }
 }))

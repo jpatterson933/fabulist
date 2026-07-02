@@ -3,16 +3,16 @@ import type { PermissionRequest } from '@shared/types'
 
 export interface SuggestSegment {
   kind: 'del' | 'ins'
-  /** position in the CURRENT document */
+  /** position in the CURRENT file */
   from: number
-  /** del only: end position in the current document */
+  /** del only: end position in the current file */
   to: number
   /** ins only: the text being inserted */
   text?: string
 }
 
 /**
- * Reconstruct what the document would look like if the pending request were
+ * Reconstruct what the file content would look like if the pending request were
  * approved. Returns null when the request can't be rendered inline (old text
  * no longer present, non-file tool, etc.) — caller falls back to the chat card.
  */
@@ -37,7 +37,7 @@ export function buildProposed(current: string, req: PermissionRequest): string |
 
 /**
  * Word-level diff between current and proposed content, mapped onto positions
- * in the current document: deletions become strike-through ranges, insertions
+ * in the current file: deletions become strike-through ranges, insertions
  * become widgets anchored where the text would land.
  */
 export function suggestionSegments(current: string, proposed: string): SuggestSegment[] {
@@ -87,9 +87,9 @@ export function suggestionSegments(current: string, proposed: string): SuggestSe
 export function computeSuggestion(
   current: string,
   req: PermissionRequest,
-  docFile: string
+  file: string
 ): SuggestSegment[] | null {
-  if (req.filePath !== docFile) return null
+  if (req.filePath !== file) return null
   const proposed = buildProposed(current, req)
   if (proposed === null) return null
   const segments = suggestionSegments(current, proposed)

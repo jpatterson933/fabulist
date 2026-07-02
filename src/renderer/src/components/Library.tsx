@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { DocMeta } from '@shared/types'
+import type { FileMeta } from '@shared/types'
 import { useStore } from '@/store'
 
 export default function Library(): React.JSX.Element {
@@ -16,7 +16,7 @@ export default function Library(): React.JSX.Element {
           </span>
           <span className="library-brand-mark">Fabulist</span>
         </div>
-        {railView === 'docs' && activeProjectId ? <DocsView /> : <ProjectsView />}
+        {railView === 'files' && activeProjectId ? <DocsView /> : <ProjectsView />}
       </div>
     </aside>
   )
@@ -57,7 +57,7 @@ function ProjectsView(): React.JSX.Element {
               <span className="library-item-title">{p.title}</span>
               <span className="library-item-meta">
                 {p.studio && <span className="library-item-studio">✦ {p.studio} · </span>}
-                {relativeTime(p.updatedAt)} · {p.docCount} {p.docCount === 1 ? 'doc' : 'docs'}
+                {relativeTime(p.updatedAt)} · {p.fileCount} {p.fileCount === 1 ? 'file' : 'files'}
               </span>
             </button>
             {confirmDelete === p.id ? (
@@ -99,16 +99,16 @@ function ProjectsView(): React.JSX.Element {
   )
 }
 
-/** Docs grouped into their folders; folders sort first, alphabetically. */
+/** Files grouped into their folders; folders sort first, alphabetically. */
 interface DocFolder {
   path: string // "" for the root
   name: string
   folders: DocFolder[]
-  docs: DocMeta[]
+  files: FileMeta[]
 }
 
-function buildDocTree(docs: DocMeta[]): DocFolder {
-  const root: DocFolder = { path: '', name: '', folders: [], docs: [] }
+function buildDocTree(files: FileMeta[]): DocFolder {
+  const root: DocFolder = { path: '', name: '', folders: [], files: [] }
   const folderFor = (dir: string): DocFolder => {
     if (dir === '') return root
     let node = root
@@ -117,7 +117,7 @@ function buildDocTree(docs: DocMeta[]): DocFolder {
       sofar = sofar ? `${sofar}/${seg}` : seg
       let child = node.folders.find((f) => f.path === sofar)
       if (!child) {
-        child = { path: sofar, name: seg, folders: [], docs: [] }
+        child = { path: sofar, name: seg, folders: [], files: [] }
         node.folders.push(child)
         node.folders.sort((a, b) => a.name.localeCompare(b.name))
       }
@@ -125,9 +125,9 @@ function buildDocTree(docs: DocMeta[]): DocFolder {
     }
     return node
   }
-  for (const d of docs) {
+  for (const d of files) {
     const slash = d.file.lastIndexOf('/')
-    folderFor(slash === -1 ? '' : d.file.slice(0, slash)).docs.push(d)
+    folderFor(slash === -1 ? '' : d.file.slice(0, slash)).files.push(d)
   }
   return root
 }
@@ -135,16 +135,16 @@ function buildDocTree(docs: DocMeta[]): DocFolder {
 function DocsView(): React.JSX.Element {
   const projects = useStore((s) => s.projects)
   const activeProjectId = useStore((s) => s.activeProjectId)
-  const docs = useStore((s) => s.docs)
-  const activeDoc = useStore((s) => s.activeDoc)
+  const files = useStore((s) => s.files)
+  const activeFile = useStore((s) => s.activeFile)
   const openTab = useStore((s) => s.openTab)
-  const deleteDoc = useStore((s) => s.deleteDoc)
+  const deleteFile = useStore((s) => s.deleteFile)
   const setRailView = useStore((s) => s.setRailView)
   const harness = useStore((s) => s.harness)
   const activePanel = useStore((s) => s.activePanel)
   const openPanel = useStore((s) => s.openPanel)
   const openWorkshop = useStore((s) => s.openWorkshop)
-  const setNewDocOpen = useStore((s) => s.setNewDocOpen)
+  const setNewFileOpen = useStore((s) => s.setNewFileOpen)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
 
@@ -172,23 +172,23 @@ function DocsView(): React.JSX.Element {
   const commandRuns = useStore((s) => s.commandRuns)
   const runCommand = useStore((s) => s.runCommand)
   const stopCommand = useStore((s) => s.stopCommand)
-  const tree = useMemo(() => buildDocTree(docs), [docs])
+  const tree = useMemo(() => buildDocTree(files), [files])
 
-  const renderDoc = (d: DocMeta, depth: number): React.JSX.Element => (
+  const renderDoc = (d: FileMeta, depth: number): React.JSX.Element => (
     <div
       key={d.file}
-      className={`library-doc ${d.file === activeDoc && !activePanel ? 'is-active' : ''}`}
+      className={`library-file ${d.file === activeFile && !activePanel ? 'is-active' : ''}`}
       style={{ '--rail-depth': depth } as React.CSSProperties}
     >
       <button
-        className="library-doc-main"
+        className="library-file-main"
         onClick={() => void openTab(d.file)}
         title={d.kindLabel ? `${d.file} · ${d.kindLabel}` : d.file}
       >
-        <span className="library-doc-glyph" aria-hidden>
+        <span className="library-file-glyph" aria-hidden>
           {d.kindIcon ?? '❡'}
         </span>
-        <span className="library-doc-title">{d.title}</span>
+        <span className="library-file-title">{d.title}</span>
       </button>
       {confirmDelete === d.file ? (
         <div className="library-item-confirm">
@@ -196,7 +196,7 @@ function DocsView(): React.JSX.Element {
             className="danger"
             onClick={() => {
               setConfirmDelete(null)
-              void deleteDoc(d.file)
+              void deleteFile(d.file)
             }}
           >
             Delete
@@ -204,7 +204,7 @@ function DocsView(): React.JSX.Element {
           <button onClick={() => setConfirmDelete(null)}>Keep</button>
         </div>
       ) : (
-        <button className="library-item-x" title="Delete document" onClick={() => setConfirmDelete(d.file)}>
+        <button className="library-item-x" title="Delete file" onClick={() => setConfirmDelete(d.file)}>
           ×
         </button>
       )}
@@ -232,12 +232,12 @@ function DocsView(): React.JSX.Element {
             <path d="M4.5 3 7.5 6l-3 3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           <span className="library-folder-name">{folder.name}</span>
-          <span className="library-folder-count">{folder.docs.length + folder.folders.length}</span>
+          <span className="library-folder-count">{folder.files.length + folder.folders.length}</span>
         </button>
         {!isCollapsed && (
           <>
             {folder.folders.map((f) => renderFolder(f, depth + 1))}
-            {folder.docs.map((d) => renderDoc(d, depth + 1))}
+            {folder.files.map((d) => renderDoc(d, depth + 1))}
           </>
         )}
       </div>
@@ -259,7 +259,7 @@ function DocsView(): React.JSX.Element {
         title={
           harness?.config.name
             ? `${harness.config.description ?? 'This project defines its own studio in fabulist.json'}. Open the workshop to change it.`
-            : 'Open the workshop: design a custom studio for this project with the agent — doc types, actions, skills, panels.'
+            : 'Open the workshop: design a custom studio for this project with the agent — file types, actions, skills, panels.'
         }
       >
         <span className="library-studio-glyph" aria-hidden>
@@ -274,18 +274,18 @@ function DocsView(): React.JSX.Element {
       </button>
 
       <div className="library-head">
-        <span className="library-label">Documents</span>
-        <button className="library-new" onClick={() => setNewDocOpen(true)} title="New document">
+        <span className="library-label">Files</span>
+        <button className="library-new" onClick={() => setNewFileOpen(true)} title="New file">
           +
         </button>
       </div>
 
       <nav className="library-list">
-        {docs.length === 0 && (
-          <p className="library-empty">No documents yet. Add one with +</p>
+        {files.length === 0 && (
+          <p className="library-empty">No files yet. Add one with +</p>
         )}
         {tree.folders.map((f) => renderFolder(f, 0))}
-        {tree.docs.map((d) => renderDoc(d, 0))}
+        {tree.files.map((d) => renderDoc(d, 0))}
 
         {panels.length > 0 && (
           <>
@@ -293,16 +293,16 @@ function DocsView(): React.JSX.Element {
               <span className="library-label">Views</span>
             </div>
             {panels.map((p) => (
-              <div key={p.id} className={`library-doc ${p.id === activePanel ? 'is-active' : ''}`}>
+              <div key={p.id} className={`library-file ${p.id === activePanel ? 'is-active' : ''}`}>
                 <button
-                  className="library-doc-main"
+                  className="library-file-main"
                   onClick={() => openPanel(p.id)}
                   title={`${p.source} — view from fabulist.json`}
                 >
-                  <span className="library-doc-glyph" aria-hidden>
+                  <span className="library-file-glyph" aria-hidden>
                     ▦
                   </span>
-                  <span className="library-doc-title">{p.title}</span>
+                  <span className="library-file-title">{p.title}</span>
                 </button>
               </div>
             ))}
@@ -319,20 +319,20 @@ function DocsView(): React.JSX.Element {
               return (
                 <div
                   key={c.id}
-                  className={`library-doc ${`command:${c.id}` === activePanel ? 'is-active' : ''}`}
+                  className={`library-file ${`command:${c.id}` === activePanel ? 'is-active' : ''}`}
                 >
                   <button
-                    className="library-doc-main"
+                    className="library-file-main"
                     onClick={() => openPanel(`command:${c.id}`)}
                     title={`${c.run} — command from fabulist.json`}
                   >
                     <span
-                      className={`library-doc-glyph ${running ? 'library-command-running' : ''}`}
+                      className={`library-file-glyph ${running ? 'library-command-running' : ''}`}
                       aria-hidden
                     >
                       {running ? '●' : '▸'}
                     </span>
-                    <span className="library-doc-title">{c.label}</span>
+                    <span className="library-file-title">{c.label}</span>
                   </button>
                   <button
                     className="library-command-toggle"

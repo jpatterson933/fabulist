@@ -11,7 +11,7 @@ import type { SuggestSegment } from '@/lib/suggest'
 
 /**
  * Marks transactions that replace the document from outside the editor
- * (Claude's edits, restores, doc switches). Position-mapped thread ranges are
+ * (Claude's edits, restores, file switches). Position-mapped thread ranges are
  * meaningless across such replaces and must never be persisted as anchors.
  */
 export const externalChange = Annotation.define<boolean>()
@@ -203,7 +203,7 @@ export function baseExtensions(): Extension[] {
   ]
 }
 
-// ---------- languages: markdown for prose docs, by-extension for the rest ----------
+// ---------- languages: markdown for prose files, by-extension for the rest ----------
 
 /** The markdown language stack, with fenced code blocks highlighted per language. */
 export function markdownLanguageExtensions(): Extension[] {
@@ -211,10 +211,10 @@ export function markdownLanguageExtensions(): Extension[] {
 }
 
 /**
- * Language support for a non-markdown text doc, matched by filename via the
+ * Language support for a non-markdown text file, matched by filename via the
  * lazy @codemirror/language-data registry. Unknown extensions still get the
  * default highlight style (a no-op without a parser). The monospace/full-width
- * look rides on the host's `is-code-doc` / `panel-code` CSS classes — theme
+ * look rides on the host's `is-code-file` / `panel-code` CSS classes — theme
  * extensions can't reliably out-specificity the base editor theme.
  */
 export async function codeLanguageExtensions(file: string): Promise<Extension[]> {

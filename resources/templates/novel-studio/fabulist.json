@@ -4,7 +4,7 @@
   "description": "Long-form fiction: scenes in chapters, a living story bible, continuity checking",
   "version": 1,
   "template": true,
-  "docTypes": [
+  "fileTypes": [
     {
       "id": "scene",
       "match": "chapters/*.scene.md",
@@ -17,7 +17,7 @@
   "actions": [
     { "label": "Tighten prose", "surface": "selection", "skill": "tighten-prose" },
     { "label": "Punch up dialogue", "surface": "selection", "skill": "punch-up-dialogue" },
-    { "label": "Summarize this chapter", "surface": "doc", "prompt": "Give me a five-sentence summary of this scene: what changes, who wants what, and what question it leaves open. Reply in chat only." },
+    { "label": "Summarize this chapter", "surface": "file", "prompt": "Give me a five-sentence summary of this scene: what changes, who wants what, and what question it leaves open. Reply in chat only." },
     { "label": "Continuity check", "surface": "project", "skill": "continuity-check" }
   ],
   "panels": [

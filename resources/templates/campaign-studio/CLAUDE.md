@@ -9,4 +9,4 @@ index of every NPC (name, role, where, one hook).
 - Keep `roster.md` in sync whenever an NPC is added or changed.
 - Sessions are the record of play; never rewrite history in old session notes.
 - When inventing content, follow the world primer's tone and constraints.
-- Keep chat replies brief; put substance in the documents.
+- Keep chat replies brief; put substance in the files.

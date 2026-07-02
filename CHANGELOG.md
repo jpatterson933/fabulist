@@ -5,7 +5,17 @@ All notable changes to Fabulist are documented here. The format follows
 
 ## [Unreleased]
 
-### Added
+### Changed
+- **"Documents" are gone; everything is a file.** The whole vocabulary moved with the
+  model: the rail header says Files, the dialog is New File, the palette group is Files,
+  and the agent is told about files, not documents. The manifest block is now
+  `fileTypes` (was `docTypes`) and the action surface is `"file"` (was `"doc"`) — hard
+  renames, no aliases (pre-release; a manifest still using `docTypes` gets an explicit
+  warning in the studio UI instead of silent ignoring). Internals followed completely:
+  `FileMeta`/`FileFormat` types, `file:*` / `project:files` IPC channels,
+  `window.fabulist.file.*`, project.json stores `files`/`activeFile`, and the shared
+  registry is `src/shared/fileFormats.ts`. Built-in starters and docs updated; existing
+  local projects re-derive their state on first open.
 - **Every file is a document now — no manifest required.** Any project (bare or studio)
   admits every textual file as a document: `pages/*.html`, `src/**`, `data/*.json`,
   `Makefile` — they all appear in the rail and open in the editor with syntax

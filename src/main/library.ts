@@ -2,15 +2,15 @@ import { app } from 'electron'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
-import type { AgentThread, ChatItem, DocMeta, ProjectMeta } from '@shared/types'
-import { DOC_EXTENSIONS, deriveDocMeta, docTypeForFile, isDocFile, isTextDoc } from '@shared/docTypes'
+import type { AgentThread, ChatItem, FileMeta, ProjectMeta } from '@shared/types'
+import { MAPPED_EXTENSIONS, deriveFileMeta, fileFormatFor, isProjectFile, isTextFile } from '@shared/fileFormats'
 import {
   HARNESS_FILE,
   HARNESS_LOCAL_FILE,
-  docTypeFor,
+  fileTypeFor,
   fileNameForType,
   isSafeRelPath,
-  type DocTypeDef,
+  type FileTypeDef,
   type HarnessConfig
 } from '@shared/harness'
 import { initRepo, commitAll } from './git'
@@ -37,8 +37,8 @@ export async function ensureLibraryRoot(): Promise<void> {
   await fs.mkdir(LIBRARY_ROOT, { recursive: true })
 }
 
-/** The single doc file every pre-projects folder held; kept for migration. */
-export const DOC_FILE = 'document.md'
+/** The single document file every pre-projects folder held; kept for migration. */
+export const LEGACY_DOC_FILE = 'document.md'
 export const COMMENTS_FILE = 'comments.json'
 
 const CLAUDE_MD = (title: string) => `# About this project
@@ -49,22 +49,21 @@ of work it turns out to be: prose, a website, code, data, notes, slides.
 
 ## Ground rules
 
-- A project holds one or more documents — the files in this folder, of any kind
-  (Markdown, HTML, source code, data, images). Each file is a piece of the work;
-  treat them all with care. The user tells you which document they are currently
-  focused on.
-- You can read and edit any document in the project — use this to keep the whole
+- The files in this folder are the work — any kind (Markdown, HTML, source code,
+  data, images). Each one is a piece of it; treat them all with care. The user
+  tells you which file they are currently focused on.
+- You can read and edit any file in the project — use this to keep the whole
   consistent (shared structure, naming, style, cross-references).
 - Prefer the smallest edit that accomplishes the goal. Preserve the user's intent
   and conventions unless asked to rework something.
 - \`comments.json\` is managed by the app. Never edit it; the app records your replies.
 - When asked to respond to a comment on quoted text, address that text
-  specifically. If a change is warranted, edit the relevant document directly —
+  specifically. If a change is warranted, edit the relevant file directly —
   the user reviews and approves every edit before it lands.
-- Keep chat replies brief. The documents are where the substance goes.
+- Keep chat replies brief. The files are where the substance goes.
 - You may create supporting files (notes, outlines, reference sheets) here.
 - \`fabulist.json\` (optional, at the project root) is the studio manifest: it can
-  define custom doc types, palette actions, panels, and a permission profile for
+  define custom file types, palette actions, panels, and a permission profile for
   this project. The user designs it with you in a "studio workshop" conversation.
 `
 
@@ -93,42 +92,42 @@ export function projectPath(id: string): string {
 }
 
 /**
- * Absolute path to a doc file within a project. Doc ids are project-relative
+ * Absolute path to a file within a project. File ids are project-relative
  * POSIX paths ("chapters/ch-1.md"); traversal, absolute paths, and dot
  * segments are rejected.
  */
-export function docPath(projectId: string, docFile: string): string {
-  if (!isSafeRelPath(docFile)) {
-    throw new Error(`Invalid document file: ${docFile}`)
+export function projectFilePath(projectId: string, file: string): string {
+  if (!isSafeRelPath(file)) {
+    throw new Error(`Invalid project file: ${file}`)
   }
-  return path.join(projectPath(projectId), ...docFile.split('/'))
+  return path.join(projectPath(projectId), ...file.split('/'))
 }
 
-// --- project.json: docs registry, per-doc prefs, open tabs (app state) ---
+// --- project.json: files registry, per-file prefs, open tabs (app state) ---
 
-interface ProjectDocEntry {
+interface ProjectFileEntry {
   file: string
   font?: string
 }
 
 interface ProjectFile {
   title: string
-  docs: ProjectDocEntry[]
+  files: ProjectFileEntry[]
   openTabs: string[]
-  activeDoc: string | null
+  activeFile: string | null
 }
 
 function projectJsonPath(projectId: string): string {
   return path.join(projectPath(projectId), STATE_DIR, 'project.json')
 }
 
-// Top-level files that are project machinery, not documents.
+// Top-level files that are project machinery, not work files.
 export const RESERVED_FILES = new Set([
   'CLAUDE.md', 'AGENTS.md', 'README.md',
   COMMENTS_FILE, HARNESS_FILE, HARNESS_LOCAL_FILE,
   'package.json', 'package-lock.json'
 ])
-// Folders that hold app/tool machinery or build output, never documents.
+// Folders that hold app/tool machinery or build output, never work files.
 export const IGNORED_DIRS = new Set([
   'attachments', 'node_modules', 'dist', 'build', 'out', 'coverage',
   'vendor', 'target', '__pycache__'
@@ -136,15 +135,15 @@ export const IGNORED_DIRS = new Set([
 const SCAN_DEPTH = 8
 
 /**
- * All doc files in a project as project-relative POSIX paths, sorted.
+ * All work files in a project as project-relative POSIX paths, sorted.
  * Every textual file and every image counts — a studio harness adds kind
- * labels and templates via docType globs, but admission needs no manifest.
+ * labels and templates via fileType globs, but admission needs no manifest.
  */
-async function scanDocFiles(projectId: string): Promise<string[]> {
+async function scanProjectFiles(projectId: string): Promise<string[]> {
   const root = projectPath(projectId)
   const out: string[] = []
-  const isDoc = (rel: string, name: string): boolean =>
-    !RESERVED_FILES.has(rel) && isDocFile(name)
+  const isWorkFile = (rel: string, name: string): boolean =>
+    !RESERVED_FILES.has(rel) && isProjectFile(name)
   const walk = async (rel: string, depth: number): Promise<void> => {
     const entries = await fs
       .readdir(rel ? path.join(root, ...rel.split('/')) : root, { withFileTypes: true })
@@ -154,7 +153,7 @@ async function scanDocFiles(projectId: string): Promise<string[]> {
       const childRel = rel ? `${rel}/${e.name}` : e.name
       if (e.isDirectory()) {
         if (depth < SCAN_DEPTH && !IGNORED_DIRS.has(e.name)) await walk(childRel, depth + 1)
-      } else if (e.isFile() && isDoc(childRel, e.name)) {
+      } else if (e.isFile() && isWorkFile(childRel, e.name)) {
         out.push(childRel)
       }
     }
@@ -164,7 +163,7 @@ async function scanDocFiles(projectId: string): Promise<string[]> {
 }
 
 /**
- * Read a project's app state, migrating a pre-projects single-doc folder on
+ * Read a project's app state, migrating a pre-projects single-document folder on
  * first read: re-key comments.json, lift the legacy editor font, and write a
  * project.json. Idempotent — once project.json exists this is a plain read.
  * Must run inside the project's state lock.
@@ -175,12 +174,12 @@ async function ensureProjectUnlocked(projectId: string): Promise<ProjectFile> {
   if (existing) {
     try {
       const parsed = JSON.parse(existing) as Partial<ProjectFile>
-      const docs = Array.isArray(parsed.docs) ? parsed.docs : []
+      const files = Array.isArray(parsed.files) ? parsed.files : []
       return {
         title: parsed.title || projectId,
-        docs,
+        files,
         openTabs: Array.isArray(parsed.openTabs) ? parsed.openTabs : [],
-        activeDoc: parsed.activeDoc ?? docs[0]?.file ?? null
+        activeFile: parsed.activeFile ?? files[0]?.file ?? null
       }
     } catch {
       /* fall through to rebuild */
@@ -188,32 +187,32 @@ async function ensureProjectUnlocked(projectId: string): Promise<ProjectFile> {
   }
 
   // --- migrate / initialize ---
-  const files = await scanDocFiles(projectId)
+  const onDisk = await scanProjectFiles(projectId)
   // legacy single-doc font lived in state.json
   const legacyState = await readState(projectId)
-  const docs: ProjectDocEntry[] = files.map((file) => ({
+  const files: ProjectFileEntry[] = onDisk.map((file) => ({
     file,
-    font: file === DOC_FILE ? legacyState.font : undefined
+    font: file === LEGACY_DOC_FILE ? legacyState.font : undefined
   }))
-  const primary = files.includes(DOC_FILE) ? DOC_FILE : files[0]
-  // title from the legacy doc file or the first markdown doc; a code or data
+  const primary = onDisk.includes(LEGACY_DOC_FILE) ? LEGACY_DOC_FILE : onDisk[0]
+  // title from the legacy doc file or the first markdown file; a code or data
   // file's name makes a poor project title, so otherwise keep the folder name
-  const titleSource = files.includes(DOC_FILE)
-    ? DOC_FILE
-    : files.find((f) => f.toLowerCase().endsWith('.md'))
+  const titleSource = onDisk.includes(LEGACY_DOC_FILE)
+    ? LEGACY_DOC_FILE
+    : onDisk.find((f) => f.toLowerCase().endsWith('.md'))
   let title = projectId
   if (titleSource) {
-    const content = await fs.readFile(docPath(projectId, titleSource), 'utf8').catch(() => '')
-    title = deriveDocMeta(titleSource, content).title
+    const content = await fs.readFile(projectFilePath(projectId, titleSource), 'utf8').catch(() => '')
+    title = deriveFileMeta(titleSource, content).title
   }
   const project: ProjectFile = {
     title,
-    docs,
+    files,
     openTabs: primary ? [primary] : [],
-    activeDoc: primary ?? null
+    activeFile: primary ?? null
   }
 
-  // re-key a flat comments.json ({threads:[]}) into per-doc ({ "<file>": {threads} })
+  // re-key a flat comments.json ({threads:[]}) into per-file ({ "<file>": {threads} })
   await migrateCommentsFile(projectId)
   // drop the now-relocated font from state.json
   if (legacyState.font !== undefined) await patchStateUnlocked(projectId, { font: undefined })
@@ -231,7 +230,7 @@ async function migrateCommentsFile(projectId: string): Promise<void> {
     const data = JSON.parse(raw)
     // legacy flat shape: { threads: [...] }
     if (data && Array.isArray(data.threads)) {
-      const rekeyed = { [DOC_FILE]: { threads: data.threads } }
+      const rekeyed = { [LEGACY_DOC_FILE]: { threads: data.threads } }
       await fs.writeFile(file, JSON.stringify(rekeyed, null, 2))
     }
   } catch {
@@ -259,7 +258,7 @@ export function setProjectTitle(projectId: string, title: string): Promise<void>
   return patchProject(projectId, { title })
 }
 
-// --- doc metadata ---
+// --- file metadata ---
 
 /** Drop a leading YAML frontmatter block so title/preview derive from the body. */
 function stripFrontmatter(content: string): string {
@@ -277,8 +276,8 @@ function frontmatterValue(content: string, key: string): string | undefined {
   return undefined
 }
 
-/** Title per the harness doc type's titleFrom rule; falls back to the h1 derivation. */
-function titleForType(file: string, content: string, harnessType: DocTypeDef, fallback: string): string {
+/** Title per the harness file type's titleFrom rule; falls back to the h1 derivation. */
+function titleForType(file: string, content: string, harnessType: FileTypeDef, fallback: string): string {
   const rule = harnessType.titleFrom
   if (rule === 'filename') {
     const base = file.split('/').pop() ?? file
@@ -290,23 +289,23 @@ function titleForType(file: string, content: string, harnessType: DocTypeDef, fa
   return fallback
 }
 
-async function readDocMeta(
+async function readFileMeta(
   projectId: string,
   file: string,
   config?: HarnessConfig
-): Promise<DocMeta | null> {
-  const type = docTypeForFile(file)
+): Promise<FileMeta | null> {
+  const type = fileFormatFor(file)
   if (!type) return null
-  const full = docPath(projectId, file)
+  const full = projectFilePath(projectId, file)
   try {
-    // non-text docs (images) never have their bytes read as content
+    // non-text files (images) never have their bytes read as content
     const [content, stat] = await Promise.all([
-      isTextDoc(file) ? fs.readFile(full, 'utf8') : Promise.resolve(''),
+      isTextFile(file) ? fs.readFile(full, 'utf8') : Promise.resolve(''),
       fs.stat(full)
     ])
-    const harnessType = config ? docTypeFor(config, file) : null
-    // frontmatter is metadata for any doc — titles/previews derive from the body
-    const derived = deriveDocMeta(file, stripFrontmatter(content))
+    const harnessType = config ? fileTypeFor(config, file) : null
+    // frontmatter is metadata for any file — titles/previews derive from the body
+    const derived = deriveFileMeta(file, stripFrontmatter(content))
     return {
       file,
       type,
@@ -324,19 +323,19 @@ async function readDocMeta(
   }
 }
 
-/** All docs in a project, ordered by project.json then any newly-discovered files. */
-export async function listProjectDocs(projectId: string): Promise<DocMeta[]> {
+/** All files in a project, ordered by project.json then any newly-discovered files. */
+export async function listProjectFiles(projectId: string): Promise<FileMeta[]> {
   const config = await loadMergedConfig(projectId)
   const [project, onDisk] = await Promise.all([
     readProject(projectId),
-    scanDocFiles(projectId)
+    scanProjectFiles(projectId)
   ])
   const ordered = [
-    ...project.docs.map((d) => d.file).filter((f) => onDisk.includes(f)),
-    ...onDisk.filter((f) => !project.docs.some((d) => d.file === f))
+    ...project.files.map((d) => d.file).filter((f) => onDisk.includes(f)),
+    ...onDisk.filter((f) => !project.files.some((d) => d.file === f))
   ]
-  const metas = await Promise.all(ordered.map((f) => readDocMeta(projectId, f, config)))
-  return metas.filter((m): m is DocMeta => m !== null)
+  const metas = await Promise.all(ordered.map((f) => readFileMeta(projectId, f, config)))
+  return metas.filter((m): m is FileMeta => m !== null)
 }
 
 export async function listProjects(): Promise<ProjectMeta[]> {
@@ -347,12 +346,12 @@ export async function listProjects(): Promise<ProjectMeta[]> {
   const metas = await Promise.all(
     dirs.map(async (e) => {
       const id = e.name
-      const files = await scanDocFiles(id)
-      // folders with no docs are noise — unless they declare a studio manifest
+      const files = await scanProjectFiles(id)
+      // folders with no files are noise — unless they declare a studio manifest
       if (files.length === 0 && !(await exists(path.join(projectPath(id), 'fabulist.json')))) return null
       const [project, studio] = await Promise.all([readProject(id), studioName(id)])
       const stats = await Promise.all(
-        files.map((f) => fs.stat(docPath(id, f)).catch(() => null))
+        files.map((f) => fs.stat(projectFilePath(id, f)).catch(() => null))
       )
       const times = stats.filter(Boolean).map((s) => s!.mtimeMs)
       const births = stats.filter(Boolean).map((s) => s!.birthtimeMs)
@@ -360,7 +359,7 @@ export async function listProjects(): Promise<ProjectMeta[]> {
         id,
         title: project.title,
         path: projectPath(id),
-        docCount: files.length,
+        fileCount: files.length,
         createdAt: births.length ? Math.min(...births) : Date.now(),
         updatedAt: times.length ? Math.max(...times) : Date.now(),
         studio
@@ -389,18 +388,18 @@ export async function createProject(title: string): Promise<ProjectMeta> {
   while (await exists(projectPath(id))) id = `${slugify(clean)}-${++n}`
 
   const dir = projectPath(id)
-  const docFile = `${slugify(clean)}.md`
+  const file = `${slugify(clean)}.md`
   await fs.mkdir(dir, { recursive: true })
-  await fs.writeFile(path.join(dir, docFile), `# ${clean}\n\n`)
+  await fs.writeFile(path.join(dir, file), `# ${clean}\n\n`)
   await fs.writeFile(path.join(dir, 'CLAUDE.md'), CLAUDE_MD(clean))
   await fs.writeFile(path.join(dir, COMMENTS_FILE), JSON.stringify({}, null, 2))
   await fs.writeFile(path.join(dir, '.gitignore'), GITIGNORE)
   await fs.mkdir(path.join(dir, STATE_DIR), { recursive: true })
   await writeProjectUnlocked(id, {
     title: clean,
-    docs: [{ file: docFile }],
-    openTabs: [docFile],
-    activeDoc: docFile
+    files: [{ file: file }],
+    openTabs: [file],
+    activeFile: file
   })
   await initRepo(dir)
   await commitAll(dir, `Created "${clean}"`)
@@ -411,18 +410,18 @@ export async function createProject(title: string): Promise<ProjectMeta> {
 }
 
 /**
- * Create a new doc in a project; registers it and makes it the active tab.
- * With a harness doc-type id, the filename follows the type's glob and the
+ * Create a new file in a project; registers it and makes it the active tab.
+ * With a harness file-type id, the filename follows the type's glob and the
  * type's template seeds the content.
  */
-export async function createDoc(projectId: string, title: string, typeId?: string): Promise<DocMeta> {
+export async function createFile(projectId: string, title: string, typeId?: string): Promise<FileMeta> {
   const clean = title.trim() || 'Untitled'
   const config = await loadMergedConfig(projectId)
-  const harnessType = typeId ? config.docTypes.find((t) => t.id === typeId) ?? null : null
+  const harnessType = typeId ? config.fileTypes.find((t) => t.id === typeId) ?? null : null
   return withStateLock(projectId, async () => {
     const project = await ensureProjectUnlocked(projectId)
-    const onDisk = await scanDocFiles(projectId)
-    const taken = [...onDisk, ...project.docs.map((d) => d.file)]
+    const onDisk = await scanProjectFiles(projectId)
+    const taken = [...onDisk, ...project.files.map((d) => d.file)]
     let file: string
     if (harnessType) {
       const slug = slugify(clean)
@@ -434,17 +433,17 @@ export async function createDoc(projectId: string, title: string, typeId?: strin
     const seed = harnessType?.template
       ? harnessType.template.replaceAll('{{title}}', clean)
       : `# ${clean}\n\n`
-    const full = docPath(projectId, file)
+    const full = projectFilePath(projectId, file)
     await fs.mkdir(path.dirname(full), { recursive: true }) // typed globs may nest
     await fs.writeFile(full, seed)
     await writeProjectUnlocked(projectId, {
       ...project,
-      docs: [...project.docs, { file }],
+      files: [...project.files, { file }],
       openTabs: [...project.openTabs.filter((f) => f !== file), file],
-      activeDoc: file
+      activeFile: file
     })
-    const meta = await readDocMeta(projectId, file, config)
-    if (!meta) throw new Error('Failed to create document')
+    const meta = await readFileMeta(projectId, file, config)
+    if (!meta) throw new Error('Failed to create file')
     await commitAll(projectPath(projectId), `Added "${clean}"`).catch(() => {})
     return meta
   })
@@ -481,40 +480,40 @@ export async function deleteProject(projectId: string): Promise<void> {
   await fs.rm(projectPath(projectId), { recursive: true, force: true })
 }
 
-/** Remove a single doc file from a project (and unregister it). */
-export async function deleteDoc(projectId: string, docFile: string): Promise<void> {
-  await fs.rm(docPath(projectId, docFile), { force: true })
+/** Remove a single file from a project (and unregister it). */
+export async function deleteFile(projectId: string, file: string): Promise<void> {
+  await fs.rm(projectFilePath(projectId, file), { force: true })
   const project = await readProject(projectId)
-  const docs = project.docs.filter((d) => d.file !== docFile)
-  const openTabs = project.openTabs.filter((f) => f !== docFile)
-  const activeDoc =
-    project.activeDoc === docFile ? openTabs[openTabs.length - 1] ?? docs[0]?.file ?? null : project.activeDoc
-  await patchProject(projectId, { docs, openTabs, activeDoc })
+  const files = project.files.filter((d) => d.file !== file)
+  const openTabs = project.openTabs.filter((f) => f !== file)
+  const activeFile =
+    project.activeFile === file ? openTabs[openTabs.length - 1] ?? files[0]?.file ?? null : project.activeFile
+  await patchProject(projectId, { files, openTabs, activeFile })
 }
 
-export async function readDoc(projectId: string, docFile: string): Promise<string> {
-  return fs.readFile(docPath(projectId, docFile), 'utf8')
+export async function readFileContent(projectId: string, file: string): Promise<string> {
+  return fs.readFile(projectFilePath(projectId, file), 'utf8')
 }
 
-export async function writeDoc(projectId: string, docFile: string, content: string): Promise<void> {
-  await fs.writeFile(docPath(projectId, docFile), content)
+export async function writeFileContent(projectId: string, file: string, content: string): Promise<void> {
+  await fs.writeFile(projectFilePath(projectId, file), content)
 }
 
-// --- per-doc font (stored in project.json) ---
+// --- per-file font (stored in project.json) ---
 
-export async function getDocFont(projectId: string, docFile: string): Promise<string> {
+export async function getFileFont(projectId: string, file: string): Promise<string> {
   const project = await readProject(projectId)
-  return project.docs.find((d) => d.file === docFile)?.font ?? ''
+  return project.files.find((d) => d.file === file)?.font ?? ''
 }
 
-export function setDocFont(projectId: string, docFile: string, font: string): Promise<void> {
+export function setFileFont(projectId: string, file: string, font: string): Promise<void> {
   return withStateLock(projectId, async () => {
     const project = await ensureProjectUnlocked(projectId)
-    const has = project.docs.some((d) => d.file === docFile)
-    const docs = has
-      ? project.docs.map((d) => (d.file === docFile ? { ...d, font: font || undefined } : d))
-      : [...project.docs, { file: docFile, font: font || undefined }]
-    await writeProjectUnlocked(projectId, { ...project, docs })
+    const has = project.files.some((d) => d.file === file)
+    const files = has
+      ? project.files.map((d) => (d.file === file ? { ...d, font: font || undefined } : d))
+      : [...project.files, { file: file, font: font || undefined }]
+    await writeProjectUnlocked(projectId, { ...project, files })
   })
 }
 
@@ -524,8 +523,8 @@ export function setOpenTabs(projectId: string, openTabs: string[]): Promise<void
   return patchProject(projectId, { openTabs })
 }
 
-export function setActiveDoc(projectId: string, activeDoc: string | null): Promise<void> {
-  return patchProject(projectId, { activeDoc })
+export function setActiveFile(projectId: string, activeFile: string | null): Promise<void> {
+  return patchProject(projectId, { activeFile })
 }
 
 // --- per-project app state (model, session ids, chat transcript) under .fabulist/ ---
@@ -538,7 +537,7 @@ interface StoredThread {
   chat: ChatItem[]
   createdAt: number
   updatedAt: number
-  /** 'workshop' threads design the studio harness instead of the documents */
+  /** 'workshop' threads design the studio harness instead of the files */
   kind?: 'workshop'
 }
 
@@ -770,4 +769,4 @@ export function updateThread(
   })
 }
 
-export { DEFAULT_THREAD_TITLE, DOC_EXTENSIONS }
+export { DEFAULT_THREAD_TITLE, MAPPED_EXTENSIONS }

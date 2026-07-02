@@ -10,14 +10,14 @@ import CommandPalette from '@/components/CommandPalette'
 import PanelView from '@/components/PanelView'
 import CommandView from '@/components/CommandView'
 import StudioBanner from '@/components/StudioBanner'
-import NewDocDialog from '@/components/NewDocDialog'
+import NewFileDialog from '@/components/NewFileDialog'
 import NewProjectDialog from '@/components/NewProjectDialog'
 
 export default function App(): React.JSX.Element {
   const activeProjectId = useStore((s) => s.activeProjectId)
-  const docs = useStore((s) => s.docs)
-  const activeDoc = useStore((s) => s.activeDoc)
-  const doc = docs.find((d) => d.file === activeDoc)
+  const files = useStore((s) => s.files)
+  const activeFile = useStore((s) => s.activeFile)
+  const file = files.find((d) => d.file === activeFile)
   const preview = useStore((s) => s.preview)
   const agent = useStore((s) => (activeProjectId ? s.agent[activeProjectId] : undefined))
   const sidebarOpen = useStore((s) => s.sidebarOpen)
@@ -84,11 +84,11 @@ export default function App(): React.JSX.Element {
               <button
                 className="btn-ghost btn-with-kbd"
                 onClick={() => setPaletteOpen(true)}
-                title="Actions, skills, documents"
+                title="Actions, skills, files"
               >
                 Actions <kbd>⌘K</kbd>
               </button>
-              {doc && !panel && doc.type === 'markdown' && <FontPicker />}
+              {file && !panel && file.type === 'markdown' && <FontPicker />}
               <button
                 className={`btn-ghost btn-icon ${sidebarOpen ? 'is-on' : ''}`}
                 onClick={toggleSidebar}
@@ -106,18 +106,18 @@ export default function App(): React.JSX.Element {
             <CommandView key={command.id} command={command} />
           ) : panel ? (
             <PanelView key={panel.id} panel={panel} />
-          ) : preview && doc ? (
+          ) : preview && file ? (
             <VersionPreview />
-          ) : doc ? (
-            doc.type === 'markdown' || doc.type === 'text' ? (
-              <Editor key={`${activeProjectId}:${doc.file}`} projectId={activeProjectId!} docFile={doc.file} />
-            ) : doc.type === 'image' ? (
-              <ImageDoc key={`${activeProjectId}:${doc.file}`} projectId={activeProjectId!} file={doc.file} />
+          ) : file ? (
+            file.type === 'markdown' || file.type === 'text' ? (
+              <Editor key={`${activeProjectId}:${file.file}`} projectId={activeProjectId!} file={file.file} />
+            ) : file.type === 'image' ? (
+              <ImageFile key={`${activeProjectId}:${file.file}`} projectId={activeProjectId!} file={file.file} />
             ) : (
-              <UnsupportedDoc file={doc.file} />
+              <UnsupportedFile file={file.file} />
             )
           ) : (
-            <NoDocOpen />
+            <NoFileOpen />
           )
         ) : (
           <EmptyState />
@@ -125,7 +125,7 @@ export default function App(): React.JSX.Element {
       </main>
       {projectOpen && <Sidebar projectId={activeProjectId!} />}
       <CommandPalette />
-      <NewDocDialog />
+      <NewFileDialog />
       <NewProjectDialog />
     </div>
   )
@@ -142,7 +142,7 @@ function FontPicker(): React.JSX.Element {
       <span className="font-picker-glyph" style={{ fontFamily: current.stack }} aria-hidden>
         Aa
       </span>
-      <select value={current.value} onChange={(e) => setFont(e.target.value)} aria-label="Document typeface">
+      <select value={current.value} onChange={(e) => setFont(e.target.value)} aria-label="Typeface">
         {FONT_CHOICES.map((f) => (
           <option key={f.value} value={f.value}>
             {f.label}
@@ -171,39 +171,39 @@ function PanelIcon(): React.JSX.Element {
   )
 }
 
-function NoDocOpen(): React.JSX.Element {
-  const setNewDocOpen = useStore((s) => s.setNewDocOpen)
+function NoFileOpen(): React.JSX.Element {
+  const setNewFileOpen = useStore((s) => s.setNewFileOpen)
   return (
     <div className="empty-state">
       <div className="empty-state-inner">
         <span className="empty-state-glyph">❡</span>
-        <h2>No document open</h2>
-        <p>Open a document from the rail, or start a new one.</p>
-        <button className="btn-primary" onClick={() => setNewDocOpen(true)}>
-          New document
+        <h2>No file open</h2>
+        <p>Open a file from the rail, or start a new one.</p>
+        <button className="btn-primary" onClick={() => setNewFileOpen(true)}>
+          New file
         </button>
       </div>
     </div>
   )
 }
 
-/** Read-only view for image docs; reloads by URL whenever the doc list refreshes. */
-function ImageDoc({ projectId, file }: { projectId: string; file: string }): React.JSX.Element {
-  const docs = useStore((s) => s.docs)
+/** Read-only view for image files; reloads by URL whenever the file list refreshes. */
+function ImageFile({ projectId, file }: { projectId: string; file: string }): React.JSX.Element {
+  const files = useStore((s) => s.files)
   const [rev, setRev] = useState(0)
-  useEffect(() => setRev((r) => r + 1), [docs])
+  useEffect(() => setRev((r) => r + 1), [files])
   const url = useMemo(
     () => `fab-project://${projectId}/${file.split('/').map(encodeURIComponent).join('/')}?v=${rev}`,
     [projectId, file, rev]
   )
   return (
-    <div className="image-doc">
+    <div className="image-file">
       <img src={url} alt={file} />
     </div>
   )
 }
 
-function UnsupportedDoc({ file }: { file: string }): React.JSX.Element {
+function UnsupportedFile({ file }: { file: string }): React.JSX.Element {
   const activeProjectId = useStore((s) => s.activeProjectId)
   return (
     <div className="empty-state">
@@ -229,7 +229,7 @@ function EmptyState(): React.JSX.Element {
         <span className="empty-state-glyph">❡</span>
         <h2>Every project is a little world.</h2>
         <p>
-          A project gathers your documents in one place — each a Claude Code workspace under the
+          A project gathers your files in one place — each a Claude Code workspace under the
           hood, versioned and rewindable, shared with an agent that reads across the whole
           project. Start blank, from a studio built for your kind of work, or describe the work
           and let Claude design the studio around it.

@@ -5,10 +5,10 @@ user-visible change must include an entry under `[Unreleased]` in CHANGELOG.md
 in the same commit.
 
 AI-native writing studio. Electron main process runs the Claude Agent SDK directly;
-each user document is a Claude Code project folder under `~/Documents/Fabulist/`.
+each user project is a Claude Code project folder under `~/Documents/Fabulist/`.
 
 - A project may carry a studio harness: `fabulist.json` (schema in `docs/harness.md`,
-  parsing in `src/shared/harness.ts`, loading/trust in `src/main/harness.ts`). Doc types,
+  parsing in `src/shared/harness.ts`, loading/trust in `src/main/harness.ts`). File types,
   ⌘K palette actions, panels, and the permission profile all derive from it; trust for
   `edits: "auto"` lives in Electron userData keyed by a hash of the permissions block.
 

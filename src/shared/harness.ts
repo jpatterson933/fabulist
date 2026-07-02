@@ -1,7 +1,7 @@
 // The studio harness: the shape of `fabulist.json`, the checked-in manifest
 // that turns a plain Claude Code project folder into a custom studio. The
 // manifest only declares what Claude Code itself doesn't already know —
-// doc types, UI actions, panels, and a permission profile. Skills, agents,
+// file types, UI actions, panels, and a permission profile. Skills, agents,
 // hooks, and CLAUDE.md live in their native Claude Code locations; Fabulist
 // discovers and renders them.
 //
@@ -11,7 +11,7 @@
 // (schemaMarkdown), the JSON Schema published for editor autocomplete
 // (jsonSchema), the generated section of docs/harness.md, and the trust hash
 // (fields marked `trust: true`). To add a manifest option, add a row — the
-// agent, the docs, validation, and the trust model pick it up from there.
+// agent, the files, validation, and the trust model pick it up from there.
 //
 // Parsing is deliberately lenient: unknown keys are ignored and malformed
 // entries are dropped with a warning, so a project authored against a newer
@@ -29,7 +29,7 @@ export interface FieldSpec {
   kind: 'string' | 'enum' | 'boolean'
   values?: readonly string[]
   required?: boolean
-  /** one-line description; feeds the workshop prompt, docs, and JSON Schema */
+  /** one-line description; feeds the workshop prompt, files, and JSON Schema */
   doc: string
   /** example value rendered into the schema example (JSON literal) */
   example?: string
@@ -74,10 +74,10 @@ function isSafeGlob(p: string): boolean {
 
 // --- the schema, as data ---
 
-export type ActionSurface = 'selection' | 'doc' | 'project'
+export type ActionSurface = 'selection' | 'file' | 'project'
 export type PanelViewKind = 'markdown' | 'code' | 'image' | 'web'
 
-export interface DocTypeDef {
+export interface FileTypeDef {
   id: string
   match: string
   label?: string
@@ -114,9 +114,9 @@ export interface PermissionsDef {
   mcp?: 'none' | 'ask' | 'allow'
 }
 
-export const DOC_TYPES_BLOCK: ListBlockSpec<DocTypeDef> = {
-  key: 'docTypes',
-  doc: 'Kinds of documents this studio works with, matched by filename glob. A matching doc gets the icon and label in the rail, its title derived per titleFrom, and a card in the New Document dialog (the filename follows the glob, the template seeds the content). Any file kind can be typed (.md, .html, .json, .py, …) — every textual file and image is already a document; a doc type adds meaning on top.',
+export const FILE_TYPES_BLOCK: ListBlockSpec<FileTypeDef> = {
+  key: 'fileTypes',
+  doc: 'Typed kinds of files this studio works with, matched by filename glob. A matching file gets the icon and label in the rail, its title derived per titleFrom, and a card in the New File dialog (the filename follows the glob, the template seeds the content). Any file kind can be typed (.md, .html, .json, .py, …) — every textual file and image is already a work file; a file type adds meaning on top.',
   fields: [
     { key: 'id', kind: 'string', required: true, doc: 'stable identifier', example: '"lesson"' },
     {
@@ -127,7 +127,7 @@ export const DOC_TYPES_BLOCK: ListBlockSpec<DocTypeDef> = {
       example: '"lessons/*.lesson.md"'
     },
     { key: 'label', kind: 'string', doc: 'display label; defaults to the id', example: '"Lesson"' },
-    { key: 'icon', kind: 'string', maxLen: 2, doc: '1–2 characters/emoji shown in the document rail', example: '"🎓"' },
+    { key: 'icon', kind: 'string', maxLen: 2, doc: '1–2 characters/emoji shown in the file rail', example: '"🎓"' },
     {
       key: 'titleFrom',
       kind: 'string',
@@ -138,19 +138,19 @@ export const DOC_TYPES_BLOCK: ListBlockSpec<DocTypeDef> = {
       key: 'template',
       kind: 'string',
       raw: true,
-      doc: 'seed content for new docs of this type; {{title}} is substituted',
+      doc: 'seed content for new files of this type; {{title}} is substituted',
       example: '"---\\ntitle: {{title}}\\n---\\n\\n"'
     }
   ],
   finalize: (e, warn) => {
     if (!e.id || !e.match) return null
     if (!isSafeGlob(e.match)) {
-      warn(`docType "${e.id}": match "${e.match}" must be a safe project-relative glob; skipped`)
+      warn(`fileType "${e.id}": match "${e.match}" must be a safe project-relative glob; skipped`)
       return null
     }
     let titleFrom = e.titleFrom
     if (titleFrom && titleFrom !== 'h1' && titleFrom !== 'filename' && !titleFrom.startsWith('frontmatter:')) {
-      warn(`docType "${e.id}": unknown titleFrom "${titleFrom}"; using h1`)
+      warn(`fileType "${e.id}": unknown titleFrom "${titleFrom}"; using h1`)
       titleFrom = undefined
     }
     return { id: e.id, match: e.match, label: e.label, icon: e.icon, titleFrom, template: e.template }
@@ -166,7 +166,7 @@ export const ACTIONS_BLOCK: ListBlockSpec<ActionDef> = {
     {
       key: 'surface',
       kind: 'enum',
-      values: ['selection', 'doc', 'project'],
+      values: ['selection', 'file', 'project'],
       doc: 'what the action operates on; "selection" needs highlighted text',
       example: '"selection"'
     },
@@ -311,7 +311,7 @@ export const TOP_LEVEL_FIELDS: FieldSpec[] = [
   }
 ]
 
-export const LIST_BLOCKS = [DOC_TYPES_BLOCK, ACTIONS_BLOCK, PANELS_BLOCK, COMMANDS_BLOCK] as const
+export const LIST_BLOCKS = [FILE_TYPES_BLOCK, ACTIONS_BLOCK, PANELS_BLOCK, COMMANDS_BLOCK] as const
 
 // --- parsed shape ---
 
@@ -320,7 +320,7 @@ export interface HarnessConfig {
   description?: string
   /** this project is a studio template, meant to be instantiated rather than edited */
   template?: boolean
-  docTypes: DocTypeDef[]
+  fileTypes: FileTypeDef[]
   actions: ActionDef[]
   panels: PanelDef[]
   commands: CommandDef[]
@@ -346,7 +346,7 @@ export interface Harness {
 }
 
 export const EMPTY_CONFIG: HarnessConfig = {
-  docTypes: [],
+  fileTypes: [],
   actions: [],
   panels: [],
   commands: [],
@@ -438,6 +438,10 @@ export function parseHarnessConfig(raw: unknown, warnings: string[]): HarnessCon
   if (top.version && Number(top.version) > HARNESS_VERSION) {
     warnings.push(`manifest version ${top.version} is newer than this app understands (${HARNESS_VERSION}); unknown options are ignored`)
   }
+  // pre-release manifests used "docTypes"; tell the author rather than silently ignoring it
+  if (obj.docTypes !== undefined && obj.fileTypes === undefined) {
+    warnings.push('"docTypes" was renamed to "fileTypes"; rename the block in fabulist.json')
+  }
 
   const permissions: PermissionsDef = {}
   if (obj.permissions !== undefined) {
@@ -456,7 +460,7 @@ export function parseHarnessConfig(raw: unknown, warnings: string[]): HarnessCon
     name: top.name,
     description: top.description,
     template: top.template === 'true' ? true : undefined,
-    docTypes: parseListBlock(DOC_TYPES_BLOCK, obj.docTypes, warnings),
+    fileTypes: parseListBlock(FILE_TYPES_BLOCK, obj.fileTypes, warnings),
     actions: parseListBlock(ACTIONS_BLOCK, obj.actions, warnings),
     panels: parseListBlock(PANELS_BLOCK, obj.panels, warnings),
     commands: parseListBlock(COMMANDS_BLOCK, obj.commands, warnings),
@@ -479,7 +483,7 @@ export function mergeHarnessConfigs(base: HarnessConfig, local: HarnessConfig): 
     name: local.name ?? base.name,
     description: local.description ?? base.description,
     template: base.template,
-    docTypes: mergeList(base.docTypes, local.docTypes),
+    fileTypes: mergeList(base.fileTypes, local.fileTypes),
     actions: mergeList(base.actions, local.actions),
     panels: mergeList(base.panels, local.panels),
     commands: mergeList(base.commands, local.commands),
@@ -543,8 +547,8 @@ export function globMatch(pattern: string, file: string): boolean {
 }
 
 /** The first doc type whose glob matches the file path, if any. */
-export function docTypeFor(config: HarnessConfig, file: string): DocTypeDef | null {
-  return config.docTypes.find((t) => globMatch(t.match, file)) ?? null
+export function fileTypeFor(config: HarnessConfig, file: string): FileTypeDef | null {
+  return config.fileTypes.find((t) => globMatch(t.match, file)) ?? null
 }
 
 /**
@@ -552,7 +556,7 @@ export function docTypeFor(config: HarnessConfig, file: string): DocTypeDef | nu
  * replaced with the slug ("chapters/*.scene.md" + "Cold Open" →
  * "chapters/cold-open.scene.md"). Anything fancier falls back to `<slug>.md`.
  */
-export function fileNameForType(type: DocTypeDef, slug: string): string {
+export function fileNameForType(type: FileTypeDef, slug: string): string {
   const stars = type.match.split('*')
   if (stars.length === 2 && !type.match.includes('?')) {
     return `${stars[0]}${slug}${stars[1]}`
@@ -560,7 +564,7 @@ export function fileNameForType(type: DocTypeDef, slug: string): string {
   return `${slug}.md`
 }
 
-// --- generated artifacts: workshop prompt schema, docs section, JSON Schema ---
+// --- generated artifacts: workshop prompt schema, files section, JSON Schema ---
 
 function fieldLine(f: FieldSpec): string {
   const req = f.required ? ' (required)' : ''

@@ -29,12 +29,12 @@ export const SURFACES: Record<ActionSurface, SurfaceSpec> = {
     available: (s, quoteOverride) => Boolean(quoteOverride ?? s.selectionQuote),
     quote: (s, quoteOverride) => quoteOverride ?? s.selectionQuote ?? undefined
   },
-  doc: {
-    id: 'doc',
-    hint: () => 'on this document',
+  file: {
+    id: 'file',
+    hint: () => 'on this file',
     available: () => true,
     quote: () => undefined,
-    framing: 'Apply this to the document the user is currently focused on.'
+    framing: 'Apply this to the file the user is currently focused on.'
   },
   project: {
     id: 'project',

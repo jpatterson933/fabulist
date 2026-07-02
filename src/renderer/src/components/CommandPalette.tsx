@@ -69,12 +69,12 @@ const panels: CommandProvider = (s) =>
     }
   }))
 
-const documents: CommandProvider = (s) =>
-  s.docs.map((d) => ({
-    id: `doc:${d.file}`,
+const projectFiles: CommandProvider = (s) =>
+  s.files.map((d) => ({
+    id: `file:${d.file}`,
     label: d.title,
     hint: d.kindLabel ?? d.file,
-    group: 'Documents',
+    group: 'Files',
     run: () => {
       void s.openTab(d.file)
       s.setPaletteOpen(false)
@@ -93,12 +93,12 @@ const builtins: CommandProvider = (s) => [
     }
   },
   {
-    id: 'builtin:new-doc',
-    label: 'New document',
+    id: 'builtin:new-file',
+    label: 'New file',
     group: 'Studio',
     run: () => {
       s.setPaletteOpen(false)
-      s.setNewDocOpen(true)
+      s.setNewFileOpen(true)
     }
   },
   {
@@ -113,13 +113,13 @@ const builtins: CommandProvider = (s) => [
   }
 ]
 
-const PROVIDERS: CommandProvider[] = [harnessActions, bareSkills, panels, documents, builtins]
+const PROVIDERS: CommandProvider[] = [harnessActions, bareSkills, panels, projectFiles, builtins]
 
 export default function CommandPalette(): React.JSX.Element | null {
   const open = useStore((s) => s.paletteOpen)
   const setOpen = useStore((s) => s.setPaletteOpen)
   const harness = useStore((s) => s.harness)
-  const docs = useStore((s) => s.docs)
+  const files = useStore((s) => s.files)
   const selectionQuote = useStore((s) => s.selectionQuote)
   const [q, setQ] = useState('')
   const [index, setIndex] = useState(0)
@@ -128,8 +128,8 @@ export default function CommandPalette(): React.JSX.Element | null {
 
   const commands = useMemo<Command[]>(
     () => PROVIDERS.flatMap((provide) => provide(useStore.getState())),
-    // harness/docs/selectionQuote are the provider inputs that change at runtime
-    [harness, docs, selectionQuote]
+    // harness/files/selectionQuote are the provider inputs that change at runtime
+    [harness, files, selectionQuote]
   )
 
   const filtered = useMemo(() => {
@@ -185,7 +185,7 @@ export default function CommandPalette(): React.JSX.Element | null {
           ref={inputRef}
           className="palette-input"
           value={q}
-          placeholder="Search actions, skills, documents…"
+          placeholder="Search actions, skills, files…"
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'ArrowDown') {

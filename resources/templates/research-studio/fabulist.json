@@ -4,7 +4,7 @@
   "description": "Questions, sources, and notes distilled into findings you can defend",
   "version": 1,
   "template": true,
-  "docTypes": [
+  "fileTypes": [
     {
       "id": "source",
       "match": "sources/*.source.md",
@@ -31,7 +31,7 @@
     { "label": "Log a source", "surface": "project", "skill": "log-source" },
     {
       "label": "Distill this source",
-      "surface": "doc",
+      "surface": "file",
       "prompt": "Fill in this source note from its own content: what it claims, how solid the method/evidence is, and 2-3 quotes worth keeping. Flag anything that smells like marketing rather than evidence."
     },
     {

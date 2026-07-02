@@ -4,7 +4,7 @@
   "description": "Tabletop campaign: session notes, an NPC roster, a world primer",
   "version": 1,
   "template": true,
-  "docTypes": [
+  "fileTypes": [
     {
       "id": "session",
       "match": "sessions/*.session.md",
@@ -23,7 +23,7 @@
     }
   ],
   "actions": [
-    { "label": "Recap this session", "surface": "doc", "prompt": "Write a tight player-facing recap of this session at the top under a 'Recap' heading: what happened, what was learned, open hooks." },
+    { "label": "Recap this session", "surface": "file", "prompt": "Write a tight player-facing recap of this session at the top under a 'Recap' heading: what happened, what was learned, open hooks." },
     { "label": "Forge an NPC", "surface": "project", "skill": "npc-forge" },
     { "label": "Complicate this", "surface": "selection", "prompt": "Propose three ways this moment could go sideways for the party — one social, one violent, one weird. Reply in chat only." }
   ],

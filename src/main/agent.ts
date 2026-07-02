@@ -24,15 +24,15 @@ import { schemaMarkdown, type HarnessConfig } from '@shared/harness'
 /**
  * System prompt tail; derives the studio's identity from its manifest so a
  * website studio, a campaign studio, and a novel studio each get their own
- * framing. The currently-focused doc (if any) is appended per send.
+ * framing. The currently-focused file (if any) is appended per send.
  */
-function systemAppend(studio: HarnessConfig | null, docFile?: string): string {
-  const focus = docFile
-    ? `The user is currently focused on \`${docFile}\`; treat it as the primary document unless they say otherwise, but you may read and edit any file in the project.`
-    : `The user has not opened a specific document yet.`
+function systemAppend(studio: HarnessConfig | null, file?: string): string {
+  const focus = file
+    ? `The user is currently focused on \`${file}\`; treat it as the primary file unless they say otherwise, but you may read and edit any file in the project.`
+    : `The user has not opened a specific file yet.`
   const identity = studio?.name
     ? `This project is a studio called "${studio.name}"${studio.description ? ` — ${studio.description}` : ''}.`
-    : `This project holds its work as documents — files of any kind (Markdown, HTML, source code, data, images); a studio manifest can add typed kinds, actions, and panels around them.`
+    : `Its files are of any kind — Markdown, HTML, source code, data, images; a studio manifest can add typed file kinds, actions, and panels around them.`
   return `
 You are operating inside Fabulist, an AI-native studio app where each project is a
 workspace for making something with Claude. The current working directory is the project
@@ -44,17 +44,17 @@ the project files are the deliverable, not the conversation.`
 
 /**
  * System prompt tail for workshop threads: the agent designs the studio
- * harness (fabulist.json, skills, CLAUDE.md) rather than the documents.
+ * harness (fabulist.json, skills, CLAUDE.md) rather than the files themselves.
  * Includes the manifest schema so the agent can author it unaided.
  */
 const WORKSHOP_APPEND = `
 You are in the STUDIO WORKSHOP of Fabulist, an AI-native studio app. In this conversation
-you are not editing the user's documents — you are designing the studio itself: the harness
+you are not editing the user's files — you are designing the studio itself: the harness
 that shapes how this project behaves in the app.
 
 You configure the studio by creating and editing these files in the project root:
 - \`fabulist.json\` — the studio manifest (schema below). The app hot-reloads it: actions,
-  doc types, and panels appear in the UI the moment your edit is approved.
+  file types, and panels appear in the UI the moment your edit is approved.
 - \`CLAUDE.md\` — standing instructions for the project's agent.
 - \`.claude/skills/<name>/SKILL.md\` — reusable skills the agent can invoke;
   YAML frontmatter with \`name\` and \`description\`, then the skill instructions.
@@ -68,7 +68,7 @@ Guidelines:
 - Start by interviewing the user briefly: what are they making, what does "good" look
   like, what do they keep doing by hand? Then propose a harness and build it.
 - Studios are not just for prose. Every textual file and image in the project is already
-  a document; docType globs add typed kinds (.html, .json, .py, …) with icons and
+  a file in the app; fileType globs add typed kinds (.html, .json, .py, …) with icons and
   templates; panels can render markdown, code, images, or a live web page; and
   \`commands\` can declare a dev server or build with a localhost preview the user
   runs from the rail. Use these when the work is a website, an app, data, or slides.
@@ -260,7 +260,7 @@ export class AgentManager {
       systemPrompt: {
         type: 'preset',
         preset: 'claude_code',
-        append: workshop ? WORKSHOP_APPEND : systemAppend(studioConfig, opts.docFile)
+        append: workshop ? WORKSHOP_APPEND : systemAppend(studioConfig, opts.file)
       },
       permissionMode: 'default',
       disallowedTools: bashDenied ? ['Bash'] : undefined,
@@ -390,8 +390,8 @@ export class AgentManager {
       await commitAll(cwd, `Claude: ${label}`).catch(() => {})
     }
 
-    if (opts.commentId && opts.docFile && resultOk && finalText.trim()) {
-      await comments.reply(projectId, opts.docFile, opts.commentId, 'claude', finalText.trim()).catch(() => {})
+    if (opts.commentId && opts.file && resultOk && finalText.trim()) {
+      await comments.reply(projectId, opts.file, opts.commentId, 'claude', finalText.trim()).catch(() => {})
     }
 
     emit({
@@ -404,7 +404,7 @@ export class AgentManager {
       costUsd,
       durationMs,
       commentId: opts.commentId,
-      docFile: opts.docFile
+      file: opts.file
     })
     emit({ kind: 'status', projectId, status: resultOk ? 'done' : 'error', detail: resultError })
   }
@@ -425,7 +425,7 @@ export class AgentManager {
     const fileTools = new Set(['Write', 'Edit', 'MultiEdit', 'NotebookEdit'])
     let filePath: string | undefined
     if (fileTools.has(tool) && typeof input.file_path === 'string') {
-      // posix-normalized so it compares equal to doc ids (nested paths included)
+      // posix-normalized so it compares equal to file ids (nested paths included)
       filePath = path.relative(cwd, path.resolve(cwd, input.file_path)).split(path.sep).join('/')
     }
 
@@ -550,13 +550,13 @@ function titleFromPrompt(prompt: string): string {
 
 function buildPrompt(prompt: string, opts: SendOptions): string {
   const parts: string[] = []
-  const where = opts.docFile ? ` in \`${opts.docFile}\`` : ''
+  const where = opts.file ? ` in \`${opts.file}\`` : ''
   if (opts.quote) {
     parts.push(`The user highlighted this text${where}:\n\n"""\n${opts.quote}\n"""`)
   }
   if (opts.commentId) {
     parts.push(
-      `This is a comment on that highlighted text. Address it specifically. If a change is warranted, edit ${opts.docFile ?? 'the document'} directly. Your chat reply will be recorded in the comment thread, so keep it self-contained and brief.`
+      `This is a comment on that highlighted text. Address it specifically. If a change is warranted, edit ${opts.file ?? 'the file'} directly. Your chat reply will be recorded in the comment thread, so keep it self-contained and brief.`
     )
   }
   parts.push(prompt)
@@ -574,7 +574,7 @@ const IMAGE_MEDIA_TYPES: Record<string, string> = {
 const MAX_INLINE_IMAGE_BYTES = 5 * 1024 * 1024
 const MAX_INLINE_PDF_BYTES = 32 * 1024 * 1024
 
-/** Copy an attached file into the doc's `attachments/` folder, suffixing on name collision. */
+/** Copy an attached file into the project's `attachments/` folder, suffixing on name collision. */
 async function copyAttachmentIntoProject(cwd: string, src: string, name: string): Promise<string> {
   const dir = path.join(cwd, 'attachments')
   await fs.mkdir(dir, { recursive: true })
