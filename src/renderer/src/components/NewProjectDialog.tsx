@@ -103,7 +103,7 @@ export default function NewProjectDialog(): React.JSX.Element | null {
             'workshop',
             '✦',
             'Design with Claude',
-            'describe what you’re making — a novel, a website, a course, a campaign — and the agent builds a studio around it'
+            'describe what you’re making — a website, a course, a research project, a novel — and the agent builds a studio around it'
           )}
           {templates.map((t) => card(t.id, '▦', t.name, t.description))}
           {card('blank', '❡', 'Blank', 'an empty project; just documents and the agent')}

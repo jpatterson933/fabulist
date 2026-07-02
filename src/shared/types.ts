@@ -19,13 +19,12 @@ export interface ProjectMeta {
 export interface DocMeta {
   /** filename within the project, e.g. "chapter-1.md" — the doc's stable id */
   file: string
-  /** the kind of doc, derived from the extension; only 'markdown' today */
+  /** the kind of doc, derived from the extension */
   type: DocType
   title: string
   path: string // absolute path to the doc file
   createdAt: number
   updatedAt: number
-  wordCount: number
   preview: string
   /** harness doc-type id when a studio's docTypes glob matches this file */
   kind?: string
@@ -136,6 +135,8 @@ export type AgentEvent =
 export type ProjectEvent =
   | { kind: 'harness-changed'; projectId: string }
   | { kind: 'doc-external-change'; projectId: string; docFile: string; content: string }
+  /** a non-text doc (image, …) changed on disk; refresh views by URL, no content payload */
+  | { kind: 'doc-touched'; projectId: string; docFile: string }
   | { kind: 'doc-removed'; projectId: string; docFile: string }
   | { kind: 'comments-changed'; projectId: string }
 
@@ -206,11 +207,13 @@ export interface FontChoice {
   stack: string
 }
 
+// A neutral sans leads as the default; the serifs are one choice among many,
+// for docs that want a bookish reading page.
 export const FONT_CHOICES: FontChoice[] = [
+  { value: 'plex-sans', label: 'Plex Sans', stack: "'IBM Plex Sans', 'Avenir Next', sans-serif" },
   { value: 'newsreader', label: 'Newsreader', stack: "'Newsreader Variable', 'Iowan Old Style', Georgia, serif" },
   { value: 'literata', label: 'Literata', stack: "'Literata Variable', Georgia, serif" },
   { value: 'fraunces', label: 'Fraunces', stack: "'Fraunces Variable', 'Iowan Old Style', serif" },
-  { value: 'plex-sans', label: 'Plex Sans', stack: "'IBM Plex Sans', 'Avenir Next', sans-serif" },
   { value: 'plex-mono', label: 'Plex Mono', stack: "'IBM Plex Mono', 'SF Mono', monospace" }
 ]
 
@@ -224,7 +227,7 @@ export interface Attachment {
 }
 
 export interface SendOptions {
-  /** The doc the author is focused on / that a quote or comment belongs to */
+  /** The doc the user is focused on / that a quote or comment belongs to */
   docFile?: string
   /** When set, Claude's final reply is also appended to this comment thread */
   commentId?: string

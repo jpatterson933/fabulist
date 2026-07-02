@@ -1,4 +1,4 @@
-// Studio templates: project folders that exist to be instantiated. The three
+// Studio templates: project folders that exist to be instantiated. The
 // built-ins ship in resources/templates; any project whose manifest says
 // "template": true offers the same instantiation from the studio banner.
 

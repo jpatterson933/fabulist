@@ -19,6 +19,7 @@ import {
   type ProjectMeta
 } from '@shared/types'
 import type { ActionDef, Harness } from '@shared/harness'
+import { isTextDoc } from '@shared/docTypes'
 import { locateAnchor } from './lib/anchors'
 import { SURFACES } from './lib/surfaces'
 
@@ -595,8 +596,11 @@ export const useStore = create<FabulistStore>((set, get) => ({
       set({ docContents: { ...get().docContents, [prevDoc]: get().content } })
       await get().flushWrite()
     }
+    // non-text docs (images) have no editable content — their views load by URL
     const cached = get().docContents[docFile]
-    const content = cached ?? (await window.fabulist.doc.read(id, docFile))
+    const content = isTextDoc(docFile)
+      ? cached ?? (await window.fabulist.doc.read(id, docFile))
+      : ''
     const [rawThreads, font] = await Promise.all([
       window.fabulist.comments.list(id, docFile),
       window.fabulist.doc.getFont(id, docFile)
@@ -736,7 +740,7 @@ export const useStore = create<FabulistStore>((set, get) => ({
     const prompt =
       thread.messages.length === 1
         ? thread.messages[0].text
-        : 'Comment thread on the quoted passage:\n\n' +
+        : 'Comment thread on the quoted text:\n\n' +
           thread.messages
             .map((m) => `${m.author === 'you' ? 'User' : 'Claude'}: ${m.text}`)
             .join('\n')
@@ -982,7 +986,7 @@ export const useStore = create<FabulistStore>((set, get) => ({
         })
         break
       case 'permission-request':
-        // auto-accept file edits when the author has opted in — Bash commands
+        // auto-accept file edits when the user has opted in — Bash commands
         // (carried as request.command) always prompt, no matter the setting
         if (get().autoApprove && !e.request.command) {
           get().respondPermission(e.request.requestId, true)
@@ -1042,6 +1046,9 @@ export const useStore = create<FabulistStore>((set, get) => ({
         break
       case 'doc-external-change':
         get().handleExternalChange(e.projectId, e.docFile, e.content)
+        break
+      case 'doc-touched':
+        void get().loadDocs() // non-text views (images) reload by URL off the doc list
         break
       case 'doc-removed':
         get().handleDocRemoved(e.projectId, e.docFile)

@@ -6,6 +6,37 @@ All notable changes to Fabulist are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- **Every file is a document now — no manifest required.** Any project (bare or studio)
+  admits every textual file as a document: `pages/*.html`, `src/**`, `data/*.json`,
+  `Makefile` — they all appear in the rail and open in the editor with syntax
+  highlighting. Raster images (`.png`, `.jpg`, `.gif`, `.webp`, `.avif`) are documents
+  too, opening in a new read-only image view that live-refreshes when the agent changes
+  the file. Doc-type globs no longer gate admission; they add meaning on top — icons,
+  labels, title rules, New Document templates. Build/tooling folders (`node_modules`,
+  `dist`, `build`, `out`, `coverage`, `vendor`, `target`, `__pycache__`) stay out of the
+  rail. The "Fabulist edits Markdown documents for now" dead end is gone.
+- **Two non-writing starters: Research Studio and Slides Studio.** Research Studio keeps
+  questions, per-source notes, and briefs honest — log-source and synthesize-findings
+  skills, a living Findings panel, no-source-no-claim ground rules. Slides Studio is a
+  hand-built HTML deck (scroll-snap slides, keyboard nav, hidden speaker notes) with a
+  live Deck Preview panel, a Serve deck command, and a deck-design skill. Built-in
+  starters are now half writing, half not.
+
+### Changed
+- **The app no longer defaults to a manuscript.** The default document typeface is now a
+  neutral sans (IBM Plex Sans); Newsreader, Literata, and Fraunces remain one click away
+  in the typeface picker for docs that want a book page, and the picker now appears only
+  on Markdown docs (code and images ignored it anyway). Quote chips, comment threads,
+  diffs, and version previews follow the same neutral face.
+- **External edits to non-Markdown documents now reach the editor live.** The project
+  watcher previously only tracked `*.md`; it now tracks every document — text changes
+  stream into open tabs, image changes refresh the image view.
+- **De-specialized the words.** The default project CLAUDE.md, the agent's system-prompt
+  framing, the workshop schema examples (Course Studio / lessons / outline instead of
+  Novel Studio / scenes / story bible), the manifest docs, the chat/comment microcopy
+  ("selection" instead of "passage"), the New Project genesis hint, the README, and the
+  package description all now describe a studio for making anything, with writing as one
+  of the things.
 - **Website Studio** joins the built-in starters — the first non-writing one: HTML pages,
   a shared stylesheet, a design-pass skill, live web/code panels, and a **Serve site**
   command whose preview renders the site beside its server log while you and the agent

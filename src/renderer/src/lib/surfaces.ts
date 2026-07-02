@@ -16,7 +16,7 @@ export interface SurfaceSpec {
   hint: (available: boolean) => string | undefined
   /** can the action run right now? quoteOverride counts for selection */
   available: (state: SurfaceState, quoteOverride?: string) => boolean
-  /** the quoted passage to attach, if the surface carries one */
+  /** the quoted text to attach, if the surface carries one */
   quote: (state: SurfaceState, quoteOverride?: string) => string | undefined
   /** extra instruction appended to the composed prompt */
   framing?: string
@@ -34,7 +34,7 @@ export const SURFACES: Record<ActionSurface, SurfaceSpec> = {
     hint: () => 'on this document',
     available: () => true,
     quote: () => undefined,
-    framing: 'Apply this to the document the author is currently focused on.'
+    framing: 'Apply this to the document the user is currently focused on.'
   },
   project: {
     id: 'project',

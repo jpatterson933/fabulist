@@ -164,7 +164,7 @@ const editorTheme = EditorView.theme({
     color: 'var(--ink)'
   },
   '.cm-scroller': {
-    fontFamily: 'var(--font-serif)',
+    fontFamily: 'var(--font-doc)',
     lineHeight: '1.72',
     padding: '0 max(48px, calc(50% - 37ch)) 30vh'
   },

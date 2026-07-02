@@ -81,12 +81,13 @@ export default function ChatPanel({ projectId }: { projectId: string }): React.J
         {chat.length === 0 && (
           <div className="chat-empty">
             <p>
-              Claude works across this whole project — every document in it. Ask for a
-              read-through, a rewrite, research, continuity across docs, or a sharper opening line.
+              Claude works across this whole project — every file in it. Ask for a
+              read-through, a rewrite, research, a build-out, or a check that everything
+              still hangs together.
             </p>
             <p className="chat-empty-hint">
-              Or highlight any passage and comment on it — the passage and your note go
-              straight into this conversation.
+              Or highlight anything in a document and comment on it — the selection and
+              your note go straight into this conversation.
             </p>
           </div>
         )}
@@ -137,7 +138,7 @@ export default function ChatPanel({ projectId }: { projectId: string }): React.J
             ref={inputRef}
             rows={Math.min(6, Math.max(1, input.split('\n').length))}
             value={input}
-            placeholder={busy ? 'Claude is working…' : 'Ask Claude about this document…'}
+            placeholder={busy ? 'Claude is working…' : 'Ask Claude about this project…'}
             disabled={busy}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {

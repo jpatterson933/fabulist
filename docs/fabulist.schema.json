@@ -24,7 +24,7 @@
     },
     "docTypes": {
       "type": "array",
-      "description": "Kinds of documents this studio works with, matched by filename glob. A matching doc gets the icon and label in the rail, its title derived per titleFrom, and a card in the New Document dialog (the filename follows the glob, the template seeds the content). Globs may match any textual file kind (.html, .json, .py, …) — matching files count as documents even though they are not Markdown.",
+      "description": "Kinds of documents this studio works with, matched by filename glob. A matching doc gets the icon and label in the rail, its title derived per titleFrom, and a card in the New Document dialog (the filename follows the glob, the template seeds the content). Any file kind can be typed (.md, .html, .json, .py, …) — every textual file and image is already a document; a doc type adds meaning on top.",
       "items": {
         "type": "object",
         "properties": {

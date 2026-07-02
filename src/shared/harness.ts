@@ -116,18 +116,18 @@ export interface PermissionsDef {
 
 export const DOC_TYPES_BLOCK: ListBlockSpec<DocTypeDef> = {
   key: 'docTypes',
-  doc: 'Kinds of documents this studio works with, matched by filename glob. A matching doc gets the icon and label in the rail, its title derived per titleFrom, and a card in the New Document dialog (the filename follows the glob, the template seeds the content). Globs may match any textual file kind (.html, .json, .py, …) — matching files count as documents even though they are not Markdown.',
+  doc: 'Kinds of documents this studio works with, matched by filename glob. A matching doc gets the icon and label in the rail, its title derived per titleFrom, and a card in the New Document dialog (the filename follows the glob, the template seeds the content). Any file kind can be typed (.md, .html, .json, .py, …) — every textual file and image is already a document; a doc type adds meaning on top.',
   fields: [
-    { key: 'id', kind: 'string', required: true, doc: 'stable identifier', example: '"scene"' },
+    { key: 'id', kind: 'string', required: true, doc: 'stable identifier', example: '"lesson"' },
     {
       key: 'match',
       kind: 'string',
       required: true,
       doc: 'project-relative filename glob; * and ? stay within one path segment, ** spans folders',
-      example: '"chapters/*.scene.md"'
+      example: '"lessons/*.lesson.md"'
     },
-    { key: 'label', kind: 'string', doc: 'display label; defaults to the id', example: '"Scene"' },
-    { key: 'icon', kind: 'string', maxLen: 2, doc: '1–2 characters/emoji shown in the document rail', example: '"🎬"' },
+    { key: 'label', kind: 'string', doc: 'display label; defaults to the id', example: '"Lesson"' },
+    { key: 'icon', kind: 'string', maxLen: 2, doc: '1–2 characters/emoji shown in the document rail', example: '"🎓"' },
     {
       key: 'titleFrom',
       kind: 'string',
@@ -161,8 +161,8 @@ export const ACTIONS_BLOCK: ListBlockSpec<ActionDef> = {
   key: 'actions',
   doc: 'Commands surfaced in the ⌘K palette (and, for surface "selection", in the highlight toolbar). An action runs a .claude/skills skill, sends a canned prompt, or both.',
   fields: [
-    { key: 'id', kind: 'string', doc: 'stable identifier; defaults to a slug of the label', example: '"punch-up"' },
-    { key: 'label', kind: 'string', doc: 'palette label (required unless a skill names it)', example: '"Punch up dialogue"' },
+    { key: 'id', kind: 'string', doc: 'stable identifier; defaults to a slug of the label', example: '"simplify"' },
+    { key: 'label', kind: 'string', doc: 'palette label (required unless a skill names it)', example: '"Simplify this"' },
     {
       key: 'surface',
       kind: 'enum',
@@ -170,13 +170,13 @@ export const ACTIONS_BLOCK: ListBlockSpec<ActionDef> = {
       doc: 'what the action operates on; "selection" needs highlighted text',
       example: '"selection"'
     },
-    { key: 'skill', kind: 'string', doc: 'a .claude/skills name to invoke', example: '"punch-up-dialogue"' },
+    { key: 'skill', kind: 'string', doc: 'a .claude/skills name to invoke', example: '"simplify-explanation"' },
     {
       key: 'prompt',
       kind: 'string',
       raw: true,
       doc: 'instructions sent to the project agent (alongside or instead of the skill)',
-      example: '"Sharpen this dialogue without changing what is said."'
+      example: '"Rewrite this to be clearer without losing precision."'
     }
   ],
   finalize: (e, warn) => {
@@ -199,14 +199,14 @@ export const PANELS_BLOCK: ListBlockSpec<PanelDef> = {
   key: 'panels',
   doc: 'Read-only rendered views over project files, opened as ▦ tabs from the rail or palette.',
   fields: [
-    { key: 'id', kind: 'string', doc: 'stable identifier; defaults to a slug of the title', example: '"bible"' },
-    { key: 'title', kind: 'string', required: true, doc: 'tab and rail label', example: '"Story Bible"' },
+    { key: 'id', kind: 'string', doc: 'stable identifier; defaults to a slug of the title', example: '"outline"' },
+    { key: 'title', kind: 'string', required: true, doc: 'tab and rail label', example: '"Course Outline"' },
     {
       key: 'source',
       kind: 'string',
       required: true,
       doc: 'project-relative file the panel renders',
-      example: '"bible.md"'
+      example: '"outline.md"'
     },
     {
       key: 'view',
@@ -300,8 +300,8 @@ export const PERMISSION_FIELDS: FieldSpec[] = [
 ]
 
 export const TOP_LEVEL_FIELDS: FieldSpec[] = [
-  { key: 'name', kind: 'string', doc: 'studio name, shown in the rail and project list', example: '"Novel Studio"' },
-  { key: 'description', kind: 'string', doc: 'one line about the studio', example: '"Long-form fiction with continuity checking"' },
+  { key: 'name', kind: 'string', doc: 'studio name, shown in the rail and project list', example: '"Course Studio"' },
+  { key: 'description', kind: 'string', doc: 'one line about the studio', example: '"A video course: lessons, scripts, and slides"' },
   { key: 'version', kind: 'string', doc: `manifest schema version; currently ${HARNESS_VERSION}`, example: `${HARNESS_VERSION}` },
   {
     key: 'template',

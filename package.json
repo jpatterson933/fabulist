@@ -2,7 +2,7 @@
   "name": "fabulist",
   "productName": "Fabulist",
   "version": "0.1.0",
-  "description": "AI-native writing studio powered by Claude Code — every document is a versioned, rewindable agent project",
+  "description": "AI-native studio powered by Claude Code — every project is a versioned, rewindable agent workspace with a custom studio grown around it",
   "license": "MIT",
   "author": "Mason Seale",
   "repository": {
@@ -14,7 +14,7 @@
     "claude",
     "claude-code",
     "ai",
-    "writing",
+    "studio",
     "editor",
     "electron",
     "agent"

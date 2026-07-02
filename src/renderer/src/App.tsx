@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { FONT_CHOICES } from '@shared/types'
 import { useStore } from '@/store'
 import Library from '@/components/Library'
@@ -88,7 +88,7 @@ export default function App(): React.JSX.Element {
               >
                 Actions <kbd>⌘K</kbd>
               </button>
-              {doc && !panel && <FontPicker />}
+              {doc && !panel && doc.type === 'markdown' && <FontPicker />}
               <button
                 className={`btn-ghost btn-icon ${sidebarOpen ? 'is-on' : ''}`}
                 onClick={toggleSidebar}
@@ -111,6 +111,8 @@ export default function App(): React.JSX.Element {
           ) : doc ? (
             doc.type === 'markdown' || doc.type === 'text' ? (
               <Editor key={`${activeProjectId}:${doc.file}`} projectId={activeProjectId!} docFile={doc.file} />
+            ) : doc.type === 'image' ? (
+              <ImageDoc key={`${activeProjectId}:${doc.file}`} projectId={activeProjectId!} file={doc.file} />
             ) : (
               <UnsupportedDoc file={doc.file} />
             )
@@ -185,14 +187,30 @@ function NoDocOpen(): React.JSX.Element {
   )
 }
 
+/** Read-only view for image docs; reloads by URL whenever the doc list refreshes. */
+function ImageDoc({ projectId, file }: { projectId: string; file: string }): React.JSX.Element {
+  const docs = useStore((s) => s.docs)
+  const [rev, setRev] = useState(0)
+  useEffect(() => setRev((r) => r + 1), [docs])
+  const url = useMemo(
+    () => `fab-project://${projectId}/${file.split('/').map(encodeURIComponent).join('/')}?v=${rev}`,
+    [projectId, file, rev]
+  )
+  return (
+    <div className="image-doc">
+      <img src={url} alt={file} />
+    </div>
+  )
+}
+
 function UnsupportedDoc({ file }: { file: string }): React.JSX.Element {
   const activeProjectId = useStore((s) => s.activeProjectId)
   return (
     <div className="empty-state">
       <div className="empty-state-inner">
         <span className="empty-state-glyph">❡</span>
-        <h2>Can&rsquo;t open {file} here yet</h2>
-        <p>Fabulist edits Markdown documents for now. Open this file in Finder to view it.</p>
+        <h2>No view for {file} yet</h2>
+        <p>This file kind doesn&rsquo;t have a view in the app yet. Open it in Finder instead.</p>
         {activeProjectId && (
           <button className="btn-ghost" onClick={() => window.fabulist.library.reveal(activeProjectId)}>
             Reveal in Finder

@@ -1,10 +1,11 @@
 /* ─── Fabulist design system ───────────────────────────────────────────
    Warm paper, ink, and an ember-red accent. Fraunces for display,
-   Newsreader for the manuscript, IBM Plex Sans/Mono for the chrome. */
+   IBM Plex Sans/Mono for the chrome and the default document face;
+   Newsreader/Literata stay on the menu for docs that want a book page. */
 
 :root {
   --font-display: 'Fraunces Variable', 'Iowan Old Style', serif;
-  --font-serif: 'Newsreader Variable', 'Iowan Old Style', Georgia, serif;
+  --font-doc: 'IBM Plex Sans', 'Avenir Next', sans-serif;
   --font-ui: 'IBM Plex Sans', 'Avenir Next', sans-serif;
   --font-mono: 'IBM Plex Mono', 'SF Mono', monospace;
 
@@ -1205,7 +1206,7 @@ input::placeholder {
 }
 
 .bubble-quote {
-  font-family: var(--font-serif);
+  font-family: var(--font-doc);
   font-style: italic;
   font-size: 12.5px;
   color: var(--ink-soft);
@@ -1433,7 +1434,7 @@ input::placeholder {
 
 .quote-chip-text {
   flex: 1;
-  font-family: var(--font-serif);
+  font-family: var(--font-doc);
   font-style: italic;
   font-size: 12.5px;
   color: var(--ink-soft);
@@ -1730,7 +1731,7 @@ input::placeholder {
 }
 
 .diff-words {
-  font-family: var(--font-serif);
+  font-family: var(--font-doc);
   font-size: 14px;
   line-height: 1.6;
   white-space: pre-wrap;
@@ -1827,7 +1828,7 @@ input::placeholder {
 }
 
 .thread-quote {
-  font-family: var(--font-serif);
+  font-family: var(--font-doc);
   font-style: italic;
   font-size: 13px;
   line-height: 1.5;
@@ -2069,7 +2070,7 @@ input::placeholder {
 }
 
 .version-text {
-  font-family: var(--font-serif);
+  font-family: var(--font-doc);
   font-size: 15.5px;
   line-height: 1.7;
   white-space: pre-wrap;
@@ -2463,6 +2464,23 @@ input::placeholder {
   border: 1px solid var(--line-soft);
   border-radius: 8px;
   overflow: hidden;
+}
+/* image docs: the picture on the page, centered and contained */
+.image-doc {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  overflow: auto;
+}
+.image-doc img {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 8px;
+  border: 1px solid var(--line-soft);
+  box-shadow: var(--shadow-pop);
 }
 /* panels are read surfaces, not the prose editor — undo its page padding */
 .panel-code .cm-scroller {

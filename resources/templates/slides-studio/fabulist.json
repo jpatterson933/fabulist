@@ -1,0 +1,37 @@
+{
+  "$schema": "../../docs/fabulist.schema.json",
+  "name": "Slides Studio",
+  "description": "A hand-built HTML slide deck with a live preview while you work",
+  "version": 1,
+  "template": true,
+  "docTypes": [
+    { "id": "deck", "match": "deck/*.html", "label": "Deck", "icon": "🖥", "titleFrom": "filename" },
+    { "id": "style", "match": "deck/*.css", "label": "Stylesheet", "icon": "🎨", "titleFrom": "filename" },
+    { "id": "script", "match": "deck/*.js", "label": "Script", "icon": "⚙", "titleFrom": "filename" },
+    { "id": "note", "match": "notes/*.md", "label": "Note", "icon": "📝" }
+  ],
+  "actions": [
+    { "label": "Design pass", "surface": "doc", "skill": "deck-design" },
+    {
+      "label": "One idea per slide",
+      "surface": "doc",
+      "prompt": "Walk the deck slide by slide. Any slide carrying more than one idea gets split; any slide that's a wall of text gets cut to its point. Keep the total flow intact. Edit the deck directly."
+    },
+    {
+      "label": "Draft speaker notes",
+      "surface": "doc",
+      "prompt": "For each slide, write or refresh its speaker notes in an <aside class=\"notes\"> inside the section: what to actually say, 2-4 sentences, conversational. Don't restate the slide text."
+    }
+  ],
+  "panels": [
+    { "id": "preview", "title": "Deck Preview", "source": "deck/index.html", "view": "web" }
+  ],
+  "commands": [
+    {
+      "id": "serve",
+      "label": "Serve deck",
+      "run": "python3 -m http.server 4358",
+      "preview": "http://localhost:4358/deck/"
+    }
+  ]
+}

@@ -1,12 +1,12 @@
 // The doc-type registry: the single place that knows which files count as
 // "docs" in a project, how to classify them, and how to derive their title and
-// preview. Markdown is the default doc type every project gets; `text` covers
-// any other textual file a studio opts into via a harness docType glob
-// (source files, JSON, CSV, HTML, …). Supporting a richer type later
-// (`.png`, `.pdf`, …) is adding a row here plus a renderer view that branches
-// on DocMeta.type; the project/tab model itself does not change.
+// preview. Any project admits Markdown, images, and any other textual file —
+// a studio harness adds kind labels/icons/templates on top via docType globs,
+// but no manifest is needed for a file to open. Supporting a richer type later
+// (`.pdf`, …) is adding a row here plus a renderer view that branches on
+// DocMeta.type; the project/tab model itself does not change.
 
-export type DocType = 'markdown' | 'text'
+export type DocType = 'markdown' | 'text' | 'image'
 
 interface DocTypeHandler {
   type: DocType
@@ -18,9 +18,9 @@ interface DocTypeHandler {
   title: (content: string, file: string) => string
   /** derive a short preview from the raw file contents */
   preview: (content: string) => string
-  /** word count for the rail meta */
-  wordCount: (content: string) => number
 }
+
+const baseName = (file: string): string => file.split('/').pop() ?? file
 
 const MARKDOWN: DocTypeHandler = {
   type: 'markdown',
@@ -30,28 +30,35 @@ const MARKDOWN: DocTypeHandler = {
     const firstLine = content.split('\n').find((l) => l.trim()) ?? ''
     return firstLine.replace(/^#+\s*/, '').trim() || file
   },
-  preview: (content) => content.replace(/^#.*\n/, '').trim().slice(0, 160),
-  wordCount: (content) => content.split(/\s+/).filter(Boolean).length
+  preview: (content) => content.replace(/^#.*\n/, '').trim().slice(0, 160)
 }
 
-// Any other textual file, admitted per-project by a harness docType glob.
+// Raster images open in a read-only image view; no text features.
+const IMAGE: DocTypeHandler = {
+  type: 'image',
+  extensions: ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.avif'],
+  text: false,
+  title: (_content, file) => baseName(file),
+  preview: () => ''
+}
+
+// Any other textual file (source, JSON, CSV, HTML, …).
 // A code file's first line makes a poor title, so text docs title by filename.
 const TEXT: DocTypeHandler = {
   type: 'text',
   extensions: [],
   text: true,
-  title: (_content, file) => file.split('/').pop() ?? file,
-  preview: (content) => content.trim().slice(0, 160),
-  wordCount: (content) => content.split(/\s+/).filter(Boolean).length
+  title: (_content, file) => baseName(file),
+  preview: (content) => content.trim().slice(0, 160)
 }
 
-const HANDLERS: DocTypeHandler[] = [MARKDOWN, TEXT]
+const HANDLERS: DocTypeHandler[] = [MARKDOWN, IMAGE, TEXT]
 
 /** Lowercased extensions (with dot) recognized as docs in ANY project. */
 export const DOC_EXTENSIONS: string[] = HANDLERS.flatMap((h) => h.extensions)
 
-// Extensions we know aren't text — a harness glob may match them, but they
-// can't be opened in the text editor or diffed as prose.
+// Extensions we know aren't text — they can't be opened in the text editor
+// or diffed, and (unless a richer handler claims them) aren't docs at all.
 const BINARY_EXTENSIONS = new Set([
   '.png', '.jpg', '.jpeg', '.gif', '.webp', '.avif', '.ico', '.icns', '.bmp', '.tiff',
   '.pdf', '.zip', '.gz', '.tar', '.7z', '.rar', '.dmg',
@@ -71,15 +78,14 @@ export function isKnownBinary(file: string): boolean {
   return BINARY_EXTENSIONS.has(extOf(file))
 }
 
-/** Is this filename a doc in any project, harness or not? (the bare allowlist) */
+/** Is this filename a doc in any project? Extension-mapped, or any non-binary text file. */
 export function isDocFile(file: string): boolean {
-  return DOC_EXTENSIONS.includes(extOf(file))
+  return DOC_EXTENSIONS.includes(extOf(file)) || !isKnownBinary(file)
 }
 
 /**
  * The doc type for a filename. Extension-mapped types win; anything else
- * that isn't known-binary falls back to `text` (callers decide whether a
- * harness glob actually admits it as a doc).
+ * that isn't known-binary falls back to `text`.
  */
 export function docTypeForFile(file: string): DocType | null {
   const mapped = HANDLERS.find((h) => h.extensions.includes(extOf(file)))?.type
@@ -96,15 +102,11 @@ export function isTextDoc(file: string): boolean {
   return handlerFor(file).text
 }
 
-/** Derive {title, preview, wordCount} for a doc from its raw contents. */
-export function deriveDocMeta(
-  file: string,
-  content: string
-): { title: string; preview: string; wordCount: number } {
+/** Derive {title, preview} for a doc from its raw contents. */
+export function deriveDocMeta(file: string, content: string): { title: string; preview: string } {
   const h = handlerFor(file)
   return {
     title: h.title(content, file),
-    preview: h.preview(content),
-    wordCount: h.wordCount(content)
+    preview: h.preview(content)
   }
 }

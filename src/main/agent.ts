@@ -23,7 +23,7 @@ import { schemaMarkdown, type HarnessConfig } from '@shared/harness'
 
 /**
  * System prompt tail; derives the studio's identity from its manifest so a
- * novel studio, a campaign studio, and a website studio each get their own
+ * website studio, a campaign studio, and a novel studio each get their own
  * framing. The currently-focused doc (if any) is appended per send.
  */
 function systemAppend(studio: HarnessConfig | null, docFile?: string): string {
@@ -32,7 +32,7 @@ function systemAppend(studio: HarnessConfig | null, docFile?: string): string {
     : `The user has not opened a specific document yet.`
   const identity = studio?.name
     ? `This project is a studio called "${studio.name}"${studio.description ? ` — ${studio.description}` : ''}.`
-    : `This project holds its work as documents (Markdown by default; the studio manifest can admit other file kinds).`
+    : `This project holds its work as documents — files of any kind (Markdown, HTML, source code, data, images); a studio manifest can add typed kinds, actions, and panels around them.`
   return `
 You are operating inside Fabulist, an AI-native studio app where each project is a
 workspace for making something with Claude. The current working directory is the project
@@ -67,9 +67,10 @@ ${schemaMarkdown()}
 Guidelines:
 - Start by interviewing the user briefly: what are they making, what does "good" look
   like, what do they keep doing by hand? Then propose a harness and build it.
-- Studios are not just for prose. docType globs can admit any textual file kind
-  (.html, .json, .py, …); panels can render markdown, code, images, or a live web page;
-  and \`commands\` can declare a dev server or build with a localhost preview the user
+- Studios are not just for prose. Every textual file and image in the project is already
+  a document; docType globs add typed kinds (.html, .json, .py, …) with icons and
+  templates; panels can render markdown, code, images, or a live web page; and
+  \`commands\` can declare a dev server or build with a localhost preview the user
   runs from the rail. Use these when the work is a website, an app, data, or slides.
 - Prefer several small, well-named skills over one sprawling prompt.
 - To give the studio external tools, define MCP servers in \`.mcp.json\` at the project
@@ -551,11 +552,11 @@ function buildPrompt(prompt: string, opts: SendOptions): string {
   const parts: string[] = []
   const where = opts.docFile ? ` in \`${opts.docFile}\`` : ''
   if (opts.quote) {
-    parts.push(`The user highlighted this passage${where}:\n\n"""\n${opts.quote}\n"""`)
+    parts.push(`The user highlighted this text${where}:\n\n"""\n${opts.quote}\n"""`)
   }
   if (opts.commentId) {
     parts.push(
-      `This is a comment on that passage. Address it specifically. If a text change is warranted, edit ${opts.docFile ?? 'the document'} directly. Your chat reply will be recorded in the comment thread, so keep it self-contained and brief.`
+      `This is a comment on that highlighted text. Address it specifically. If a change is warranted, edit ${opts.docFile ?? 'the document'} directly. Your chat reply will be recorded in the comment thread, so keep it self-contained and brief.`
     )
   }
   parts.push(prompt)

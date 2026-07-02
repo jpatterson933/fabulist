@@ -1,0 +1,67 @@
+/* Deck styles: each .slide is one full viewport, scroll-snapped.
+   deck.js drives navigation; this file owns the look. */
+
+:root {
+  --bg: #16150f;
+  --ink: #f4efe4;
+  --ink-soft: #b9b2a0;
+  --accent: #e05c3a;
+}
+
+* {
+  margin: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-snap-type: y mandatory;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: -apple-system, 'Segoe UI', 'Helvetica Neue', sans-serif;
+}
+
+.slide {
+  min-height: 100vh;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.6em;
+  padding: 8vmin 12vmin;
+}
+
+.slide h1 {
+  font-size: clamp(2.4rem, 8vmin, 5rem);
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+}
+
+.slide h2 {
+  font-size: clamp(2rem, 6vmin, 3.6rem);
+  line-height: 1.12;
+  letter-spacing: -0.015em;
+}
+
+.slide p,
+.slide li {
+  font-size: clamp(1.1rem, 3vmin, 1.6rem);
+  line-height: 1.45;
+  color: var(--ink-soft);
+  max-width: 24em;
+}
+
+.slide.title h1 {
+  color: var(--accent);
+}
+
+.slide ul {
+  padding-left: 1.2em;
+}
+
+/* speaker notes never project */
+.notes {
+  display: none;
+}

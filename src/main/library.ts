@@ -3,7 +3,7 @@ import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import type { AgentThread, ChatItem, DocMeta, ProjectMeta } from '@shared/types'
-import { DOC_EXTENSIONS, deriveDocMeta, docTypeForFile, isDocFile, isKnownBinary } from '@shared/docTypes'
+import { DOC_EXTENSIONS, deriveDocMeta, docTypeForFile, isDocFile, isTextDoc } from '@shared/docTypes'
 import {
   HARNESS_FILE,
   HARNESS_LOCAL_FILE,
@@ -44,24 +44,25 @@ export const COMMENTS_FILE = 'comments.json'
 const CLAUDE_MD = (title: string) => `# About this project
 
 This folder is a project inside Fabulist, an AI-native studio for making things
-with Claude. You are the user's creative partner for "${title}".
+with Claude. You are the user's working partner for "${title}" — whatever kind
+of work it turns out to be: prose, a website, code, data, notes, slides.
 
 ## Ground rules
 
-- A project holds one or more documents — files in this folder (Markdown by
-  default; a studio manifest can admit other kinds). Each file is a piece of the
-  work; treat them all with care. The user tells you which document they are
-  currently focused on.
-- You can read and edit any document in the project — use this to keep continuity
-  across them (recurring names and structure, callbacks, a shared style or outline).
-- Prefer the smallest edit that accomplishes the goal. Preserve the user's voice,
-  formatting, and intent unless asked to rework something.
+- A project holds one or more documents — the files in this folder, of any kind
+  (Markdown, HTML, source code, data, images). Each file is a piece of the work;
+  treat them all with care. The user tells you which document they are currently
+  focused on.
+- You can read and edit any document in the project — use this to keep the whole
+  consistent (shared structure, naming, style, cross-references).
+- Prefer the smallest edit that accomplishes the goal. Preserve the user's intent
+  and conventions unless asked to rework something.
 - \`comments.json\` is managed by the app. Never edit it; the app records your replies.
-- When asked to respond to a comment on a quoted passage, address that passage
+- When asked to respond to a comment on quoted text, address that text
   specifically. If a change is warranted, edit the relevant document directly —
   the user reviews and approves every edit before it lands.
 - Keep chat replies brief. The documents are where the substance goes.
-- You may create supporting files (research notes, outlines, reference sheets) here.
+- You may create supporting files (notes, outlines, reference sheets) here.
 - \`fabulist.json\` (optional, at the project root) is the studio manifest: it can
   define custom doc types, palette actions, panels, and a permission profile for
   this project. The user designs it with you in a "studio workshop" conversation.
@@ -127,24 +128,23 @@ export const RESERVED_FILES = new Set([
   COMMENTS_FILE, HARNESS_FILE, HARNESS_LOCAL_FILE,
   'package.json', 'package-lock.json'
 ])
-// Folders that hold app/tool machinery, never documents.
-export const IGNORED_DIRS = new Set(['attachments', 'node_modules'])
+// Folders that hold app/tool machinery or build output, never documents.
+export const IGNORED_DIRS = new Set([
+  'attachments', 'node_modules', 'dist', 'build', 'out', 'coverage',
+  'vendor', 'target', '__pycache__'
+])
 const SCAN_DEPTH = 8
 
 /**
  * All doc files in a project as project-relative POSIX paths, sorted.
- * `*.md` is always a doc; any other non-binary file counts when a harness
- * docType glob claims it (how a studio for code, data, or web work admits
- * its own file kinds).
+ * Every textual file and every image counts — a studio harness adds kind
+ * labels and templates via docType globs, but admission needs no manifest.
  */
-async function scanDocFiles(projectId: string, config?: HarnessConfig): Promise<string[]> {
+async function scanDocFiles(projectId: string): Promise<string[]> {
   const root = projectPath(projectId)
   const out: string[] = []
-  const isDoc = (rel: string, name: string): boolean => {
-    if (RESERVED_FILES.has(rel)) return false
-    if (isDocFile(name)) return true
-    return Boolean(config && !isKnownBinary(name) && docTypeFor(config, rel))
-  }
+  const isDoc = (rel: string, name: string): boolean =>
+    !RESERVED_FILES.has(rel) && isDocFile(name)
   const walk = async (rel: string, depth: number): Promise<void> => {
     const entries = await fs
       .readdir(rel ? path.join(root, ...rel.split('/')) : root, { withFileTypes: true })
@@ -188,7 +188,7 @@ async function ensureProjectUnlocked(projectId: string): Promise<ProjectFile> {
   }
 
   // --- migrate / initialize ---
-  const files = await scanDocFiles(projectId, await loadMergedConfig(projectId).catch(() => undefined))
+  const files = await scanDocFiles(projectId)
   // legacy single-doc font lived in state.json
   const legacyState = await readState(projectId)
   const docs: ProjectDocEntry[] = files.map((file) => ({
@@ -196,10 +196,15 @@ async function ensureProjectUnlocked(projectId: string): Promise<ProjectFile> {
     font: file === DOC_FILE ? legacyState.font : undefined
   }))
   const primary = files.includes(DOC_FILE) ? DOC_FILE : files[0]
+  // title from the legacy doc file or the first markdown doc; a code or data
+  // file's name makes a poor project title, so otherwise keep the folder name
+  const titleSource = files.includes(DOC_FILE)
+    ? DOC_FILE
+    : files.find((f) => f.toLowerCase().endsWith('.md'))
   let title = projectId
-  if (primary) {
-    const content = await fs.readFile(docPath(projectId, primary), 'utf8').catch(() => '')
-    title = deriveDocMeta(primary, content).title
+  if (titleSource) {
+    const content = await fs.readFile(docPath(projectId, titleSource), 'utf8').catch(() => '')
+    title = deriveDocMeta(titleSource, content).title
   }
   const project: ProjectFile = {
     title,
@@ -294,7 +299,11 @@ async function readDocMeta(
   if (!type) return null
   const full = docPath(projectId, file)
   try {
-    const [content, stat] = await Promise.all([fs.readFile(full, 'utf8'), fs.stat(full)])
+    // non-text docs (images) never have their bytes read as content
+    const [content, stat] = await Promise.all([
+      isTextDoc(file) ? fs.readFile(full, 'utf8') : Promise.resolve(''),
+      fs.stat(full)
+    ])
     const harnessType = config ? docTypeFor(config, file) : null
     // frontmatter is metadata for any doc — titles/previews derive from the body
     const derived = deriveDocMeta(file, stripFrontmatter(content))
@@ -305,7 +314,6 @@ async function readDocMeta(
       path: full,
       createdAt: stat.birthtimeMs,
       updatedAt: stat.mtimeMs,
-      wordCount: derived.wordCount,
       preview: derived.preview,
       kind: harnessType?.id,
       kindLabel: harnessType ? harnessType.label ?? harnessType.id : undefined,
@@ -321,7 +329,7 @@ export async function listProjectDocs(projectId: string): Promise<DocMeta[]> {
   const config = await loadMergedConfig(projectId)
   const [project, onDisk] = await Promise.all([
     readProject(projectId),
-    scanDocFiles(projectId, config)
+    scanDocFiles(projectId)
   ])
   const ordered = [
     ...project.docs.map((d) => d.file).filter((f) => onDisk.includes(f)),
@@ -339,8 +347,7 @@ export async function listProjects(): Promise<ProjectMeta[]> {
   const metas = await Promise.all(
     dirs.map(async (e) => {
       const id = e.name
-      const config = await loadMergedConfig(id).catch(() => undefined)
-      const files = await scanDocFiles(id, config)
+      const files = await scanDocFiles(id)
       // folders with no docs are noise — unless they declare a studio manifest
       if (files.length === 0 && !(await exists(path.join(projectPath(id), 'fabulist.json')))) return null
       const [project, studio] = await Promise.all([readProject(id), studioName(id)])
@@ -414,7 +421,7 @@ export async function createDoc(projectId: string, title: string, typeId?: strin
   const harnessType = typeId ? config.docTypes.find((t) => t.id === typeId) ?? null : null
   return withStateLock(projectId, async () => {
     const project = await ensureProjectUnlocked(projectId)
-    const onDisk = await scanDocFiles(projectId, config)
+    const onDisk = await scanDocFiles(projectId)
     const taken = [...onDisk, ...project.docs.map((d) => d.file)]
     let file: string
     if (harnessType) {

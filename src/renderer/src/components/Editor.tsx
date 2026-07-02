@@ -194,7 +194,7 @@ export default function Editor({
         active: true
       })
     }
-    // keep the passage visibly highlighted while its composer is open —
+    // keep the selection visibly highlighted while its composer is open —
     // the native selection disappears once the textarea takes focus
     if (composer) {
       out.push({ id: '__composing', from: composer.from, to: composer.to, active: true })
@@ -251,7 +251,7 @@ export default function Editor({
     view.dispatch({ effects: EditorView.scrollIntoView(t.anchor.from, { y: 'center' }) })
   }, [scrollTo])
 
-  // commenting on a passage opens a small composer that sends the passage and
+  // commenting on a selection opens a small composer that sends the selection and
   // the note straight into the open agent thread — there is no comments sidebar
   const onComment = (): void => {
     if (!selection) return
@@ -300,7 +300,7 @@ export default function Editor({
   return (
     <div
       className={`editor-host ${activeThreadId ? 'has-active-thread' : ''} ${docFile.toLowerCase().endsWith('.md') ? '' : 'is-code-doc'}`}
-      style={{ '--font-serif': fontStack } as React.CSSProperties}
+      style={{ '--font-doc': fontStack } as React.CSSProperties}
       ref={hostRef}
     >
       {suggestion && (
@@ -330,14 +330,14 @@ export default function Editor({
           className="selection-toolbar"
           style={{ left: selection.left, top: Math.max(8, selection.top - 46) }}
         >
-          <button onClick={onComment} title="Comment — sends this passage and your note to Claude">
+          <button onClick={onComment} title="Comment — sends this selection and your note to Claude">
             <MarkIcon /> Comment
           </button>
           {selectionActions.length > 0 && <span className="selection-toolbar-sep" aria-hidden />}
           {selectionActions.slice(0, 3).map((a) => (
             <button
               key={a.id}
-              title={a.prompt ?? (a.skill ? `Runs the "${a.skill}" skill on this passage` : a.label)}
+              title={a.prompt ?? (a.skill ? `Runs the "${a.skill}" skill on this selection` : a.label)}
               onClick={() => {
                 const content = useStore.getState().content
                 runAction(a, content.slice(selection.from, selection.to))
@@ -367,7 +367,7 @@ export default function Editor({
             ref={composerRef}
             rows={Math.min(5, Math.max(2, composerText.split('\n').length))}
             value={composerText}
-            placeholder="Say something about this passage…"
+            placeholder="Say something about this selection…"
             onChange={(e) => setComposerText(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {

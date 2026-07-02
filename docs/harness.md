@@ -32,30 +32,30 @@ malformed entries are dropped with a warning shown in the app.
 <!-- generated:schema:start (npm run gen:schema) -->
 
 Top-level fields (all optional; unknown fields are ignored):
-  - `name`: studio name, shown in the rail and project list — e.g. "Novel Studio"
-  - `description`: one line about the studio — e.g. "Long-form fiction with continuity checking"
+  - `name`: studio name, shown in the rail and project list — e.g. "Course Studio"
+  - `description`: one line about the studio — e.g. "A video course: lessons, scripts, and slides"
   - `version`: manifest schema version; currently 1 — e.g. 1
   - `template`: mark this project as a studio template: opening it offers "new project from this studio" instead of editing it in place — e.g. true
 
-`docTypes` — Kinds of documents this studio works with, matched by filename glob. A matching doc gets the icon and label in the rail, its title derived per titleFrom, and a card in the New Document dialog (the filename follows the glob, the template seeds the content). Globs may match any textual file kind (.html, .json, .py, …) — matching files count as documents even though they are not Markdown.
-  - `id` (required): stable identifier — e.g. "scene"
-  - `match` (required): project-relative filename glob; * and ? stay within one path segment, ** spans folders — e.g. "chapters/*.scene.md"
-  - `label`: display label; defaults to the id — e.g. "Scene"
-  - `icon`: 1–2 characters/emoji shown in the document rail — e.g. "🎬"
+`docTypes` — Kinds of documents this studio works with, matched by filename glob. A matching doc gets the icon and label in the rail, its title derived per titleFrom, and a card in the New Document dialog (the filename follows the glob, the template seeds the content). Any file kind can be typed (.md, .html, .json, .py, …) — every textual file and image is already a document; a doc type adds meaning on top.
+  - `id` (required): stable identifier — e.g. "lesson"
+  - `match` (required): project-relative filename glob; * and ? stay within one path segment, ** spans folders — e.g. "lessons/*.lesson.md"
+  - `label`: display label; defaults to the id — e.g. "Lesson"
+  - `icon`: 1–2 characters/emoji shown in the document rail — e.g. "🎓"
   - `titleFrom`: "h1" (default), "filename", or "frontmatter:<key>" — e.g. "frontmatter:title"
   - `template`: seed content for new docs of this type; {{title}} is substituted — e.g. "---\ntitle: {{title}}\n---\n\n"
 
 `actions` — Commands surfaced in the ⌘K palette (and, for surface "selection", in the highlight toolbar). An action runs a .claude/skills skill, sends a canned prompt, or both.
-  - `id`: stable identifier; defaults to a slug of the label — e.g. "punch-up"
-  - `label`: palette label (required unless a skill names it) — e.g. "Punch up dialogue"
+  - `id`: stable identifier; defaults to a slug of the label — e.g. "simplify"
+  - `label`: palette label (required unless a skill names it) — e.g. "Simplify this"
   - `surface`: what the action operates on; "selection" needs highlighted text — one of "selection" | "doc" | "project" — e.g. "selection"
-  - `skill`: a .claude/skills name to invoke — e.g. "punch-up-dialogue"
-  - `prompt`: instructions sent to the project agent (alongside or instead of the skill) — e.g. "Sharpen this dialogue without changing what is said."
+  - `skill`: a .claude/skills name to invoke — e.g. "simplify-explanation"
+  - `prompt`: instructions sent to the project agent (alongside or instead of the skill) — e.g. "Rewrite this to be clearer without losing precision."
 
 `panels` — Read-only rendered views over project files, opened as ▦ tabs from the rail or palette.
-  - `id`: stable identifier; defaults to a slug of the title — e.g. "bible"
-  - `title` (required): tab and rail label — e.g. "Story Bible"
-  - `source` (required): project-relative file the panel renders — e.g. "bible.md"
+  - `id`: stable identifier; defaults to a slug of the title — e.g. "outline"
+  - `title` (required): tab and rail label — e.g. "Course Outline"
+  - `source` (required): project-relative file the panel renders — e.g. "outline.md"
   - `view`: how the source is rendered: "markdown" (default) renders prose, "code" shows syntax-highlighted source, "image" displays a picture file, "web" embeds the file as a live page (relative assets and scripts work) — one of "markdown" | "code" | "image" | "web" — e.g. "markdown"
 
 `commands` — Shell commands the studio can run at the project root (dev server, build, tests…), started only by the user from the rail — never by the agent — with the exact command line always shown. Output streams into a log tab; a long-running command keeps a ● running indicator until stopped.
@@ -79,16 +79,18 @@ derivation), and a card in the New Document dialog — the filename follows the
 glob (`chapters/*.scene.md` + "Cold Open" → `chapters/cold-open.scene.md`) and
 `template` seeds the content with `{{title}}` substituted.
 
-A bare project only treats `*.md` files as documents. A doc-type glob widens
-that: any textual file it matches (`pages/*.html`, `data/*.json`, `src/**`)
-becomes a document too, opening in the text editor with its title taken from
-the filename unless `titleFrom` says otherwise. Known-binary files (images,
-archives, media) are never admitted as text documents.
+Every project — harness or not — treats every textual file (`pages/*.html`,
+`data/*.json`, `src/**`) and every raster image as a document: text opens in
+the editor (Markdown gets the prose page, everything else monospace with
+syntax highlighting), images open in a read-only image view. A doc-type glob
+doesn't admit files; it adds meaning on top — the rail icon and label, the
+title rule, and a New Document card. Other known-binary files (archives,
+media) are never documents.
 
 **Actions.** Actions run through the project's agent. `skill` asks the
 agent to invoke that skill; `prompt` sends instructions; with both, the skill
 is invoked with the prompt as guidance. `surface: "selection"` actions appear
-in the highlight toolbar next to Comment and attach the selected passage;
+in the highlight toolbar next to Comment and attach the selected text;
 `surface: "doc"` targets the focused document. Skills not referenced by any
 action still appear in the ⌘K palette under **Skills**.
 

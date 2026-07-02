@@ -1,0 +1,48 @@
+{
+  "$schema": "../../docs/fabulist.schema.json",
+  "name": "Research Studio",
+  "description": "Questions, sources, and notes distilled into findings you can defend",
+  "version": 1,
+  "template": true,
+  "docTypes": [
+    {
+      "id": "source",
+      "match": "sources/*.source.md",
+      "label": "Source",
+      "icon": "🔗",
+      "titleFrom": "frontmatter:title",
+      "template": "---\ntitle: {{title}}\nurl: \nfound: \n---\n\n## What it claims\n\n## How solid is it\n\n## Quotes worth keeping\n"
+    },
+    {
+      "id": "note",
+      "match": "notes/*.md",
+      "label": "Note",
+      "icon": "📝"
+    },
+    {
+      "id": "brief",
+      "match": "briefs/*.brief.md",
+      "label": "Brief",
+      "icon": "📄",
+      "template": "# {{title}}\n\n*Question this answers:* \n\n## Bottom line\n\n## Evidence\n\n## What would change my mind\n"
+    }
+  ],
+  "actions": [
+    { "label": "Log a source", "surface": "project", "skill": "log-source" },
+    {
+      "label": "Distill this source",
+      "surface": "doc",
+      "prompt": "Fill in this source note from its own content: what it claims, how solid the method/evidence is, and 2-3 quotes worth keeping. Flag anything that smells like marketing rather than evidence."
+    },
+    {
+      "label": "What contradicts this?",
+      "surface": "selection",
+      "prompt": "Check this claim against the other sources and notes in the project. List anything that contradicts or complicates it, with the file it came from. Reply in chat only."
+    },
+    { "label": "Update findings", "surface": "project", "skill": "synthesize-findings" }
+  ],
+  "panels": [
+    { "id": "findings", "title": "Findings", "source": "findings.md" },
+    { "id": "questions", "title": "Open Questions", "source": "questions.md" }
+  ]
+}
