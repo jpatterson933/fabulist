@@ -112,8 +112,8 @@ export default function CommandPalette(): React.JSX.Element | null {
         label: 'New document',
         group: 'Studio',
         run: () => {
-          void s.createDoc('Untitled')
           s.setPaletteOpen(false)
+          s.setNewDocOpen(true)
         }
       },
       {

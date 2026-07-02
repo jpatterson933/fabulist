@@ -138,27 +138,16 @@ function DocsView(): React.JSX.Element {
   const activeDoc = useStore((s) => s.activeDoc)
   const openTab = useStore((s) => s.openTab)
   const deleteDoc = useStore((s) => s.deleteDoc)
-  const createDoc = useStore((s) => s.createDoc)
   const setRailView = useStore((s) => s.setRailView)
   const harness = useStore((s) => s.harness)
   const activePanel = useStore((s) => s.activePanel)
   const openPanel = useStore((s) => s.openPanel)
   const openWorkshop = useStore((s) => s.openWorkshop)
-  const [creating, setCreating] = useState(false)
-  const [title, setTitle] = useState('')
-  const [typeId, setTypeId] = useState('')
+  const setNewDocOpen = useStore((s) => s.setNewDocOpen)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
 
   const project = projects.find((p) => p.id === activeProjectId)
-  const docTypes = harness?.config.docTypes ?? []
   const panels = harness?.config.panels ?? []
-
-  const submit = async (): Promise<void> => {
-    const t = title.trim()
-    setCreating(false)
-    setTitle('')
-    if (t) await createDoc(t, typeId || undefined)
-  }
 
   return (
     <>
@@ -191,52 +180,13 @@ function DocsView(): React.JSX.Element {
 
       <div className="library-head">
         <span className="library-label">Documents</span>
-        <button className="library-new" onClick={() => setCreating(true)} title="New document">
+        <button className="library-new" onClick={() => setNewDocOpen(true)} title="New document">
           +
         </button>
       </div>
 
-      {creating && (
-        <form
-          className="library-create"
-          onSubmit={(e) => {
-            e.preventDefault()
-            void submit()
-          }}
-        >
-          <input
-            autoFocus
-            value={title}
-            placeholder="Document title…"
-            onChange={(e) => setTitle(e.target.value)}
-            onBlur={(e) => {
-              // choosing a doc type shouldn't submit-and-close the form
-              if (!e.relatedTarget || !(e.relatedTarget as HTMLElement).closest('.library-create')) {
-                void submit()
-              }
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') {
-                setCreating(false)
-                setTitle('')
-              }
-            }}
-          />
-          {docTypes.length > 0 && (
-            <select value={typeId} onChange={(e) => setTypeId(e.target.value)} title="Document type">
-              <option value="">Document</option>
-              {docTypes.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.label ?? t.id}
-                </option>
-              ))}
-            </select>
-          )}
-        </form>
-      )}
-
       <nav className="library-list">
-        {docs.length === 0 && !creating && (
+        {docs.length === 0 && (
           <p className="library-empty">No documents yet. Add one with +</p>
         )}
         {docs.map((d) => (

@@ -2200,25 +2200,99 @@ input::placeholder {
   line-height: 1.45;
 }
 
-/* create-form doc type pickers */
-.tab-create-type,
-.library-create select {
-  margin-left: 6px;
-  font-family: var(--font-ui);
-  font-size: 12px;
-  color: var(--ink-soft);
+/* ─── new-document dialog ─── */
+
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: oklch(0.3 0.02 50 / 0.28);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 18vh;
+}
+
+.dialog {
+  width: min(460px, calc(100vw - 48px));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 7px;
-  padding: 4px 6px;
+  border-radius: 14px;
+  box-shadow: var(--shadow-pop);
+  padding: 18px;
 }
-.library-create {
+
+.dialog-title {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 560;
+}
+
+.dialog-input {
+  width: 100%;
+  font-family: var(--font-display);
+  font-size: 15px;
+  padding: 9px 11px;
+}
+
+.dialog-types {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dialog-type {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 108px;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+  text-align: left;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+.dialog-type:hover {
+  background: var(--paper-deep);
+}
+.dialog-type.is-selected {
+  border-color: var(--accent);
+  background: var(--accent-wash);
+}
+.dialog-type-glyph {
+  font-size: 14px;
+  line-height: 1;
+}
+.dialog-type-label {
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--ink);
+}
+.dialog-type-hint {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-faint);
+}
+
+.dialog-actions {
   display: flex;
   align-items: center;
+  gap: 8px;
 }
-.library-create input {
+.dialog-file-hint {
   flex: 1;
   min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-faint);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 /* the Views section of the project rail (harness panels); lives inside

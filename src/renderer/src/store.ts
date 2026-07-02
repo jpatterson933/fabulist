@@ -83,6 +83,8 @@ interface FabulistStore {
   /** the focused panel tab; when set it shows instead of the active doc */
   activePanel: string | null
   paletteOpen: boolean
+  /** the new-document dialog (title + doc type) */
+  newDocOpen: boolean
   /** current editor selection, for selection-surface actions */
   selectionQuote: string | null
 
@@ -93,6 +95,7 @@ interface FabulistStore {
   openPanel: (panelId: string) => void
   closePanel: (panelId: string) => void
   setPaletteOpen: (open: boolean) => void
+  setNewDocOpen: (open: boolean) => void
   setSelectionQuote: (quote: string | null) => void
   openWorkshop: () => Promise<void>
 
@@ -221,6 +224,7 @@ export const useStore = create<FabulistStore>((set, get) => ({
   openPanels: [],
   activePanel: null,
   paletteOpen: false,
+  newDocOpen: false,
   selectionQuote: null,
 
   loadHarness: async () => {
@@ -279,6 +283,7 @@ export const useStore = create<FabulistStore>((set, get) => ({
   },
 
   setPaletteOpen: (open) => set({ paletteOpen: open }),
+  setNewDocOpen: (open) => set({ newDocOpen: open }),
   setSelectionQuote: (quote) => {
     if (get().selectionQuote !== quote) set({ selectionQuote: quote })
   },
@@ -383,6 +388,7 @@ export const useStore = create<FabulistStore>((set, get) => ({
       openPanels,
       activePanel: null,
       paletteOpen: false,
+      newDocOpen: false,
       selectionQuote: null,
       agentThreads: { ...get().agentThreads, [id]: agentThreads },
       activeThread: { ...get().activeThread, [id]: activeThreadId },
@@ -413,6 +419,7 @@ export const useStore = create<FabulistStore>((set, get) => ({
       openPanels: [],
       activePanel: null,
       paletteOpen: false,
+      newDocOpen: false,
       selectionQuote: null
     })
   },

@@ -9,6 +9,7 @@ import VersionPreview from '@/components/VersionPreview'
 import CommandPalette from '@/components/CommandPalette'
 import PanelView from '@/components/PanelView'
 import StudioBanner from '@/components/StudioBanner'
+import NewDocDialog from '@/components/NewDocDialog'
 
 export default function App(): React.JSX.Element {
   const activeProjectId = useStore((s) => s.activeProjectId)
@@ -114,6 +115,7 @@ export default function App(): React.JSX.Element {
       </main>
       {projectOpen && <Sidebar projectId={activeProjectId!} />}
       <CommandPalette />
+      <NewDocDialog />
     </div>
   )
 }
@@ -159,14 +161,14 @@ function PanelIcon(): React.JSX.Element {
 }
 
 function NoDocOpen(): React.JSX.Element {
-  const createDoc = useStore((s) => s.createDoc)
+  const setNewDocOpen = useStore((s) => s.setNewDocOpen)
   return (
     <div className="empty-state">
       <div className="empty-state-inner">
         <span className="empty-state-glyph">❡</span>
         <h2>No document open</h2>
-        <p>Open a document with the + in the tab bar, or start a new one.</p>
-        <button className="btn-primary" onClick={() => createDoc('Untitled')}>
+        <p>Open a document from the rail, or start a new one.</p>
+        <button className="btn-primary" onClick={() => setNewDocOpen(true)}>
           New document
         </button>
       </div>
