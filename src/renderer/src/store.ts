@@ -441,6 +441,8 @@ export const useStore = create<FabulistStore>((set, get) => ({
     ])
 
     const present = new Set(files.map((d) => d.file))
+    // the studio's layout may say whether the chat sidebar starts open
+    const layoutSidebar = harness?.config.layout.sidebar
     let openDocs = meta.openTabs.filter((f) => !f.startsWith(PANEL_TAB) && present.has(f))
     const openPanels = meta.openTabs
       .filter((f) => f.startsWith(PANEL_TAB))
@@ -452,6 +454,8 @@ export const useStore = create<FabulistStore>((set, get) => ({
       meta.activeFile && openDocs.includes(meta.activeFile)
         ? meta.activeFile
         : openDocs[0] ?? null
+    // a panels-only layout (no persisted active file) opens focused on its panel
+    const activePanel = !meta.activeFile && openPanels.length > 0 ? openPanels[0] : null
 
     let content = ''
     let threads: CommentThread[] = []
@@ -487,11 +491,12 @@ export const useStore = create<FabulistStore>((set, get) => ({
       queuedCommentSends: [],
       harness,
       openPanels,
-      activePanel: null,
+      activePanel,
       commandRuns,
       paletteOpen: false,
       newFileOpen: false,
       selectionQuote: null,
+      ...(layoutSidebar ? { sidebarOpen: layoutSidebar === 'open' } : {}),
       agentThreads: { ...get().agentThreads, [id]: agentThreads },
       activeThread: { ...get().activeThread, [id]: activeThreadId },
       chats: { ...get().chats, [activeThreadId]: chat ?? [] }

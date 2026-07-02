@@ -194,6 +194,15 @@ describe('parseHarnessConfig — the lenient-parsing contract', () => {
     expect(bad.warnings[0]).toMatch(/fields must be an array/)
   })
 
+  it('parses the layout block, dropping non-string open entries', () => {
+    const { config, warnings } = parse({
+      layout: { open: ['outline', 'lessons/01.lesson.md', 3], sidebar: 'closed' }
+    })
+    expect(config.layout).toEqual({ open: ['outline', 'lessons/01.lesson.md'], sidebar: 'closed' })
+    expect(warnings.join('\n')).toMatch(/layout\.open/)
+    expect(parse({ layout: { sidebar: 'sideways' } }).config.layout).toEqual({})
+  })
+
   it('parses the theme block, validating accents and capping the glyph', () => {
     const { config, warnings } = parse({
       theme: { accent: 'violet', glyph: '🎓✦x', docFont: 'serif' }

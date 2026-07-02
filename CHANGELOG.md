@@ -45,6 +45,12 @@ All notable changes to Fabulist are documented here. The format follows
   appears in the ⌘K palette and the highlight toolbar only while a matching
   file is focused — each file type gets its own verbs, and a big studio's
   palette stays clean.
+- **Studios open the way they mean to be seen: the `layout` block.**
+  `layout.open` lists the files and panels that open as tabs the first time
+  someone opens the project (a fresh clone or a new copy of a template studio)
+  — a course studio can open showing its outline instead of a blank bench.
+  Once the user touches their tabs, their own state wins. `layout.sidebar`
+  says whether the chat sidebar starts open or closed on every open.
 - **The Files rail is now a real IDE-grade file tree**, rebuilt on
   [Headless Tree](https://headless-tree.lukasbach.com) (the successor to
   react-complex-tree). What it can do now: drag-and-drop files *and folders* into any

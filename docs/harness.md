@@ -42,6 +42,10 @@ Top-level fields (all optional; unknown fields are ignored):
   - `glyph`: 1–2 characters/emoji shown as the studio's mark in the rail and project list — e.g. "🎓"
   - `docFont`: default document typeface for prose files; the app chrome keeps its own faces — one of "sans" | "serif" | "mono" — e.g. "serif"
 
+`layout` — The workspace's starting shape. `open` applies once — the first time someone opens the project (a fresh clone or a new copy of a template studio); after that the user's own tabs persist. `sidebar` applies on every open.
+  - `open`: files and panel ids to open as tabs on first open; the first file listed gets focus (a leading panel opens focused instead) — an array of strings — e.g. ["outline", "lessons/01.lesson.md"]
+  - `sidebar`: whether the chat sidebar starts open or closed when the project opens — one of "open" | "closed" — e.g. "closed"
+
 `fileTypes` — Typed kinds of files this studio works with, matched by filename glob. A matching file gets the icon and label in the rail, its title derived per titleFrom, and a card in the New File dialog (the filename follows the glob, the template seeds the content). Any file kind can be typed (.md, .html, .json, .py, …) — every textual file and image is already a work file; a file type adds meaning on top.
   - `id` (required): stable identifier — e.g. "lesson"
   - `match` (required): project-relative filename glob; * and ? stay within one path segment, ** spans folders — e.g. "lessons/*.lesson.md"
@@ -91,6 +95,14 @@ and contrast stock. `glyph` marks the studio in the rail and the project
 list. `docFont` picks the default document typeface for prose; the app chrome
 keeps its own faces. Theme is looks-only: it is never part of the trust
 grant, and `fabulist.local.json` may override any of it per person.
+
+**Layout.** A studio can decide what the workspace shows before anyone has
+touched it. `open` lists files and panel ids to open as tabs the *first* time
+the project opens — a fresh clone or a new copy of a template studio — with
+the first file focused (or, if the layout leads with panels only, the first
+panel). Once the user opens or closes tabs, their own state persists and
+`open` never reapplies. `sidebar` ("open"/"closed") applies on every open: a
+reading-heavy studio can start with the chat tucked away.
 
 **File types.** A matching file gets the type's icon and label in the rail, its
 title derived per `titleFrom` (frontmatter blocks are stripped before `h1`

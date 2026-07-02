@@ -56,6 +56,27 @@
       },
       "additionalProperties": true
     },
+    "layout": {
+      "type": "object",
+      "description": "The workspace's starting shape. `open` applies once — the first time someone opens the project (a fresh clone or a new copy of a template studio); after that the user's own tabs persist. `sidebar` applies on every open.",
+      "properties": {
+        "open": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "files and panel ids to open as tabs on first open; the first file listed gets focus (a leading panel opens focused instead)"
+        },
+        "sidebar": {
+          "enum": [
+            "open",
+            "closed"
+          ],
+          "description": "whether the chat sidebar starts open or closed when the project opens"
+        }
+      },
+      "additionalProperties": true
+    },
     "fileTypes": {
       "type": "array",
       "description": "Typed kinds of files this studio works with, matched by filename glob. A matching file gets the icon and label in the rail, its title derived per titleFrom, and a card in the New File dialog (the filename follows the glob, the template seeds the content). Any file kind can be typed (.md, .html, .json, .py, …) — every textual file and image is already a work file; a file type adds meaning on top.",

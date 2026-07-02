@@ -116,6 +116,13 @@ export interface ThemeDef {
   docFont?: DocFontName
 }
 
+export interface LayoutDef {
+  /** files and panel ids opened as tabs the first time the project opens */
+  open?: string[]
+  /** whether the chat sidebar starts open when the project opens */
+  sidebar?: 'open' | 'closed'
+}
+
 export type DocWidth = 'narrow' | 'normal' | 'wide'
 export const DOC_WIDTHS: readonly DocWidth[] = ['narrow', 'normal', 'wide']
 
@@ -475,6 +482,26 @@ export const THEME_BLOCK: ObjectBlockSpec = {
   ]
 }
 
+export const LAYOUT_BLOCK: ObjectBlockSpec = {
+  key: 'layout',
+  doc: "The workspace's starting shape. `open` applies once — the first time someone opens the project (a fresh clone or a new copy of a template studio); after that the user's own tabs persist. `sidebar` applies on every open.",
+  fields: [
+    {
+      key: 'open',
+      kind: 'stringlist',
+      doc: 'files and panel ids to open as tabs on first open; the first file listed gets focus (a leading panel opens focused instead)',
+      example: '["outline", "lessons/01.lesson.md"]'
+    },
+    {
+      key: 'sidebar',
+      kind: 'enum',
+      values: ['open', 'closed'],
+      doc: 'whether the chat sidebar starts open or closed when the project opens',
+      example: '"closed"'
+    }
+  ]
+}
+
 export const TOP_LEVEL_FIELDS: FieldSpec[] = [
   { key: 'name', kind: 'string', doc: 'studio name, shown in the rail and project list', example: '"Course Studio"' },
   { key: 'description', kind: 'string', doc: 'one line about the studio', example: '"A video course: lessons, scripts, and slides"' },
@@ -488,7 +515,7 @@ export const TOP_LEVEL_FIELDS: FieldSpec[] = [
 ]
 
 export const LIST_BLOCKS = [FILE_TYPES_BLOCK, ACTIONS_BLOCK, PANELS_BLOCK, COMMANDS_BLOCK] as const
-export const OBJECT_BLOCKS: ObjectBlockSpec[] = [THEME_BLOCK]
+export const OBJECT_BLOCKS: ObjectBlockSpec[] = [THEME_BLOCK, LAYOUT_BLOCK]
 
 // --- parsed shape ---
 
@@ -498,6 +525,7 @@ export interface HarnessConfig {
   /** this project is a studio template, meant to be instantiated rather than edited */
   template?: boolean
   theme: ThemeDef
+  layout: LayoutDef
   fileTypes: FileTypeDef[]
   actions: ActionDef[]
   panels: PanelDef[]
@@ -525,6 +553,7 @@ export interface Harness {
 
 export const EMPTY_CONFIG: HarnessConfig = {
   theme: {},
+  layout: {},
   fileTypes: [],
   actions: [],
   panels: [],
@@ -651,6 +680,11 @@ export function parseHarnessConfig(raw: unknown, warnings: string[]): HarnessCon
   }
 
   const theme = parseObjectBlock(THEME_BLOCK) as ThemeDef
+  const layoutRaw = parseObjectBlock(LAYOUT_BLOCK)
+  const layout: LayoutDef = {
+    ...(layoutRaw.open !== undefined ? { open: listField(layoutRaw.open) } : {}),
+    ...(layoutRaw.sidebar !== undefined ? { sidebar: layoutRaw.sidebar as 'open' | 'closed' } : {})
+  }
 
   const permissions: PermissionsDef = {}
   if (obj.permissions !== undefined) {
@@ -670,6 +704,7 @@ export function parseHarnessConfig(raw: unknown, warnings: string[]): HarnessCon
     description: top.description,
     template: top.template === 'true' ? true : undefined,
     theme,
+    layout,
     fileTypes: parseListBlock(FILE_TYPES_BLOCK, obj.fileTypes, warnings),
     actions: parseListBlock(ACTIONS_BLOCK, obj.actions, warnings),
     panels: parseListBlock(PANELS_BLOCK, obj.panels, warnings),
@@ -694,6 +729,7 @@ export function mergeHarnessConfigs(base: HarnessConfig, local: HarnessConfig): 
     description: local.description ?? base.description,
     template: base.template,
     theme: { ...base.theme, ...local.theme },
+    layout: { ...base.layout, ...local.layout },
     fileTypes: mergeList(base.fileTypes, local.fileTypes),
     actions: mergeList(base.actions, local.actions),
     panels: mergeList(base.panels, local.panels),

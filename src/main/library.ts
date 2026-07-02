@@ -205,11 +205,26 @@ async function ensureProjectUnlocked(projectId: string): Promise<ProjectFile> {
     const content = await fs.readFile(projectFilePath(projectId, titleSource), 'utf8').catch(() => '')
     title = deriveFileMeta(titleSource, content).title
   }
+
+  // a harness layout.open decides the first-open tabs (fresh clone, new copy
+  // of a template studio) — entries are files on disk or panel ids
+  const config = await loadMergedConfig(projectId).catch(() => null)
+  const layoutTabs: string[] = []
+  let layoutActive: string | null = null
+  for (const entry of config?.layout.open ?? []) {
+    if (onDisk.includes(entry)) {
+      layoutTabs.push(entry)
+      layoutActive ??= entry
+    } else if (config?.panels.some((p) => p.id === entry)) {
+      layoutTabs.push(`panel:${entry}`)
+    }
+  }
+
   const project: ProjectFile = {
     title,
     files,
-    openTabs: primary ? [primary] : [],
-    activeFile: primary ?? null
+    openTabs: layoutTabs.length > 0 ? layoutTabs : primary ? [primary] : [],
+    activeFile: layoutTabs.length > 0 ? layoutActive : primary ?? null
   }
 
   // re-key a flat comments.json ({threads:[]}) into per-file ({ "<file>": {threads} })
