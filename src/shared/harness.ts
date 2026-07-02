@@ -109,7 +109,7 @@ export interface PermissionsDef {
 
 export const DOC_TYPES_BLOCK: ListBlockSpec<DocTypeDef> = {
   key: 'docTypes',
-  doc: 'Kinds of documents this studio works with, matched by filename glob. A matching doc gets the icon and label in the rail, its title derived per titleFrom, and a card in the New Document dialog (the filename follows the glob, the template seeds the content).',
+  doc: 'Kinds of documents this studio works with, matched by filename glob. A matching doc gets the icon and label in the rail, its title derived per titleFrom, and a card in the New Document dialog (the filename follows the glob, the template seeds the content). Globs may match any textual file kind (.html, .json, .py, …) — matching files count as documents even though they are not Markdown.',
   fields: [
     { key: 'id', kind: 'string', required: true, doc: 'stable identifier', example: '"scene"' },
     {
@@ -168,7 +168,7 @@ export const ACTIONS_BLOCK: ListBlockSpec<ActionDef> = {
       key: 'prompt',
       kind: 'string',
       raw: true,
-      doc: 'instructions sent to the writing agent (alongside or instead of the skill)',
+      doc: 'instructions sent to the project agent (alongside or instead of the skill)',
       example: '"Sharpen this dialogue without changing what is said."'
     }
   ],

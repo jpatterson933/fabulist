@@ -6,6 +6,14 @@ All notable changes to Fabulist are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- **Studios aren't just for writing anymore.** A doc-type glob in the manifest now admits
+  *any* textual file as a document — `pages/*.html`, `data/*.json`, `src/**` — not just
+  Markdown. Matched files show up in the rail (titled by filename unless `titleFrom` says
+  otherwise), open in the text editor, and get New Document cards like any other type;
+  known-binary files (images, archives, media) are never admitted. Bare projects still
+  default to `*.md`. The agent's built-in persona is no longer "a writing studio": it now
+  introduces itself with the studio's own name and description from `fabulist.json`, and
+  the "author"/"writing" framing in prompts and approval messages is gone.
 - **New projects start from a studio.** The New Project flow is now a chooser: **Blank**,
   **Design with Claude** (genesis — a blank project that opens straight into the studio
   workshop, where describing your work gets a custom studio built around it), or one of three

@@ -675,7 +675,7 @@ export const useStore = create<FabulistStore>((set, get) => ({
         ? thread.messages[0].text
         : 'Comment thread on the quoted passage:\n\n' +
           thread.messages
-            .map((m) => `${m.author === 'you' ? 'Author' : 'Claude'}: ${m.text}`)
+            .map((m) => `${m.author === 'you' ? 'User' : 'Claude'}: ${m.text}`)
             .join('\n')
     const busy = ['starting', 'working'].includes(get().agent[id]?.status ?? '')
     if (busy) {

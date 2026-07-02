@@ -18,20 +18,28 @@ import {
 } from './library'
 import { commitAll } from './git'
 import * as comments from './comments'
-import { loadGateConfig } from './harness'
-import { schemaMarkdown } from '@shared/harness'
+import { loadGateConfig, loadMergedConfig } from './harness'
+import { schemaMarkdown, type HarnessConfig } from '@shared/harness'
 
-/** System prompt tail; the currently-focused doc (if any) is appended per send. */
-function systemAppend(docFile?: string): string {
+/**
+ * System prompt tail; derives the studio's identity from its manifest so a
+ * novel studio, a campaign studio, and a website studio each get their own
+ * framing. The currently-focused doc (if any) is appended per send.
+ */
+function systemAppend(studio: HarnessConfig | null, docFile?: string): string {
   const focus = docFile
-    ? `The author is currently focused on \`${docFile}\`; treat it as the primary document unless they say otherwise, but you may read and edit any document in the project.`
-    : `The author has not opened a specific document yet.`
+    ? `The user is currently focused on \`${docFile}\`; treat it as the primary document unless they say otherwise, but you may read and edit any file in the project.`
+    : `The user has not opened a specific document yet.`
+  const identity = studio?.name
+    ? `This project is a studio called "${studio.name}"${studio.description ? ` — ${studio.description}` : ''}.`
+    : `This project holds its work as documents (Markdown by default; the studio manifest can admit other file kinds).`
   return `
-You are operating inside Fabulist, a writing studio. The current working directory is a
-project folder that holds one or more documents as Markdown files. ${focus} Follow the
-project CLAUDE.md. Every file edit you make is shown to the author as a diff for approval
-before it is applied, so make edits confidently but keep them minimal and well-scoped.
-Keep chat replies short — the documents are the deliverable, not the conversation.`
+You are operating inside Fabulist, an AI-native studio app where each project is a
+workspace for making something with Claude. The current working directory is the project
+folder; its files are the work product. ${identity} ${focus} Follow the project CLAUDE.md.
+Every file edit you make is shown to the user as a diff for approval before it is applied,
+so make edits confidently but keep them minimal and well-scoped. Keep chat replies short —
+the project files are the deliverable, not the conversation.`
 }
 
 /**
@@ -47,8 +55,8 @@ that shapes how this project behaves in the app.
 You configure the studio by creating and editing these files in the project root:
 - \`fabulist.json\` — the studio manifest (schema below). The app hot-reloads it: actions,
   doc types, and panels appear in the UI the moment your edit is approved.
-- \`CLAUDE.md\` — standing instructions for the writing agent.
-- \`.claude/skills/<name>/SKILL.md\` — reusable skills the writing agent can invoke;
+- \`CLAUDE.md\` — standing instructions for the project's agent.
+- \`.claude/skills/<name>/SKILL.md\` — reusable skills the agent can invoke;
   YAML frontmatter with \`name\` and \`description\`, then the skill instructions.
 - \`.claude/agents/<name>.md\` — subagent personas (reviewers, checkers).
 
@@ -220,6 +228,8 @@ export class AgentManager {
     // at all requires the studio to be trusted with permissions.mcp beyond
     // "none"; otherwise strictMcpConfig keeps the engine from loading them
     const mcpPolicy = gateConfig?.trusted ? gateConfig.config.permissions.mcp ?? 'none' : 'none'
+    // studio identity (name/description, local overlay included) for the system prompt
+    const studioConfig = await loadMergedConfig(projectId).catch(() => null)
     const abort = new AbortController()
     let editsApplied = 0
 
@@ -245,7 +255,7 @@ export class AgentManager {
       systemPrompt: {
         type: 'preset',
         preset: 'claude_code',
-        append: workshop ? WORKSHOP_APPEND : systemAppend(opts.docFile)
+        append: workshop ? WORKSHOP_APPEND : systemAppend(studioConfig, opts.docFile)
       },
       permissionMode: 'default',
       disallowedTools: bashDenied ? ['Bash'] : undefined,
@@ -454,7 +464,7 @@ export class AgentManager {
       if (filePath) onEditApplied()
       return { behavior: 'allow', updatedInput: input }
     }
-    return { behavior: 'deny', message: 'The author declined this change.' }
+    return { behavior: 'deny', message: 'The user declined this change.' }
   }
 
   private async buildRequest(
@@ -537,7 +547,7 @@ function buildPrompt(prompt: string, opts: SendOptions): string {
   const parts: string[] = []
   const where = opts.docFile ? ` in \`${opts.docFile}\`` : ''
   if (opts.quote) {
-    parts.push(`The author highlighted this passage${where}:\n\n"""\n${opts.quote}\n"""`)
+    parts.push(`The user highlighted this passage${where}:\n\n"""\n${opts.quote}\n"""`)
   }
   if (opts.commentId) {
     parts.push(
@@ -630,7 +640,7 @@ async function buildUserContent(
   let leadText = text
   if (copied.length) {
     leadText +=
-      `\n\nThe author attached these files (in the project folder):\n` +
+      `\n\nThe user attached these files (in the project folder):\n` +
       copied.map((p) => `- ${p}`).join('\n') +
       '\n\nUse your Read tool to open any you need.'
   }

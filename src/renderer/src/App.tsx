@@ -102,7 +102,7 @@ export default function App(): React.JSX.Element {
           ) : preview && doc ? (
             <VersionPreview />
           ) : doc ? (
-            doc.type === 'markdown' ? (
+            doc.type === 'markdown' || doc.type === 'text' ? (
               <Editor key={`${activeProjectId}:${doc.file}`} projectId={activeProjectId!} docFile={doc.file} />
             ) : (
               <UnsupportedDoc file={doc.file} />

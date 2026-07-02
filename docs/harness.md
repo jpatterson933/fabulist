@@ -37,7 +37,7 @@ Top-level fields (all optional; unknown fields are ignored):
   - `version`: manifest schema version; currently 1 — e.g. 1
   - `template`: mark this project as a studio template: opening it offers "new project from this studio" instead of editing it in place — e.g. true
 
-`docTypes` — Kinds of documents this studio works with, matched by filename glob. A matching doc gets the icon and label in the rail, its title derived per titleFrom, and a card in the New Document dialog (the filename follows the glob, the template seeds the content).
+`docTypes` — Kinds of documents this studio works with, matched by filename glob. A matching doc gets the icon and label in the rail, its title derived per titleFrom, and a card in the New Document dialog (the filename follows the glob, the template seeds the content). Globs may match any textual file kind (.html, .json, .py, …) — matching files count as documents even though they are not Markdown.
   - `id` (required): stable identifier — e.g. "scene"
   - `match` (required): project-relative filename glob; * and ? stay within one path segment, ** spans folders — e.g. "chapters/*.scene.md"
   - `label`: display label; defaults to the id — e.g. "Scene"
@@ -50,7 +50,7 @@ Top-level fields (all optional; unknown fields are ignored):
   - `label`: palette label (required unless a skill names it) — e.g. "Punch up dialogue"
   - `surface`: what the action operates on; "selection" needs highlighted text — one of "selection" | "doc" | "project" — e.g. "selection"
   - `skill`: a .claude/skills name to invoke — e.g. "punch-up-dialogue"
-  - `prompt`: instructions sent to the writing agent (alongside or instead of the skill) — e.g. "Sharpen this dialogue without changing what is said."
+  - `prompt`: instructions sent to the project agent (alongside or instead of the skill) — e.g. "Sharpen this dialogue without changing what is said."
 
 `panels` — Read-only rendered views over project files, opened as ▦ tabs from the rail or palette.
   - `id`: stable identifier; defaults to a slug of the title — e.g. "bible"
@@ -73,7 +73,13 @@ derivation), and a card in the New Document dialog — the filename follows the
 glob (`chapters/*.scene.md` + "Cold Open" → `chapters/cold-open.scene.md`) and
 `template` seeds the content with `{{title}}` substituted.
 
-**Actions.** Actions run through the project's writing agent. `skill` asks the
+A bare project only treats `*.md` files as documents. A doc-type glob widens
+that: any textual file it matches (`pages/*.html`, `data/*.json`, `src/**`)
+becomes a document too, opening in the text editor with its title taken from
+the filename unless `titleFrom` says otherwise. Known-binary files (images,
+archives, media) are never admitted as text documents.
+
+**Actions.** Actions run through the project's agent. `skill` asks the
 agent to invoke that skill; `prompt` sends instructions; with both, the skill
 is invoked with the prompt as guidance. `surface: "selection"` actions appear
 in the highlight toolbar next to Comment and attach the selected passage;
