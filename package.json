@@ -42,6 +42,7 @@
     "@codemirror/language-data": "^6.5.2",
     "@codemirror/state": "^6.6.0",
     "@codemirror/view": "^6.43.1",
+    "@fontsource-variable/archivo": "^5.2.8",
     "@fontsource-variable/fraunces": "^5.2.9",
     "@fontsource-variable/literata": "^5.2.8",
     "@fontsource-variable/newsreader": "^5.2.10",

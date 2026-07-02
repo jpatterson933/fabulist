@@ -2,6 +2,18 @@ import { useEffect, useMemo, useState } from 'react'
 import type { FileMeta } from '@shared/types'
 import { useStore } from '@/store'
 
+/** The brand mark: a 2×2 module grid with one lit cell. */
+export function BlockMark({ size = 14 }: { size?: number }): React.JSX.Element {
+  return (
+    <svg width={size} height={size} viewBox="0 0 14 14" fill="currentColor" aria-hidden>
+      <rect x="0" y="0" width="6" height="6" />
+      <rect x="8" y="0" width="6" height="6" opacity="0.3" />
+      <rect x="0" y="8" width="6" height="6" opacity="0.3" />
+      <rect x="8" y="8" width="6" height="6" className="brand-cell-accent" />
+    </svg>
+  )
+}
+
 export default function Library(): React.JSX.Element {
   const railView = useStore((s) => s.railView)
   const activeProjectId = useStore((s) => s.activeProjectId)
@@ -12,7 +24,7 @@ export default function Library(): React.JSX.Element {
         <div className="library-lights" />
         <div className="library-brand">
           <span className="library-brand-glyph" aria-hidden>
-            ❡
+            <BlockMark />
           </span>
           <span className="library-brand-mark">Fabulist</span>
         </div>
@@ -41,7 +53,7 @@ function ProjectsView(): React.JSX.Element {
   return (
     <>
       <div className="library-head">
-        <span className="library-label">Projects</span>
+        <span className="library-label mod-projects">Projects</span>
         <button className="library-new" onClick={() => setNewProjectOpen(true)} title="New project">
           +
         </button>
@@ -186,7 +198,7 @@ function DocsView(): React.JSX.Element {
         title={d.kindLabel ? `${d.file} · ${d.kindLabel}` : d.file}
       >
         <span className="library-file-glyph" aria-hidden>
-          {d.kindIcon ?? '❡'}
+          {d.kindIcon ?? '▢'}
         </span>
         <span className="library-file-title">{d.title}</span>
       </button>
@@ -254,7 +266,7 @@ function DocsView(): React.JSX.Element {
       </button>
 
       <button
-        className="library-studio"
+        className={`library-studio ${harness?.config.name ? '' : 'is-empty'}`}
         onClick={() => void openWorkshop()}
         title={
           harness?.config.name
@@ -274,7 +286,7 @@ function DocsView(): React.JSX.Element {
       </button>
 
       <div className="library-head">
-        <span className="library-label">Files</span>
+        <span className="library-label mod-files">Files</span>
         <button className="library-new" onClick={() => setNewFileOpen(true)} title="New file">
           +
         </button>
@@ -290,7 +302,7 @@ function DocsView(): React.JSX.Element {
         {panels.length > 0 && (
           <>
             <div className="library-head library-head-views">
-              <span className="library-label">Views</span>
+              <span className="library-label mod-views">Views</span>
             </div>
             {panels.map((p) => (
               <div key={p.id} className={`library-file ${p.id === activePanel ? 'is-active' : ''}`}>
@@ -312,7 +324,7 @@ function DocsView(): React.JSX.Element {
         {commands.length > 0 && (
           <>
             <div className="library-head library-head-views">
-              <span className="library-label">Commands</span>
+              <span className="library-label mod-commands">Commands</span>
             </div>
             {commands.map((c) => {
               const running = commandRuns[c.id]?.running ?? false

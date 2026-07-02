@@ -62,7 +62,7 @@ const panels: CommandProvider = (s) =>
     id: `panel:${panel.id}`,
     label: panel.title,
     hint: panel.source,
-    group: 'Panels',
+    group: 'Views',
     run: () => {
       s.openPanel(panel.id)
       s.setPaletteOpen(false)

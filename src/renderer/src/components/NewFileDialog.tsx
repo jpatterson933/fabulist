@@ -87,7 +87,7 @@ export default function NewFileDialog(): React.JSX.Element | null {
               onClick={() => setTypeId('')}
             >
               <span className="dialog-type-glyph" aria-hidden>
-                ❡
+                ▢
               </span>
               <span className="dialog-type-label">File</span>
               <span className="dialog-type-hint">plain markdown</span>
@@ -101,7 +101,7 @@ export default function NewFileDialog(): React.JSX.Element | null {
                 title={t.template ? 'Starts from this type’s template' : undefined}
               >
                 <span className="dialog-type-glyph" aria-hidden>
-                  {t.icon ?? '❡'}
+                  {t.icon ?? '▢'}
                 </span>
                 <span className="dialog-type-label">{t.label ?? t.id}</span>
                 <span className="dialog-type-hint">{t.match}</span>

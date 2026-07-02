@@ -106,7 +106,7 @@ export default function NewProjectDialog(): React.JSX.Element | null {
             'describe what you’re making — a website, a course, a research project, a novel — and the agent builds a studio around it'
           )}
           {templates.map((t) => card(t.id, '▦', t.name, t.description))}
-          {card('blank', '❡', 'Blank', 'an empty project; just files and the agent')}
+          {card('blank', '▢', 'Blank', 'an empty project; just files and the agent')}
         </div>
 
         <div className="dialog-actions">

@@ -6,6 +6,17 @@ All notable changes to Fabulist are documented here. The format follows
 ## [Unreleased]
 
 ### Changed
+- **New design language: construction kit, not manuscript.** The warm-paper/serif/ember
+  theme is replaced by a modular one — a porcelain bench with a faint breadboard dot
+  grid, white module surfaces with visible 1px seams, construction-orange accent, and
+  category colors that mean something: blueprint blue chips mark Views, run green marks
+  Commands. Archivo (wide) is the display face, Plex Mono carries uppercase micro-labels
+  (section headers, the palette groups, the idle title), radii tightened app-wide, and
+  the active file/project/tab is a white block with an orange connector edge. The brand
+  glyph is now a 2×2 block mark (one cell lit) replacing the literary ❡ everywhere; the
+  studio slot in the rail renders as a dashed empty socket until a harness fills it.
+  Fraunces/Newsreader/Literata remain solely as document typeface options. The palette
+  group formerly labeled "Panels" now matches the rail: "Views".
 - **"Documents" are gone; everything is a file.** The whole vocabulary moved with the
   model: the rail header says Files, the dialog is New File, the palette group is Files,
   and the agent is told about files, not documents. The manifest block is now

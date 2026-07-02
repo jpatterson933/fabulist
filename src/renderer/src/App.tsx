@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { FONT_CHOICES } from '@shared/types'
 import { useStore } from '@/store'
-import Library from '@/components/Library'
+import Library, { BlockMark } from '@/components/Library'
 import Editor from '@/components/Editor'
 import Tabs from '@/components/Tabs'
 import Sidebar from '@/components/Sidebar'
@@ -176,7 +176,7 @@ function NoFileOpen(): React.JSX.Element {
   return (
     <div className="empty-state">
       <div className="empty-state-inner">
-        <span className="empty-state-glyph">❡</span>
+        <span className="empty-state-glyph"><BlockMark size={40} /></span>
         <h2>No file open</h2>
         <p>Open a file from the rail, or start a new one.</p>
         <button className="btn-primary" onClick={() => setNewFileOpen(true)}>
@@ -208,7 +208,7 @@ function UnsupportedFile({ file }: { file: string }): React.JSX.Element {
   return (
     <div className="empty-state">
       <div className="empty-state-inner">
-        <span className="empty-state-glyph">❡</span>
+        <span className="empty-state-glyph"><BlockMark size={40} /></span>
         <h2>No view for {file} yet</h2>
         <p>This file kind doesn&rsquo;t have a view in the app yet. Open it in Finder instead.</p>
         {activeProjectId && (
@@ -226,7 +226,7 @@ function EmptyState(): React.JSX.Element {
   return (
     <div className="empty-state">
       <div className="empty-state-inner">
-        <span className="empty-state-glyph">❡</span>
+        <span className="empty-state-glyph"><BlockMark size={40} /></span>
         <h2>Every project is a little world.</h2>
         <p>
           A project gathers your files in one place — each a Claude Code workspace under the
