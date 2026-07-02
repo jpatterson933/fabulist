@@ -216,11 +216,33 @@ input::placeholder {
   flex-direction: column;
 }
 
-/* empty strip the macOS traffic lights live in — nothing competes with them */
+/* strip the macOS traffic lights live in; the library's collapse control sits
+   at its right end, level with the workspace header's toggles so the icon
+   doesn't jump rows when the rail opens or closes */
 .library-lights {
   height: 46px;
   flex-shrink: 0;
   -webkit-app-region: drag;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  /* header content centers at 27px; offset the 46px strip to match */
+  padding: 8px 10px 0 0;
+}
+
+.library-close {
+  -webkit-app-region: no-drag;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 6px;
+  border-radius: 4px;
+  color: var(--ink-faint);
+  transition: background 140ms ease, color 140ms ease;
+}
+.library-close:hover {
+  background: var(--paper-deeper);
+  color: var(--ink);
 }
 
 .library-brand {
@@ -249,23 +271,6 @@ input::placeholder {
   font-stretch: 125%;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--ink);
-}
-
-/* the library's own collapse control, tucked into the brand row */
-.library-brand-close {
-  -webkit-app-region: no-drag;
-  margin-left: auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 5px 6px;
-  border-radius: 4px;
-  color: var(--ink-faint);
-  transition: background 140ms ease, color 140ms ease;
-}
-.library-brand-close:hover {
-  background: var(--paper-deeper);
   color: var(--ink);
 }
 

@@ -8,8 +8,9 @@ All notable changes to Fabulist are documented here. The format follows
 ### Changed
 - **The workspace header is now just tabs.** The library and sidebar toggles, the
   Actions button, and the font picker no longer crowd the header. Each open panel
-  carries its own close control (in the library's brand row and the sidebar's tab
-  row); the header toggle only appears when its panel is collapsed, right where the
+  carries its own close control (in the library's traffic-light strip, level with
+  the header row so it doesn't jump when toggled, and in the sidebar's tab row);
+  the header toggle only appears when its panel is collapsed, right where the
   panel would be. The sidebar also gains a keyboard toggle, ⌘⇧\ (pairing with the
   library's ⌘\).
 - **Actions moved into the rail.** The ⌘K palette trigger now lives in the project

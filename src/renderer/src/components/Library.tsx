@@ -22,14 +22,9 @@ export default function Library(): React.JSX.Element {
   return (
     <aside className="library">
       <div className="library-inner">
-        <div className="library-lights" />
-        <div className="library-brand">
-          <span className="library-brand-glyph" aria-hidden>
-            <BlockMark />
-          </span>
-          <span className="library-brand-mark">Fabulist</span>
+        <div className="library-lights">
           <button
-            className="library-brand-close"
+            className="library-close"
             onClick={toggleLibrary}
             title="Close library  ⌘\"
             aria-label="Close library"
@@ -39,6 +34,12 @@ export default function Library(): React.JSX.Element {
               <path d="M6 2.5v11" stroke="currentColor" strokeWidth="1.3" />
             </svg>
           </button>
+        </div>
+        <div className="library-brand">
+          <span className="library-brand-glyph" aria-hidden>
+            <BlockMark />
+          </span>
+          <span className="library-brand-mark">Fabulist</span>
         </div>
         {railView === 'files' && activeProjectId ? <DocsView /> : <ProjectsView />}
       </div>
